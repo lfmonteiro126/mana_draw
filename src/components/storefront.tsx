@@ -812,7 +812,8 @@ function getCardBack(game: TcgCard["game"]) {
 
   return {
     badge: "bg-cyan-500",
-    frame: "border-cyan-300/35 bg-[#101827]",
+    frame: "border-black bg-black",
+    imageUrl: "/card-backs/yugioh-back.png",
     inner: "border-cyan-200/20",
     sheen: "bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_58%)]"
   };
