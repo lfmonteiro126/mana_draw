@@ -287,7 +287,7 @@ export function Storefront({
           <div className="mt-6 grid grid-cols-3 gap-2 sm:mt-10 sm:gap-3">
             {[
               ["2.4k", "cartas em estoque"],
-              ["98%", "pedidos no prazo"],
+              ["3", "jogos curados"],
               ["24h", "para cotacoes"]
             ].map(([value, label]) => (
               <div key={label} className="border-l border-[var(--line)] pl-3 sm:pl-4">
@@ -301,17 +301,12 @@ export function Storefront({
         <div className="card-shadow hidden overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] sm:block">
           <div className="grid grid-cols-2 gap-3 bg-[var(--background)] p-4">
             {cards.slice(0, 4).map((card) => (
-              <div key={card.id} className="relative aspect-[5/7] overflow-hidden rounded-md bg-stone-800">
-                <Image
-                  src={card.imageUrl}
-                  alt={card.name}
-                  fill
-                  unoptimized
-                  sizes="(min-width: 1024px) 190px, 45vw"
-                  className="object-cover"
-                  priority={card.id === cards[0]?.id}
-                />
-              </div>
+              <CardFlip
+                key={card.id}
+                card={card}
+                priority={card.id === cards[0]?.id}
+                sizes="(min-width: 1024px) 190px, 45vw"
+              />
             ))}
           </div>
           <div className="flex items-center justify-between gap-4 border-t border-[var(--line)] p-4">
@@ -391,16 +386,7 @@ export function Storefront({
                 key={card.id}
                 className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[116px_1fr] sm:gap-4"
               >
-                <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md bg-stone-800 shrink-0">
-                  <Image
-                    src={card.imageUrl}
-                    alt={card.name}
-                    fill
-                    unoptimized
-                    sizes="(min-width: 640px) 116px, 92px"
-                    className="object-cover"
-                  />
-                </div>
+                <CardFlip card={card} sizes="(min-width: 640px) 116px, 92px" />
                 <div className="min-w-0 flex flex-col justify-between flex-1">
                   <div>
                     <div className="mb-1.5 flex items-start justify-between gap-2">
@@ -688,4 +674,83 @@ export function Storefront({
       )}
     </main>
   );
+}
+
+function CardFlip({
+  card,
+  priority = false,
+  sizes
+}: {
+  card: TcgCard;
+  priority?: boolean;
+  sizes: string;
+}) {
+  const back = getCardBack(card.game);
+
+  return (
+    <div
+      className="group relative aspect-[5/7] w-full shrink-0 [perspective:1200px]"
+      tabIndex={0}
+      aria-label={`${card.name}. Passe o mouse para ver o verso.`}
+    >
+      <div className="absolute inset-0 rounded-md transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus:[transform:rotateY(180deg)]">
+        <div className="absolute inset-0 overflow-hidden rounded-md border border-[var(--line)] bg-stone-800 [backface-visibility:hidden]">
+          <Image
+            src={card.imageUrl}
+            alt={card.name}
+            fill
+            unoptimized
+            sizes={sizes}
+            className="object-cover"
+            priority={priority}
+          />
+        </div>
+        <div className={`absolute inset-0 overflow-hidden rounded-md border [backface-visibility:hidden] [transform:rotateY(180deg)] ${back.frame}`}>
+          <div className={`absolute inset-2 rounded-[6px] border ${back.inner}`} />
+          <div className="absolute inset-4 rounded-[5px] border border-white/10 bg-black/20" />
+          <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-2 text-[9px] font-bold uppercase text-white/70">
+            <span>{card.game}</span>
+            <span>{card.finish}</span>
+          </div>
+          <div className="absolute inset-0 grid place-items-center p-4 text-center">
+            <div>
+              <span className={`mx-auto grid h-10 w-10 place-items-center rounded-md text-xs font-bold text-white ${back.badge}`}>
+                MD
+              </span>
+              <p className="mt-3 text-sm font-semibold text-white">Mana Draw</p>
+              <p className="mt-1 text-[10px] leading-4 text-white/60">Verso preparado para cartas transform</p>
+            </div>
+          </div>
+          <div className={`absolute -bottom-8 -right-8 h-24 w-24 rounded-full blur-2xl ${back.glow}`} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getCardBack(game: TcgCard["game"]) {
+  if (game === "Magic") {
+    return {
+      badge: "bg-violet-500",
+      frame: "border-violet-400/35 bg-[#17111f]",
+      glow: "bg-violet-500/35",
+      inner: "border-violet-300/20"
+    };
+  }
+
+  if (game === "Pokemon") {
+    return {
+      badge: "bg-amber-500",
+      frame: "border-amber-300/35 bg-[#1d1720]",
+      glow: "bg-amber-400/35",
+      inner: "border-amber-200/20"
+    };
+  }
+
+  return {
+    badge: "bg-cyan-500",
+    frame: "border-cyan-300/35 bg-[#101827]",
+    glow: "bg-cyan-400/35",
+    inner: "border-cyan-200/20"
+  };
 }
