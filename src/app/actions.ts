@@ -34,6 +34,12 @@ function readString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+function readMoneyCents(formData: FormData, key: string) {
+  const raw = readString(formData, key);
+  const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  return Math.round(Number(normalized) * 100);
+}
+
 function adminTabFrom(formData: FormData, fallback: string) {
   const tab = readString(formData, "tab");
   return ["inventory", "new-card", "buylists", "orders"].includes(tab) ? tab : fallback;
@@ -259,10 +265,10 @@ export async function updateCardAction(formData: FormData) {
   if (user?.role !== "admin") redirect("/admin?error=unauthorized");
 
   const id = readString(formData, "id");
-  const priceCents = Math.round(Number(readString(formData, "price")) * 100);
+  const priceCents = readMoneyCents(formData, "price");
   const stock = Number(readString(formData, "stock"));
   const condition = readString(formData, "condition") as CardCondition;
-  const tab = adminTabFrom(formData, "new-card");
+  const tab = adminTabFrom(formData, "inventory");
 
   if (!id || !Number.isFinite(priceCents) || !Number.isInteger(stock)) {
     redirect(`/admin?tab=${tab}&error=invalid-card`);
@@ -304,11 +310,11 @@ export async function createCardAction(formData: FormData) {
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
-  const priceCents = Math.round(Number(readString(formData, "price")) * 100);
-  const marketPriceCents = Math.round(Number(readString(formData, "marketPrice")) * 100);
+  const priceCents = readMoneyCents(formData, "price");
+  const marketPriceCents = readMoneyCents(formData, "marketPrice");
   const stock = Number(readString(formData, "stock"));
   const featured = formData.get("featured") === "on";
-  const tab = adminTabFrom(formData, "inventory");
+  const tab = adminTabFrom(formData, "new-card");
 
   const hasInvalidEnum =
     !validGames.includes(game) ||
@@ -382,7 +388,7 @@ export async function updateBuylistAction(formData: FormData) {
   const id = readString(formData, "id");
   const status = readString(formData, "status");
   const offerInput = readString(formData, "offer");
-  const offerCents = offerInput ? Math.round(Number(offerInput) * 100) : null;
+  const offerCents = offerInput ? readMoneyCents(formData, "offer") : null;
   const tab = adminTabFrom(formData, "buylists");
 
   if (
