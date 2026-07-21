@@ -186,13 +186,16 @@ export async function getFeaturedCards(): Promise<TcgCard[]> {
 export async function getAdminCards({
   query = "",
   game = "Todos",
-  stock = "all"
+  stock = "all",
+  limit = 100
 }: {
   query?: string;
   game?: FilterGame;
   stock?: "all" | "low" | "out";
+  limit?: number;
 } = {}): Promise<TcgCard[]> {
   const normalizedQuery = query.trim();
+  const normalizedLimit = Math.min(Math.max(Math.trunc(limit), 1), 10000);
 
   if (!hasDatabase()) {
     return fallbackCards.filter((card) => {
@@ -242,7 +245,7 @@ export async function getAdminCards({
         or search_vector @@ websearch_to_tsquery('simple', ${normalizedQuery})
       )
     order by updated_at desc
-    limit 100
+    limit ${normalizedLimit}
   `;
 
   const cards = (rows as DbCard[]).map(mapCard);

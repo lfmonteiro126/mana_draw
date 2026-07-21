@@ -126,7 +126,7 @@ export default async function AdminPage({
   }
 
   const [allCards, cards, submissions, orders, customers] = await Promise.all([
-    getAdminCards(),
+    getAdminCards({ limit: 10000 }),
     getAdminCards({ query, game, stock }),
     getBuylistSubmissions(),
     getAdminOrders(),
@@ -637,8 +637,8 @@ function ReportsTab({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-3">
-        <ReportPanel title="Estoque por jogo" rows={gameStats.map((item) => ({ label: item.game, value: `${item.count} cartas`, percent: item.percent, className: item.barClass }))} />
-        <ReportPanel title="Condição das cartas" rows={conditionStats.map((item) => ({ label: item.condition, value: `${item.count} cartas`, percent: item.percent, className: item.barClass }))} />
+        <ReportPanel title="Estoque por jogo" rows={gameStats.map((item) => ({ label: item.game, value: `${item.count} unidades`, percent: item.percent, className: item.barClass }))} />
+        <ReportPanel title="Condição das cartas" rows={conditionStats.map((item) => ({ label: item.condition, value: `${item.count} unidades`, percent: item.percent, className: item.barClass }))} />
         <ReportPanel title="Status de pedidos" rows={statusStats.map((item) => ({ label: item.status, value: `${item.count} pedidos`, percent: item.percent, className: item.barClass }))} />
       </section>
 
@@ -730,7 +730,7 @@ function NewCardPanel() {
 function DistributionPanel({ gameStats, inventoryValue }: { gameStats: ReturnType<typeof getGameStats>; inventoryValue: number }) {
   return (
     <Panel>
-      <PanelHeader title="Distribuicao por jogo" text="Quantidade de cartas no catalogo." />
+      <PanelHeader title="Distribuicao por jogo" text="Unidades em estoque por jogo." />
       <div className="space-y-5">
         {gameStats.map((item) => <ProgressRow key={item.game} label={item.game} value={`${item.count} · ${item.percent}%`} percent={item.percent} className={item.barClass} />)}
       </div>
@@ -964,31 +964,35 @@ function getNavItems(openSubmissions: number, pendingOrders: number) {
   ];
 }
 
-function getGameStats(cards: Array<{ game: Game }>) {
+function getGameStats(cards: Array<{ game: Game; stock: number }>) {
   const items: Array<{ game: Game; barClass: string }> = [
     { game: "Magic", barClass: "bg-[var(--accent)]" },
     { game: "Pokemon", barClass: "bg-[var(--gold)]" },
     { game: "Yu-Gi-Oh!", barClass: "bg-violet-400" }
   ];
-  const total = Math.max(cards.length, 1);
+  const total = Math.max(cards.reduce((sum, card) => sum + card.stock, 0), 1);
 
   return items.map((item) => {
-    const count = cards.filter((card) => card.game === item.game).length;
+    const count = cards
+      .filter((card) => card.game === item.game)
+      .reduce((sum, card) => sum + card.stock, 0);
     return { ...item, count, percent: Math.round((count / total) * 100) };
   });
 }
 
-function getConditionStats(cards: Array<{ condition: CardCondition }>) {
+function getConditionStats(cards: Array<{ condition: CardCondition; stock: number }>) {
   const items: Array<{ condition: CardCondition; barClass: string }> = [
     { condition: "NM", barClass: "bg-[var(--accent)]" },
     { condition: "SP", barClass: "bg-[var(--gold)]" },
     { condition: "MP", barClass: "bg-violet-400" },
     { condition: "HP", barClass: "bg-red-400" }
   ];
-  const total = Math.max(cards.length, 1);
+  const total = Math.max(cards.reduce((sum, card) => sum + card.stock, 0), 1);
 
   return items.map((item) => {
-    const count = cards.filter((card) => card.condition === item.condition).length;
+    const count = cards
+      .filter((card) => card.condition === item.condition)
+      .reduce((sum, card) => sum + card.stock, 0);
     return { ...item, count, percent: Math.round((count / total) * 100) };
   });
 }
