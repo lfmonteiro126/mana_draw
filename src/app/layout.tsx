@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nova Mana | TCG Store",
+  title: "Mana Draw | TCG Store",
   description: "Marketplace minimalista para cartas Magic, Yu-Gi-Oh! e Pokemon."
 };
 

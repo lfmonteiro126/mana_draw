@@ -89,7 +89,7 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
     if (!email || !password) return { ok: false, message: "Informe email e senha." };
 
     if (!hasDatabase()) {
-      if (email === "admin@novamana.local" && password !== "admin123") {
+      if (email === "admin@manadraw.local" && password !== "admin123") {
         return { ok: false, message: "Senha demo do admin: admin123." };
       }
       await createSession(demoUserFor(email));
@@ -124,7 +124,7 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
         if (existingAdmins.length === 0) {
           const created = await sql`
             insert into users (name, email, password_hash, role)
-            values ('Admin Nova Mana', ${email}, ${hashPassword(password)}, 'admin')
+            values ('Admin Mana Draw', ${email}, ${hashPassword(password)}, 'admin')
             returning id, name, email, role
           `;
 

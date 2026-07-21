@@ -97,7 +97,7 @@ async function lookupMagic(query: string): Promise<CardSuggestion[]> {
   const response = await fetch(`https://api.scryfall.com/cards/search?${params}`, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "NovaManaTCG/1.0"
+      "User-Agent": "ManaDrawTCG/1.0"
     },
     next: { revalidate: 60 * 60 * 24 }
   });

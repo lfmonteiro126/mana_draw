@@ -109,7 +109,7 @@ export default async function AdminPage({
             Voltar para loja
           </Link>
           <div className="card-shadow mt-8 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-6">
-            <h1 className="text-3xl font-semibold">Admin Nova Mana</h1>
+            <h1 className="text-3xl font-semibold">Admin Mana Draw</h1>
             <p className="mt-2 text-[var(--muted)]">
               Entre com uma conta admin para gerenciar estoque, precos, pedidos e cotações.
             </p>
@@ -117,7 +117,7 @@ export default async function AdminPage({
               <AuthPanel redirectTo="/admin" />
             </div>
             <p className="mt-3 text-xs text-[var(--muted)]">
-              Demo local sem Neon: admin@novamana.local / admin123.
+              Demo local sem Neon: admin@manadraw.local / admin123.
             </p>
           </div>
         </section>
@@ -158,7 +158,7 @@ export default async function AdminPage({
               <CircleDollarSign size={22} />
             </span>
             <div>
-              <p className="text-lg font-semibold">Nova Mana</p>
+              <p className="text-lg font-semibold">Mana Draw</p>
               <p className="text-xs text-[var(--muted)]">TCG Admin</p>
             </div>
           </div>

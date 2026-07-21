@@ -109,9 +109,9 @@ export function verifyPassword(password: string, storedHash: string) {
 export function demoUserFor(email: string, name = "Cliente") {
   const normalized = email.trim().toLowerCase();
   return {
-    id: normalized === "admin@novamana.local" ? "demo-admin" : "demo-customer",
+    id: normalized === "admin@manadraw.local" ? "demo-admin" : "demo-customer",
     name,
     email: normalized,
-    role: normalized === "admin@novamana.local" ? "admin" : "customer"
+    role: normalized === "admin@manadraw.local" ? "admin" : "customer"
   } satisfies StoreUser;
 }

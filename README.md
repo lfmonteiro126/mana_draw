@@ -1,4 +1,4 @@
-# Nova Mana TCG Market
+# Mana Draw TCG Market
 
 Site minimalista para venda de cartas TCG usando Next.js, React 19, TypeScript 5, Tailwind CSS v4, Lucide React e PostgreSQL no Neon.
 
@@ -17,7 +17,7 @@ Rotas principais:
 - `/conta`: login/cadastro e historico de pedidos.
 - `/admin`: painel para estoque, preco, condicao e cotações de buylist.
 
-Sem Neon configurado, use `admin@novamana.local` com senha `admin123` para testar o admin demo.
+Sem Neon configurado, use `admin@manadraw.local` com senha `admin123` para testar o admin demo.
 
 ## Banco de dados
 

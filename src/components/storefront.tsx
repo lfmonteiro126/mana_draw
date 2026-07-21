@@ -133,12 +133,12 @@ export function Storefront({
     <main className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--background)]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <a href="#" className="flex items-center gap-3" aria-label="Nova Mana">
+          <a href="#" className="flex items-center gap-3" aria-label="Mana Draw">
             <span className="grid h-10 w-10 place-items-center rounded-md bg-[var(--accent)] text-sm font-semibold text-white">
               NM
             </span>
             <span>
-              <span className="block text-sm font-semibold tracking-wide">Nova Mana</span>
+              <span className="block text-sm font-semibold tracking-wide">Mana Draw</span>
               <span className="block text-xs text-[var(--muted)]">TCG market</span>
             </span>
           </a>
@@ -513,7 +513,7 @@ export function Storefront({
       </section>
 
       <footer className="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-4 py-8 text-sm text-[var(--muted)] sm:px-6 md:flex-row lg:px-8">
-        <p>Nova Mana TCG Market</p>
+        <p>Mana Draw TCG Market</p>
         <div className="flex gap-4">
           <a href="#catalogo">Catalogo</a>
           <a href="#venda">Buylist</a>
@@ -664,7 +664,7 @@ export function Storefront({
             <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 shadow-2xl">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-lg font-semibold text-[var(--ink)]">Conta Nova Mana</p>
+                  <p className="text-lg font-semibold text-[var(--ink)]">Conta Mana Draw</p>
                   <p className="text-sm text-[var(--muted)]">
                     Entre para finalizar pedidos e acompanhar seu historico.
                   </p>
@@ -680,7 +680,7 @@ export function Storefront({
               </div>
               <AuthPanel />
               <p className="mt-3 text-xs text-[var(--muted)]">
-                Sem Neon configurado: use qualquer email para cliente ou admin@novamana.local com senha admin123.
+                Sem Neon configurado: use qualquer email para cliente ou admin@manadraw.local com senha admin123.
               </p>
             </div>
           </div>
