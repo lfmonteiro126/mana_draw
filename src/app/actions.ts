@@ -295,6 +295,30 @@ export async function updateCardAction(formData: FormData) {
   redirect(`/admin?tab=${tab}&notice=card-updated`);
 }
 
+export async function deleteCardAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const id = readString(formData, "id");
+  const tab = adminTabFrom(formData, "inventory");
+
+  if (!id) redirect(`/admin?tab=${tab}&error=invalid-card`);
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+
+  await sql`
+    update cards
+    set active = false, stock = 0, updated_at = now()
+    where id = ${id}
+  `;
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect(`/admin?tab=${tab}&notice=card-deleted`);
+}
+
 export async function createCardAction(formData: FormData) {
   const user = await currentUser();
   if (user?.role !== "admin") redirect("/admin?error=unauthorized");

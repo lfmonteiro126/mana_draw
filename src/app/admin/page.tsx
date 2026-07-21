@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Trash2,
   TrendingUp,
   UsersRound
 } from "lucide-react";
@@ -25,6 +26,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   createCardAction,
+  deleteCardAction,
   updateBuylistAction,
   updateCardAction,
   updateOrderStatusAction
@@ -865,7 +867,7 @@ function InventoryRow({ card }: { card: TcgCard }) {
         </div>
       </div>
 
-      <div className="grid min-w-0 gap-3 min-[760px]:grid-cols-[minmax(140px,1fr)_110px_130px_112px] min-[760px]:items-end">
+      <div className="grid min-w-0 gap-3 min-[760px]:grid-cols-[minmax(140px,1fr)_110px_130px_112px_52px] min-[760px]:items-end">
         <FieldLabel label="Preco"><input className={inputClass} name="price" type="number" min="0" step="0.01" defaultValue={(card.priceCents / 100).toFixed(2)} /></FieldLabel>
         <FieldLabel label="Estoque"><input className={inputClass} name="stock" type="number" min="0" step="1" defaultValue={card.stock} /></FieldLabel>
         <FieldLabel label="Condicao">
@@ -875,6 +877,15 @@ function InventoryRow({ card }: { card: TcgCard }) {
         </FieldLabel>
         <button className="h-11 w-full rounded-lg bg-[var(--accent)] px-3 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] active:scale-95" type="submit">
           Salvar
+        </button>
+        <button
+          aria-label={`Excluir ${card.name} do estoque`}
+          className="grid h-11 w-full place-items-center rounded-lg border border-red-500/25 bg-red-500/10 text-red-300 transition hover:border-red-400/60 hover:bg-red-500/20 active:scale-95"
+          formAction={deleteCardAction}
+          title="Excluir do estoque"
+          type="submit"
+        >
+          <Trash2 size={18} />
         </button>
       </div>
     </form>
@@ -1108,6 +1119,7 @@ function messageFor(code: string) {
   const messages: Record<string, string> = {
     "card-updated": "Carta atualizada com sucesso.",
     "card-created": "Carta cadastrada com sucesso.",
+    "card-deleted": "Carta removida do estoque.",
     "buylist-updated": "Cotacao atualizada com sucesso.",
     "order-updated": "Pedido atualizado com sucesso.",
     "demo-no-db": "Modo demo ativo. Configure o Neon para persistir esta alteracao.",
