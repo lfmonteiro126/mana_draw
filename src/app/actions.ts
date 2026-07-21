@@ -34,6 +34,11 @@ function readString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+function adminTabFrom(formData: FormData, fallback: string) {
+  const tab = readString(formData, "tab");
+  return ["inventory", "buylists", "orders"].includes(tab) ? tab : fallback;
+}
+
 export async function registerAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
     const name = readString(formData, "name");
@@ -257,15 +262,16 @@ export async function updateCardAction(formData: FormData) {
   const priceCents = Math.round(Number(readString(formData, "price")) * 100);
   const stock = Number(readString(formData, "stock"));
   const condition = readString(formData, "condition") as CardCondition;
+  const tab = adminTabFrom(formData, "inventory");
 
   if (!id || !Number.isFinite(priceCents) || !Number.isInteger(stock)) {
-    redirect("/admin?error=invalid-card");
+    redirect(`/admin?tab=${tab}&error=invalid-card`);
   }
 
-  if (!hasDatabase()) redirect("/admin?notice=demo-no-db");
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
 
   const sql = getSql();
-  if (!sql) redirect("/admin?error=no-db");
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
 
   await sql`
     update cards
@@ -279,7 +285,7 @@ export async function updateCardAction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/admin");
-  redirect("/admin?notice=card-updated");
+  redirect(`/admin?tab=${tab}&notice=card-updated`);
 }
 
 export async function createCardAction(formData: FormData) {
@@ -302,6 +308,7 @@ export async function createCardAction(formData: FormData) {
   const marketPriceCents = Math.round(Number(readString(formData, "marketPrice")) * 100);
   const stock = Number(readString(formData, "stock"));
   const featured = formData.get("featured") === "on";
+  const tab = adminTabFrom(formData, "inventory");
 
   const hasInvalidEnum =
     !validGames.includes(game) ||
@@ -322,13 +329,13 @@ export async function createCardAction(formData: FormData) {
     marketPriceCents < 0 ||
     stock < 0
   ) {
-    redirect("/admin?error=invalid-new-card");
+    redirect(`/admin?tab=${tab}&error=invalid-new-card`);
   }
 
-  if (!hasDatabase()) redirect("/admin?notice=demo-no-db");
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
 
   const sql = getSql();
-  if (!sql) redirect("/admin?error=no-db");
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
 
   await sql`
     insert into cards (
@@ -365,7 +372,7 @@ export async function createCardAction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/admin");
-  redirect("/admin?notice=card-created");
+  redirect(`/admin?tab=${tab}&notice=card-created`);
 }
 
 export async function updateBuylistAction(formData: FormData) {
@@ -376,19 +383,20 @@ export async function updateBuylistAction(formData: FormData) {
   const status = readString(formData, "status");
   const offerInput = readString(formData, "offer");
   const offerCents = offerInput ? Math.round(Number(offerInput) * 100) : null;
+  const tab = adminTabFrom(formData, "buylists");
 
   if (
     !id ||
     !validBuylistStatuses.includes(status as (typeof validBuylistStatuses)[number]) ||
     (offerCents !== null && (!Number.isFinite(offerCents) || offerCents < 0))
   ) {
-    redirect("/admin?error=invalid-buylist");
+    redirect(`/admin?tab=${tab}&error=invalid-buylist`);
   }
 
-  if (!hasDatabase()) redirect("/admin?notice=demo-no-db");
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
 
   const sql = getSql();
-  if (!sql) redirect("/admin?error=no-db");
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
 
   await sql`
     update buylist_submissions
@@ -397,7 +405,7 @@ export async function updateBuylistAction(formData: FormData) {
   `;
 
   revalidatePath("/admin");
-  redirect("/admin?notice=buylist-updated");
+  redirect(`/admin?tab=${tab}&notice=buylist-updated`);
 }
 
 export async function updateOrderStatusAction(formData: FormData) {
@@ -406,15 +414,16 @@ export async function updateOrderStatusAction(formData: FormData) {
 
   const id = readString(formData, "id");
   const status = readString(formData, "status");
+  const tab = adminTabFrom(formData, "orders");
 
   if (!id || !validOrderStatuses.includes(status as (typeof validOrderStatuses)[number])) {
-    redirect("/admin?error=invalid-order");
+    redirect(`/admin?tab=${tab}&error=invalid-order`);
   }
 
-  if (!hasDatabase()) redirect("/admin?notice=demo-no-db");
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
 
   const sql = getSql();
-  if (!sql) redirect("/admin?error=no-db");
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
 
   await sql`
     update orders
@@ -424,7 +433,7 @@ export async function updateOrderStatusAction(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/conta");
-  redirect("/admin?notice=order-updated");
+  redirect(`/admin?tab=${tab}&notice=order-updated`);
 }
 
 export async function createBuylistAction(

@@ -74,3 +74,15 @@ export type CardSuggestion = {
   finish: TcgCard["finish"];
   source: "Scryfall" | "Pokemon TCG" | "YGOPRODeck";
 };
+
+export type AdminCustomer = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  orderCount: number;
+  totalSpentCents: number;
+  buylistCount: number;
+  lastOrderAt: string | null;
+  createdAt: string;
+};

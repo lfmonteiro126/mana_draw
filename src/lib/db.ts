@@ -1,6 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { cards as fallbackCards } from "./mock-data";
 import type {
+  AdminCustomer,
   BuylistSubmission,
   CardSuggestion,
   FilterGame,
@@ -52,6 +53,18 @@ type DbBuylistSubmission = {
   photo_count: number;
   offer_cents: number | null;
   photo_urls: string[] | null;
+  created_at: string;
+};
+
+type DbAdminCustomer = {
+  id: string;
+  name: string;
+  email: string;
+  role: StoreUser["role"];
+  order_count: number;
+  total_spent_cents: number;
+  buylist_count: number;
+  last_order_at: string | null;
   created_at: string;
 };
 
@@ -337,6 +350,58 @@ export async function getBuylistSubmissions(): Promise<BuylistSubmission[]> {
     offerCents: submission.offer_cents,
     photoUrls: submission.photo_urls ?? [],
     createdAt: submission.created_at
+  }));
+}
+
+export async function getAdminCustomers(): Promise<AdminCustomer[]> {
+  if (!hasDatabase()) return [];
+  const sql = getSql();
+  if (!sql) return [];
+
+  const rows = await sql`
+    select
+      users.id,
+      users.name,
+      users.email,
+      users.role,
+      users.created_at::text,
+      coalesce(order_stats.order_count, 0)::int as order_count,
+      coalesce(order_stats.total_spent_cents, 0)::int as total_spent_cents,
+      coalesce(buylist_stats.buylist_count, 0)::int as buylist_count,
+      order_stats.last_order_at::text
+    from users
+    left join (
+      select
+        customer_email,
+        count(*)::int as order_count,
+        coalesce(sum(subtotal_cents), 0)::int as total_spent_cents,
+        max(created_at) as last_order_at
+      from orders
+      group by customer_email
+    ) order_stats on order_stats.customer_email = users.email
+    left join (
+      select
+        email,
+        count(*)::int as buylist_count
+      from buylist_submissions
+      group by email
+    ) buylist_stats on buylist_stats.email = users.email
+    order by
+      coalesce(order_stats.last_order_at, users.created_at) desc,
+      users.created_at desc
+    limit 80
+  `;
+
+  return (rows as DbAdminCustomer[]).map((customer) => ({
+    id: customer.id,
+    name: customer.name,
+    email: customer.email,
+    role: customer.role,
+    orderCount: customer.order_count,
+    totalSpentCents: customer.total_spent_cents,
+    buylistCount: customer.buylist_count,
+    lastOrderAt: customer.last_order_at,
+    createdAt: customer.created_at
   }));
 }
 
