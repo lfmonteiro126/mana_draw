@@ -38,7 +38,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
         <div className="grid gap-3">
           <input className="h-11 rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/40 px-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" name="email" placeholder="email@exemplo.com" type="email" required />
           <input className="h-11 rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/40 px-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" name="password" placeholder="Senha" type="password" required />
-          <button className="h-11 rounded-md bg-white text-black text-sm font-semibold hover:bg-gray-200 transition active:scale-95 disabled:opacity-50" disabled={loginPending} type="submit">
+          <button className="h-11 rounded-md bg-[var(--accent)] text-sm font-semibold text-white hover:bg-[var(--accent-strong)] transition active:scale-95 disabled:opacity-50" disabled={loginPending} type="submit">
             {loginPending ? "Entrando..." : "Entrar"}
           </button>
           {loginState.message && (

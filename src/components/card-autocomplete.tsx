@@ -10,7 +10,7 @@ const languages: TcgCard["language"][] = ["PT", "EN", "JP"];
 const finishes: TcgCard["finish"][] = ["Normal", "Foil", "Holo", "Secret"];
 
 const inputClass =
-  "h-11 w-full min-w-0 rounded-lg border border-[var(--line)] bg-white px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]";
+  "h-11 w-full min-w-0 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]";
 
 export function CardAutocomplete() {
   const [game, setGame] = useState<Game>("Magic");
@@ -95,7 +95,7 @@ export function CardAutocomplete() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
           <input
-            className="h-11 w-full rounded-lg border border-[var(--line)] bg-white pl-10 pr-10 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
+            className="h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] pl-10 pr-10 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
             name="name"
             placeholder="Buscar carta por nome"
             value={name}
@@ -109,17 +109,17 @@ export function CardAutocomplete() {
           )}
 
           {isOpen && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-12 z-30 max-h-80 overflow-auto rounded-lg border border-[var(--line)] bg-white p-2 shadow-2xl">
+            <div className="absolute left-0 right-0 top-12 z-30 max-h-80 overflow-auto rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 shadow-2xl">
               {suggestions.map((suggestion) => (
                 <button
                   key={`${suggestion.source}-${suggestion.externalId}`}
-                  className="grid w-full grid-cols-[44px_1fr] gap-3 rounded-lg p-2 text-left transition hover:bg-[#f2efe7]"
+                  className="grid w-full grid-cols-[44px_1fr] gap-3 rounded-lg p-2 text-left transition hover:bg-[var(--surface-hover)]"
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => applySuggestion(suggestion)}
                 >
                   <span
-                    className="block aspect-[3/4] rounded-md border border-[var(--line)] bg-[#faf9f6] bg-cover bg-center"
+                    className="block aspect-[3/4] rounded-md border border-[var(--line)] bg-[var(--surface-soft)] bg-cover bg-center"
                     style={{ backgroundImage: `url(${suggestion.imageUrl})` }}
                   />
                   <span className="min-w-0">
@@ -130,15 +130,15 @@ export function CardAutocomplete() {
                       {suggestion.setName} · {suggestion.rarity}
                     </span>
                     <span className="mt-1 flex flex-wrap gap-1">
-                      <span className="inline-flex rounded-md bg-[#f2efe7] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
+                      <span className="inline-flex rounded-md bg-[var(--surface-hover)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
                         {suggestion.printLabel}
                       </span>
-                      <span className="inline-flex rounded-md bg-[#e8f5f2] px-2 py-1 text-[11px] font-semibold text-[var(--accent-strong)]">
+                      <span className="inline-flex rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-semibold text-[var(--accent)]">
                         {suggestion.marketPriceCents > 0
                           ? `Mercado ${(suggestion.marketPriceCents / 100).toFixed(2)}`
                           : "Sem preco"}
                       </span>
-                      <span className="inline-flex rounded-md bg-[#f2efe7] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
+                      <span className="inline-flex rounded-md bg-[var(--surface-hover)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
                         {suggestion.source}
                       </span>
                     </span>
@@ -154,7 +154,7 @@ export function CardAutocomplete() {
         </select>
       </div>
 
-      <div className="flex items-center gap-2 rounded-lg bg-[#faf9f6] px-3 py-2 text-xs font-medium text-[var(--muted)]">
+      <div className="flex items-center gap-2 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs font-medium text-[var(--muted)]">
         <WandSparkles className="shrink-0 text-[var(--accent)]" size={15} />
         {helperText}
       </div>

@@ -131,10 +131,10 @@ export function Storefront({
 
   return (
     <main className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[#090d16]/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--background)]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <a href="#" className="flex items-center gap-3" aria-label="Nova Mana">
-            <span className="grid h-10 w-10 place-items-center rounded-md bg-[var(--ink)] text-sm font-semibold text-white">
+            <span className="grid h-10 w-10 place-items-center rounded-md bg-[var(--accent)] text-sm font-semibold text-white">
               NM
             </span>
             <span>
@@ -198,7 +198,7 @@ export function Storefront({
               </button>
             )}
             <button
-              className="relative grid h-10 w-10 place-items-center rounded-md bg-[var(--ink)] text-white hover:bg-[var(--accent-strong)] transition"
+              className="relative grid h-10 w-10 place-items-center rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-strong)] transition"
               type="button"
               aria-label="Abrir carrinho"
               onClick={() => setCartOpen(true)}
@@ -215,7 +215,7 @@ export function Storefront({
       </header>
 
       {/* Mobile Sticky Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--line)] bg-[#090d16]/90 backdrop-blur-xl md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--line)] bg-[var(--background)]/90 backdrop-blur-xl md:hidden">
         <div className="flex h-16 items-center justify-around px-2">
           <a href="#catalogo" className="flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95">
             <ShoppingBag size={20} />
@@ -389,7 +389,7 @@ export function Storefront({
             {filteredCards.map((card) => (
               <article
                 key={card.id}
-                className="flex flex-col sm:grid sm:grid-cols-[116px,1fr] gap-3 sm:gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition hover:-translate-y-0.5 hover:shadow-lg"
+                className="flex flex-col sm:grid sm:grid-cols-[116px_1fr] gap-3 sm:gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition hover:-translate-y-0.5 hover:shadow-lg"
               >
                 <div className="relative aspect-[5/7] w-full sm:w-auto overflow-hidden rounded-md bg-stone-800 shrink-0">
                   <Image
@@ -451,7 +451,7 @@ export function Storefront({
 
       <section id="venda" className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8 lg:py-16">
         <div>
-          <p className="mb-2 text-sm font-semibold text-[var(--accent-strong)]">Buylist</p>
+          <p className="mb-2 text-sm font-semibold text-[var(--accent)]">Buylist</p>
           <h2 className="text-3xl font-semibold text-[var(--ink)]">Transforme cartas paradas em credito ou Pix.</h2>
           <p className="mt-4 text-base leading-7 text-[var(--muted)]">
             O fluxo de compra foi pensado para ser transparente: voce envia fotos,
@@ -464,7 +464,7 @@ export function Storefront({
               ["Pagamento claro", "Pix, credito na loja ou composicao entre os dois."]
             ].map(([title, copy]) => (
               <div key={title} className="flex gap-3">
-                <span className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#e8f5f2] text-[var(--accent-strong)]">
+                <span className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--accent)]/15 text-[var(--accent)]">
                   <Check size={14} />
                 </span>
                 <div>
@@ -478,13 +478,13 @@ export function Storefront({
 
         <div className="grid gap-4">
           {buylist.map((item) => (
-            <article key={item.game} className="rounded-lg border border-[var(--line)] bg-white p-5">
+            <article key={item.game} className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="mb-1 text-sm font-semibold text-[var(--accent-strong)]">{item.game}</p>
+                  <p className="mb-1 text-sm font-semibold text-[var(--accent)]">{item.game}</p>
                   <h3 className="text-xl font-semibold text-[var(--ink)]">{item.title}</h3>
                 </div>
-                <span className="rounded-md bg-[#f2efe7] px-3 py-2 text-sm font-semibold text-[var(--ink)]">
+                <span className="rounded-md bg-[var(--surface-hover)] px-3 py-2 text-sm font-semibold text-[var(--ink)]">
                   {item.turnaround}
                 </span>
               </div>
@@ -495,7 +495,7 @@ export function Storefront({
         </div>
       </section>
 
-      <section id="operacao" className="border-t border-[var(--line)] bg-[var(--ink)] text-white">
+      <section id="operacao" className="border-y border-[var(--line)] bg-[var(--surface)]/70 text-[var(--ink)]">
         <div className="mx-auto grid max-w-7xl gap-4 px-4 py-10 sm:px-6 md:grid-cols-4 lg:px-8">
           {[
             [ShieldCheck, "Condicao auditada", "NM, SP, MP e HP com padrao fotografavel."],
@@ -503,10 +503,10 @@ export function Storefront({
             [CreditCard, "Checkout direto", "Carrinho preparado para Pix e cartao."],
             [Boxes, "Estoque real", "Neon como fonte unica para produtos e pedidos."]
           ].map(([Icon, title, copy]) => (
-            <div key={String(title)} className="rounded-lg border border-white/12 p-4">
-              <Icon size={22} className="mb-4 text-[#75d6cc]" />
+            <div key={String(title)} className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+              <Icon size={22} className="mb-4 text-[var(--accent)]" />
               <p className="font-semibold">{String(title)}</p>
-              <p className="mt-2 text-sm leading-6 text-white/68">{String(copy)}</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{String(copy)}</p>
             </div>
           ))}
         </div>
@@ -560,7 +560,7 @@ export function Storefront({
               ) : (
                 <div className="grid gap-3">
                   {cart.map((line) => (
-                    <div key={line.card.id} className="grid grid-cols-[64px,1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-hover)]/40 p-3">
+                    <div key={line.card.id} className="grid grid-cols-[64px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-hover)]/40 p-3">
                       <div className="relative aspect-[5/7] overflow-hidden rounded-md bg-stone-800">
                         <Image
                           src={line.card.imageUrl}
@@ -661,7 +661,7 @@ export function Storefront({
             onClick={() => setAuthOpen(false)}
           />
           <div className="absolute left-1/2 top-1/2 w-[min(720px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2">
-            <div className="rounded-lg border border-[var(--line)] bg-[#f7f5f0] p-4 shadow-2xl">
+            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 shadow-2xl">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-lg font-semibold text-[var(--ink)]">Conta Nova Mana</p>
@@ -670,7 +670,7 @@ export function Storefront({
                   </p>
                 </div>
                 <button
-                  className="grid h-9 w-9 place-items-center rounded-md border border-[var(--line)] bg-white"
+                  className="grid h-9 w-9 place-items-center rounded-md border border-[var(--line)] bg-[var(--surface)]"
                   type="button"
                   aria-label="Fechar"
                   onClick={() => setAuthOpen(false)}
