@@ -5,6 +5,7 @@ import {
   Camera,
   ChevronLeft,
   CircleDollarSign,
+  Diamond,
   ClipboardList,
   Database,
   Gauge,
@@ -153,7 +154,7 @@ export default async function AdminPage({
   return (
     <main className="min-h-screen text-[var(--ink)]">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="hidden border-r border-[var(--line)] bg-[var(--surface)]/75 backdrop-blur-xl lg:flex lg:flex-col">
+        <aside className="hidden border-r border-[var(--line)] bg-[#090d15]/95 backdrop-blur-xl lg:flex lg:flex-col">
           <div className="flex h-[76px] items-center gap-3 border-b border-[var(--line)] px-6">
             <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--accent)] text-white">
               <CircleDollarSign size={22} />
@@ -186,7 +187,7 @@ export default async function AdminPage({
             <div className="flex min-h-[76px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-7">
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
+                  <h1 className="text-xl font-semibold sm:text-2xl">{page.title}</h1>
                   <span className="hidden items-center gap-2 text-sm text-[var(--muted)] sm:inline-flex">
                     <Sparkles size={15} />
                     Operacao TCG
@@ -196,6 +197,11 @@ export default async function AdminPage({
               </div>
 
               <div className="flex items-center gap-3">
+                <form className="relative hidden w-[280px] xl:block">
+                  <input type="hidden" name="tab" value="inventory" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
+                  <input className={inputClassWithIcon} name="query" placeholder="Busca global" defaultValue={query} />
+                </form>
                 <Link
                   className="hidden h-11 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--accent)] sm:inline-flex"
                   href="/"
@@ -305,6 +311,34 @@ function OverviewTab({
 }) {
   return (
     <div className="grid gap-6">
+      <section className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+        <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)]">
+                <Diamond size={14} />
+                Painel executivo
+              </span>
+              <span className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)]">
+                {cards.length} prints ativos
+              </span>
+            </div>
+            <h2 className="mt-5 max-w-3xl text-2xl font-semibold leading-tight text-[var(--ink)] sm:text-3xl">
+              Operacao de estoque, compra e venda em uma leitura rapida.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+              Priorize reposicao, acompanhe buylist e leia a distribuicao por jogo sem depender de tabelas densas.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <HeroStat label="Estoque total" value={`${totalStock} un.`} />
+            <HeroStat label="Valor parado" value={formatCurrency(inventoryValue)} />
+            <HeroStat label="Cotações abertas" value={String(openSubmissions.length)} />
+            <HeroStat label="Pedidos" value={String(orders.length)} />
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard icon={<CircleDollarSign size={20} />} label="Valor em estoque" trend="+ inventario" value={formatCurrency(inventoryValue)} tone="cyan" />
         <MetricCard icon={<Boxes size={20} />} label="Cartas ativas" trend={`${totalStock} unidades`} value={String(cards.length)} tone="green" />
@@ -724,13 +758,22 @@ function NewCardPanel() {
 function DistributionPanel({ gameStats, inventoryValue }: { gameStats: ReturnType<typeof getGameStats>; inventoryValue: number }) {
   return (
     <Panel>
-      <PanelHeader title="Distribuicao por jogo" text="Unidades em estoque por jogo." />
-      <div className="space-y-5">
-        {gameStats.map((item) => <ProgressRow key={item.game} label={item.game} value={`${item.count} · ${item.percent}%`} percent={item.percent} className={item.barClass} />)}
+      <PanelHeader title="Cartas por jogo" text="Barras horizontais para comparar volume sem distorção." />
+      <div className="space-y-4">
+        {gameStats.map((item) => (
+          <DataBar
+            key={item.game}
+            accentClass={item.barClass}
+            label={item.game}
+            meta={`${item.percent}% do estoque`}
+            percent={item.percent}
+            value={`${item.count} un.`}
+          />
+        ))}
       </div>
-      <div className="mt-6 flex items-center justify-between border-t border-[var(--line)] pt-5">
+      <div className="mt-6 flex items-end justify-between border-t border-[var(--line)] pt-5">
         <span className="text-sm text-[var(--muted)]">Valor total</span>
-        <strong className="text-2xl">{formatCurrency(inventoryValue)}</strong>
+        <strong className="text-2xl font-semibold">{formatCurrency(inventoryValue)}</strong>
       </div>
     </Panel>
   );
@@ -746,11 +789,11 @@ function TopCardsPanel({ topCards }: { topCards: TcgCard[] }) {
         </div>
         <TrendingUp className="text-[var(--accent)]" size={20} />
       </div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {topCards.map((card, index) => (
-          <div key={card.id} className="flex items-center justify-between gap-4">
+          <div key={card.id} className="flex items-center justify-between gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-xs font-bold text-white">{index + 1}</span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--accent)]/15 text-xs font-bold text-[var(--accent)]">{index + 1}</span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{card.name}</p>
                 <p className="text-xs text-[var(--muted)]">{card.stock} un. · {card.condition}</p>
@@ -792,7 +835,7 @@ function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
 
 function InventoryRow({ card }: { card: TcgCard }) {
   return (
-    <form action={updateCardAction} className="group grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/50 hover:bg-[var(--surface-hover)]/40 lg:grid-cols-[72px_minmax(220px,1fr)_minmax(360px,0.9fr)] lg:items-center">
+    <form action={updateCardAction} className="group grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/45 hover:bg-[var(--surface-elevated)] lg:grid-cols-[72px_minmax(220px,1fr)_minmax(360px,0.9fr)] lg:items-center">
       <input type="hidden" name="id" value={card.id} />
       <input type="hidden" name="tab" value="inventory" />
       <div className="relative h-24 w-[72px] overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] lg:h-24 lg:w-full">
@@ -803,8 +846,8 @@ function InventoryRow({ card }: { card: TcgCard }) {
         <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <span className="rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">{card.game}</span>
-            <span className="rounded-md bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.language}</span>
-            <span className="rounded-md bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.finish}</span>
+            <span className="rounded-md border border-[var(--line)] bg-[#0b111c] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.language}</span>
+            <span className="rounded-md border border-[var(--line)] bg-[#0b111c] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.finish}</span>
           </div>
           <p className="truncate text-base font-semibold text-[var(--ink)]" title={card.name}>{card.name}</p>
           <p className="truncate text-sm text-[var(--muted)]" title={`${card.setName} · ${card.rarity}`}>
@@ -837,7 +880,7 @@ function InventoryRow({ card }: { card: TcgCard }) {
 
 function InventoryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
+    <div className="rounded-lg border border-[var(--line)] bg-[#0b111c] px-3 py-2">
       <p className="text-[10px] font-semibold uppercase text-[var(--muted)]">{label}</p>
       <p className="mt-1 truncate font-semibold text-[var(--ink)]">{value}</p>
     </div>
@@ -872,7 +915,7 @@ function NavItem({ active, badge, href, icon, label }: { active?: boolean; badge
 }
 
 function Panel({ children }: { children: ReactNode }) {
-  return <div className="card-shadow rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">{children}</div>;
+  return <div className="card-shadow rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 lg:p-6">{children}</div>;
 }
 
 function PanelHeader({ badge, text, title, tone = "muted" }: { badge?: string; text: string; title: string; tone?: "muted" | "gold" }) {
@@ -906,9 +949,18 @@ function MetricCard({ icon, label, trend, value, tone }: { icon: ReactNode; labe
         <span className={`grid h-11 w-11 place-items-center rounded-lg ${toneClass}`}>{icon}</span>
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <strong className="text-3xl font-semibold tracking-tight text-[var(--ink)]">{value}</strong>
+        <strong className="text-3xl font-semibold text-[var(--ink)]">{value}</strong>
         <span className="pb-1 text-sm font-semibold text-[var(--accent)]">{trend}</span>
       </div>
+    </div>
+  );
+}
+
+function HeroStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+      <p className="text-xs font-semibold uppercase text-[var(--muted)]">{label}</p>
+      <p className="mt-2 truncate text-xl font-semibold text-[var(--ink)]">{value}</p>
     </div>
   );
 }
@@ -926,23 +978,28 @@ function PriorityCard({ href, label, text, value }: { href: string; label: strin
 function ReportPanel({ rows, title }: { rows: Array<{ className: string; label: string; percent: number; value: string }>; title: string }) {
   return (
     <Panel>
-      <PanelHeader title={title} text="Distribuicao atual dos dados." />
-      <div className="space-y-5">
-        {rows.map((row) => <ProgressRow key={row.label} label={row.label} value={row.value} percent={row.percent} className={row.className} />)}
+      <PanelHeader title={title} text="Comparação objetiva por volume." />
+      <div className="space-y-4">
+        {rows.map((row) => (
+          <DataBar key={row.label} accentClass={row.className} label={row.label} meta={`${row.percent}%`} percent={row.percent} value={row.value} />
+        ))}
       </div>
     </Panel>
   );
 }
 
-function ProgressRow({ className, label, percent, value }: { className: string; label: string; percent: number; value: string }) {
+function DataBar({ accentClass, label, meta, percent, value }: { accentClass: string; label: string; meta: string; percent: number; value: string }) {
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-4 text-sm">
-        <span className="font-medium text-[var(--ink)]">{label}</span>
-        <span className="text-[var(--muted)]">{value}</span>
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-[var(--ink)]">{label}</p>
+          <p className="mt-0.5 text-xs text-[var(--muted)]">{meta}</p>
+        </div>
+        <span className="shrink-0 text-sm font-semibold text-[var(--ink)]">{value}</span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-[var(--surface-hover)]">
-        <div className={`h-full rounded-full ${className}`} style={{ width: `${percent}%` }} />
+      <div className="h-2 overflow-hidden rounded-full bg-[#0b111c]">
+        <div className={`h-full rounded-full ${accentClass}`} style={{ width: `${Math.max(percent, 3)}%` }} />
       </div>
     </div>
   );
