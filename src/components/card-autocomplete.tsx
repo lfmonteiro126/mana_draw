@@ -181,6 +181,7 @@ export function CardAutocomplete() {
     setFinish(suggestion.finish);
     setMarketPrice(nextMarketPrice);
     setPrice(applyPriceMode(nextMarketPrice, priceMode));
+    setStock("1");
     setImageUrl(suggestion.imageUrl);
     setTags(suggestion.tags.join(", "));
     setIsOpen(false);
