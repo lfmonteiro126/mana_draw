@@ -374,6 +374,7 @@ export function CardAutocomplete() {
         </div>
       </div>
 
+      <input type="hidden" name="game" value={game} />
       <input type="hidden" name="condition" value={condition} />
       <input type="hidden" name="language" value={language} />
       <input type="hidden" name="finish" value={finish} />
