@@ -388,9 +388,9 @@ function InventoryTab({
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.85fr)]">
       <Panel>
         <PanelHeader title="Inventario" text="Cards consolidados por print, condicao, idioma e acabamento." badge={`${cards.length} itens unicos`} />
-        <form className="mb-5 grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 lg:grid-cols-[minmax(180px,1fr)_160px_160px_auto]">
+        <form className="mb-5 grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-2 2xl:grid-cols-[minmax(180px,1fr)_160px_160px_112px]">
           <input type="hidden" name="tab" value="inventory" />
-          <label className="relative block">
+          <label className="relative block md:col-span-2 2xl:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
             <input className={inputClassWithIcon} name="query" placeholder="Buscar carta, colecao ou tag" defaultValue={query} />
           </label>
@@ -403,7 +403,7 @@ function InventoryTab({
             <option value="low">Baixo estoque</option>
             <option value="out">Sem estoque</option>
           </select>
-          <button className="h-11 rounded-lg bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]" type="submit">
+          <button className="h-11 rounded-lg bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] md:col-span-2 2xl:col-span-1" type="submit">
             Filtrar
           </button>
         </form>
@@ -835,34 +835,37 @@ function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
 
 function InventoryRow({ card }: { card: TcgCard }) {
   return (
-    <form action={updateCardAction} className="group grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/45 hover:bg-[var(--surface-elevated)] lg:grid-cols-[72px_minmax(220px,1fr)_minmax(360px,0.9fr)] lg:items-center">
+    <form action={updateCardAction} className="group grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/45 hover:bg-[var(--surface-elevated)] 2xl:grid-cols-[minmax(0,1fr)_560px] 2xl:items-center">
       <input type="hidden" name="id" value={card.id} />
       <input type="hidden" name="tab" value="inventory" />
-      <div className="relative h-24 w-[72px] overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] lg:h-24 lg:w-full">
-        <Image src={card.imageUrl} alt={card.name} fill unoptimized sizes="72px" className="object-cover" />
-      </div>
 
-      <div className="min-w-0 space-y-3">
-        <div className="min-w-0">
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">{card.game}</span>
-            <span className="rounded-md border border-[var(--line)] bg-[#0b111c] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.language}</span>
-            <span className="rounded-md border border-[var(--line)] bg-[#0b111c] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.finish}</span>
+      <div className="grid min-w-0 gap-4 sm:grid-cols-[88px_minmax(0,1fr)] sm:items-center">
+        <div className="relative h-28 w-[88px] overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+          <Image src={card.imageUrl} alt={card.name} fill unoptimized sizes="88px" className="object-cover" />
+        </div>
+
+        <div className="min-w-0 space-y-3">
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">{card.game}</span>
+              <span className="rounded-md border border-[var(--line)] bg-[#0b111c] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.language}</span>
+              <span className="rounded-md border border-[var(--line)] bg-[#0b111c] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.finish}</span>
+            </div>
+            <p className="truncate text-base font-semibold text-[var(--ink)]" title={card.name}>{card.name}</p>
+            <p className="truncate text-sm text-[var(--muted)]" title={`${card.setName} · ${card.rarity}`}>
+              {card.setName} · {card.rarity}
+            </p>
           </div>
-          <p className="truncate text-base font-semibold text-[var(--ink)]" title={card.name}>{card.name}</p>
-          <p className="truncate text-sm text-[var(--muted)]" title={`${card.setName} · ${card.rarity}`}>
-            {card.setName} · {card.rarity}
-          </p>
-        </div>
 
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          <InventoryStat label="Mercado" value={formatCurrency(card.marketPriceCents)} />
-          <InventoryStat label="Total" value={formatCurrency(card.stock * card.priceCents)} />
-          <InventoryStat label="Estoque" value={`${card.stock} un.`} />
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <InventoryStat label="Mercado" value={formatCurrency(card.marketPriceCents)} />
+            <InventoryStat label="Total" value={formatCurrency(card.stock * card.priceCents)} />
+            <InventoryStat label="Estoque" value={`${card.stock} un.`} />
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_120px_130px_104px] sm:items-end">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(140px,1fr)_110px_130px_112px] sm:items-end 2xl:grid-cols-[170px_96px_128px_112px]">
         <FieldLabel label="Preco"><input className={inputClass} name="price" type="number" min="0" step="0.01" defaultValue={(card.priceCents / 100).toFixed(2)} /></FieldLabel>
         <FieldLabel label="Estoque"><input className={inputClass} name="stock" type="number" min="0" step="1" defaultValue={card.stock} /></FieldLabel>
         <FieldLabel label="Condicao">
@@ -1012,7 +1015,7 @@ function StatusPill({ label }: { label: string }) {
 function FieldLabel({ children, label }: { children: ReactNode; label: string }) {
   return (
     <label className="grid min-w-0 gap-1 text-sm">
-      <span className="text-xs text-[var(--muted)] xl:hidden">{label}</span>
+      <span className="text-[11px] font-semibold uppercase text-[var(--muted)]">{label}</span>
       {children}
     </label>
   );
