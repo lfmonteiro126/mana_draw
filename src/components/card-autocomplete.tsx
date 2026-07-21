@@ -60,6 +60,8 @@ export function CardAutocomplete() {
   const [selectedSuggestion, setSelectedSuggestion] = useState<CardSuggestion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const selectedExternalId = selectedSuggestion?.externalId ?? "";
+  const selectedSource = selectedSuggestion?.source ?? "";
 
   const canSearch = name.trim().length >= 2;
   const helperText = useMemo(() => {
@@ -158,6 +160,10 @@ export function CardAutocomplete() {
     setIsOpen(false);
   }
 
+  function clearSelectedPrint() {
+    setSelectedSuggestion(null);
+  }
+
   function updatePriceMode(nextMode: PriceMode) {
     setPriceMode(nextMode);
     if (nextMode !== "manual") setPrice(applyPriceMode(marketPrice, nextMode));
@@ -228,7 +234,7 @@ export function CardAutocomplete() {
             value={name}
             onChange={(event) => {
               setName(event.target.value);
-              setSelectedSuggestion(null);
+              clearSelectedPrint();
             }}
             onFocus={() => setIsOpen(!selectedSuggestion && suggestions.length > 0)}
             autoComplete="off"
@@ -275,6 +281,11 @@ export function CardAutocomplete() {
           <WandSparkles className="shrink-0 text-[var(--accent)]" size={15} />
           {helperText}
         </div>
+        {!selectedSuggestion && (
+          <p className="mt-2 rounded-lg border border-[var(--gold)]/25 bg-[var(--gold)]/10 px-3 py-2 text-xs font-semibold text-[var(--gold)]">
+            Para cadastrar, selecione um print retornado pela busca.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[150px_1fr]">
@@ -364,16 +375,30 @@ export function CardAutocomplete() {
             <summary className="cursor-pointer text-sm font-semibold text-[var(--ink)]">Dados do print</summary>
             <div className="mt-3 grid gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
-                <input className={inputClass} name="setName" placeholder="Colecao" value={collectionName} onChange={(event) => setCollectionName(event.target.value)} required />
-                <input className={inputClass} name="rarity" placeholder="Raridade" value={rarity} onChange={(event) => setRarity(event.target.value)} required />
+                <input className={inputClass} name="setName" placeholder="Colecao" value={collectionName} onChange={(event) => {
+                  setCollectionName(event.target.value);
+                  clearSelectedPrint();
+                }} required />
+                <input className={inputClass} name="rarity" placeholder="Raridade" value={rarity} onChange={(event) => {
+                  setRarity(event.target.value);
+                  clearSelectedPrint();
+                }} required />
               </div>
-              <input className={inputClass} name="imageUrl" type="url" placeholder="URL da imagem" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} required />
-              <input className={inputClass} name="tags" placeholder="Tags separadas por virgula" value={tags} onChange={(event) => setTags(event.target.value)} />
+              <input className={inputClass} name="imageUrl" type="url" placeholder="URL da imagem" value={imageUrl} onChange={(event) => {
+                setImageUrl(event.target.value);
+                clearSelectedPrint();
+              }} required />
+              <input className={inputClass} name="tags" placeholder="Tags separadas por virgula" value={tags} onChange={(event) => {
+                setTags(event.target.value);
+                clearSelectedPrint();
+              }} />
             </div>
           </details>
         </div>
       </div>
 
+      <input type="hidden" name="externalId" value={selectedExternalId} />
+      <input type="hidden" name="source" value={selectedSource} />
       <input type="hidden" name="game" value={game} />
       <input type="hidden" name="condition" value={condition} />
       <input type="hidden" name="language" value={language} />

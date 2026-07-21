@@ -22,6 +22,7 @@ const validGames = ["Magic", "Yu-Gi-Oh!", "Pokemon"] as const;
 const validConditions = ["NM", "SP", "MP", "HP"] as const;
 const validLanguages = ["PT", "EN", "JP"] as const;
 const validFinishes = ["Normal", "Foil", "Holo", "Secret"] as const;
+const validCardSources = ["Scryfall", "Pokemon TCG", "YGOPRODeck"] as const;
 const validBuylistStatuses = ["new", "reviewing", "approved", "declined", "paid"] as const;
 const validOrderStatuses = ["pending", "paid", "shipped", "delivered", "cancelled"] as const;
 
@@ -313,6 +314,8 @@ export async function createCardAction(formData: FormData) {
   const priceCents = readMoneyCents(formData, "price");
   const marketPriceCents = readMoneyCents(formData, "marketPrice");
   const stock = Number(readString(formData, "stock"));
+  const externalId = readString(formData, "externalId");
+  const source = readString(formData, "source");
   const featured = formData.get("featured") === "on";
   const tab = adminTabFrom(formData, "new-card");
 
@@ -327,6 +330,8 @@ export async function createCardAction(formData: FormData) {
     !setName ||
     !rarity ||
     !imageUrl ||
+    !externalId ||
+    !validCardSources.includes(source as (typeof validCardSources)[number]) ||
     hasInvalidEnum ||
     !Number.isFinite(priceCents) ||
     !Number.isFinite(marketPriceCents) ||

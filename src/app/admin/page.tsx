@@ -1113,7 +1113,7 @@ function messageFor(code: string) {
     "demo-no-db": "Modo demo ativo. Configure o Neon para persistir esta alteracao.",
     unauthorized: "Acesso restrito a administradores.",
     "invalid-card": "Dados da carta invalidos.",
-    "invalid-new-card": "Confira os dados da nova carta.",
+    "invalid-new-card": "Selecione um print real retornado pela busca antes de cadastrar.",
     "invalid-buylist": "Dados da cotacao invalidos.",
     "invalid-order": "Status do pedido invalido.",
     "no-db": "Banco indisponivel."
