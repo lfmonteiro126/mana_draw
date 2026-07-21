@@ -388,9 +388,9 @@ function InventoryTab({
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.85fr)]">
       <Panel>
         <PanelHeader title="Inventario" text="Cards consolidados por print, condicao, idioma e acabamento." badge={`${cards.length} itens unicos`} />
-        <form className="mb-5 grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-2 2xl:grid-cols-[minmax(180px,1fr)_160px_160px_112px]">
+        <form className="mb-5 grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-2">
           <input type="hidden" name="tab" value="inventory" />
-          <label className="relative block md:col-span-2 2xl:col-span-1">
+          <label className="relative block md:col-span-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
             <input className={inputClassWithIcon} name="query" placeholder="Buscar carta, colecao ou tag" defaultValue={query} />
           </label>
@@ -403,7 +403,7 @@ function InventoryTab({
             <option value="low">Baixo estoque</option>
             <option value="out">Sem estoque</option>
           </select>
-          <button className="h-11 rounded-lg bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] md:col-span-2 2xl:col-span-1" type="submit">
+          <button className="h-11 rounded-lg bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] md:col-span-2" type="submit">
             Filtrar
           </button>
         </form>
@@ -835,7 +835,7 @@ function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
 
 function InventoryRow({ card }: { card: TcgCard }) {
   return (
-    <form action={updateCardAction} className="group grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/45 hover:bg-[var(--surface-elevated)] 2xl:grid-cols-[minmax(0,1fr)_560px] 2xl:items-center">
+    <form action={updateCardAction} className="group grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/45 hover:bg-[var(--surface-elevated)]">
       <input type="hidden" name="id" value={card.id} />
       <input type="hidden" name="tab" value="inventory" />
 
@@ -857,7 +857,7 @@ function InventoryRow({ card }: { card: TcgCard }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="grid grid-cols-1 gap-2 text-xs min-[520px]:grid-cols-3">
             <InventoryStat label="Mercado" value={formatCurrency(card.marketPriceCents)} />
             <InventoryStat label="Total" value={formatCurrency(card.stock * card.priceCents)} />
             <InventoryStat label="Estoque" value={`${card.stock} un.`} />
@@ -865,7 +865,7 @@ function InventoryRow({ card }: { card: TcgCard }) {
         </div>
       </div>
 
-      <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(140px,1fr)_110px_130px_112px] sm:items-end 2xl:grid-cols-[170px_96px_128px_112px]">
+      <div className="grid min-w-0 gap-3 min-[760px]:grid-cols-[minmax(140px,1fr)_110px_130px_112px] min-[760px]:items-end">
         <FieldLabel label="Preco"><input className={inputClass} name="price" type="number" min="0" step="0.01" defaultValue={(card.priceCents / 100).toFixed(2)} /></FieldLabel>
         <FieldLabel label="Estoque"><input className={inputClass} name="stock" type="number" min="0" step="1" defaultValue={card.stock} /></FieldLabel>
         <FieldLabel label="Condicao">
