@@ -748,21 +748,25 @@ function CardFlip({
         </div>
         <div className={`absolute inset-0 overflow-hidden rounded-md border [backface-visibility:hidden] [transform:rotateY(180deg)] ${back.frame}`}>
           <div className={`absolute inset-2 rounded-[6px] border ${back.inner}`} />
-          <div className="absolute inset-4 rounded-[5px] border border-white/10 bg-black/20" />
-          <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-2 text-[9px] font-bold uppercase text-white/70">
+          <div className="absolute inset-[13px] rounded-[5px] border border-white/10 bg-black/25" />
+          <div className={`absolute inset-[22px] rounded-[4px] border ${back.inner}`} />
+          <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-2 text-[9px] font-bold uppercase text-white/65">
             <span>{card.game}</span>
             <span>{card.finish}</span>
           </div>
           <div className="absolute inset-0 grid place-items-center p-4 text-center">
-            <div>
-              <span className={`mx-auto grid h-10 w-10 place-items-center rounded-md text-xs font-bold text-white ${back.badge}`}>
+            <div className="relative grid h-[46%] w-[64%] place-items-center rounded-full border border-white/15 bg-black/20 shadow-2xl">
+              <div className={`absolute inset-2 rounded-full border ${back.inner}`} />
+              <span className={`grid h-10 w-10 place-items-center rounded-md text-xs font-bold text-white shadow-lg ${back.badge}`}>
                 MD
               </span>
-              <p className="mt-3 text-sm font-semibold text-white">Mana Draw</p>
-              <p className="mt-1 text-[10px] leading-4 text-white/60">Verso preparado para cartas transform</p>
             </div>
           </div>
-          <div className={`absolute -bottom-8 -right-8 h-24 w-24 rounded-full blur-2xl ${back.glow}`} />
+          <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-2 text-[9px] font-semibold uppercase text-white/55">
+            <span>Mana Draw</span>
+            <span>{card.language}</span>
+          </div>
+          <div className={`absolute inset-0 opacity-35 ${back.sheen}`} />
         </div>
       </div>
     </div>
@@ -774,8 +778,8 @@ function getCardBack(game: TcgCard["game"]) {
     return {
       badge: "bg-violet-500",
       frame: "border-violet-400/35 bg-[#17111f]",
-      glow: "bg-violet-500/35",
-      inner: "border-violet-300/20"
+      inner: "border-violet-300/20",
+      sheen: "bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_58%)]"
     };
   }
 
@@ -783,15 +787,15 @@ function getCardBack(game: TcgCard["game"]) {
     return {
       badge: "bg-amber-500",
       frame: "border-amber-300/35 bg-[#1d1720]",
-      glow: "bg-amber-400/35",
-      inner: "border-amber-200/20"
+      inner: "border-amber-200/20",
+      sheen: "bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.2)_42%,transparent_58%)]"
     };
   }
 
   return {
     badge: "bg-cyan-500",
     frame: "border-cyan-300/35 bg-[#101827]",
-    glow: "bg-cyan-400/35",
-    inner: "border-cyan-200/20"
+    inner: "border-cyan-200/20",
+    sheen: "bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_58%)]"
   };
 }
