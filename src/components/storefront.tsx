@@ -685,7 +685,7 @@ function WeeklyDropPanel({ cards }: { cards: TcgCard[] }) {
   if (cards.length === 0) return null;
 
   return (
-    <aside className="card-shadow overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] lg:sticky lg:top-24 lg:self-start">
+    <aside className="card-shadow rounded-lg border border-[var(--line)] bg-[var(--surface)] lg:sticky lg:top-24 lg:self-start">
       <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] p-4">
         <div>
           <p className="text-sm font-semibold text-[var(--ink)]">Drop da semana</p>
@@ -732,7 +732,7 @@ function CardFlip({
     <div
       className="group relative aspect-[5/7] w-full shrink-0 [perspective:1200px]"
       tabIndex={0}
-      aria-label={`${card.name}. Passe o mouse para ver o verso.`}
+      aria-label={`${card.name}. Passe o mouse para ampliar e ver o verso.`}
     >
       <div className="absolute inset-0 rounded-md shadow-[0_18px_42px_rgba(0,0,0,0.32)] transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)_rotateZ(-1deg)] group-focus:[transform:rotateY(180deg)_rotateZ(-1deg)]">
         <div className="absolute inset-0 overflow-hidden rounded-md border border-[var(--line)] bg-stone-800 [backface-visibility:hidden]">
@@ -785,6 +785,16 @@ function CardFlip({
             </>
           )}
         </div>
+      </div>
+      <div className="pointer-events-none absolute left-1/2 top-1/2 z-50 hidden aspect-[5/7] w-[min(260px,72vw)] -translate-x-1/2 -translate-y-1/2 scale-95 overflow-hidden rounded-lg border border-white/15 bg-[var(--surface)] opacity-0 shadow-[0_28px_80px_rgba(0,0,0,0.62)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover:scale-100 group-hover:opacity-100 group-focus:scale-100 group-focus:opacity-100 md:block">
+        <Image
+          src={card.imageUrl}
+          alt={`${card.name} ampliada`}
+          fill
+          unoptimized
+          sizes="260px"
+          className="object-cover"
+        />
       </div>
     </div>
   );
