@@ -93,6 +93,17 @@ export function CardAutocomplete() {
   }, [condition, finish, language, priceMode, stock]);
 
   useEffect(() => {
+    const selectedPrintIsCurrent =
+      selectedSuggestion &&
+      selectedSuggestion.game === game &&
+      selectedSuggestion.name === name &&
+      selectedSuggestion.setName === collectionName;
+
+    if (selectedPrintIsCurrent) {
+      setIsOpen(false);
+      return;
+    }
+
     if (!canSearch) {
       setSuggestions([]);
       setIsOpen(false);
@@ -125,7 +136,7 @@ export function CardAutocomplete() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [canSearch, game, name]);
+  }, [canSearch, collectionName, game, name, selectedSuggestion]);
 
   function applySuggestion(suggestion: CardSuggestion) {
     const nextMarketPrice = suggestion.marketPriceCents > 0
@@ -143,6 +154,7 @@ export function CardAutocomplete() {
     setPrice(applyPriceMode(nextMarketPrice, priceMode));
     setImageUrl(suggestion.imageUrl);
     setTags(suggestion.tags.join(", "));
+    setSuggestions([]);
     setIsOpen(false);
   }
 
@@ -218,7 +230,7 @@ export function CardAutocomplete() {
               setName(event.target.value);
               setSelectedSuggestion(null);
             }}
-            onFocus={() => setIsOpen(suggestions.length > 0)}
+            onFocus={() => setIsOpen(!selectedSuggestion && suggestions.length > 0)}
             autoComplete="off"
             required
           />
