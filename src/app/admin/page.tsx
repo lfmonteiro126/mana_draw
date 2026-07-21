@@ -44,7 +44,7 @@ const games: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
 const conditions: CardCondition[] = ["NM", "SP", "MP", "HP"];
 const buylistStatuses = ["new", "reviewing", "approved", "declined", "paid"];
 const orderStatuses = ["pending", "paid", "shipped", "delivered", "cancelled"];
-const tabs = ["overview", "inventory", "new-card", "buylists", "orders", "customers", "reports", "settings"] as const;
+const tabs = ["overview", "inventory", "new-card", "buylists", "orders", "customers", "internal-users", "reports", "settings"] as const;
 
 type AdminTab = (typeof tabs)[number];
 
@@ -71,7 +71,11 @@ const tabLabels: Record<AdminTab, { title: string; description: string }> = {
   },
   customers: {
     title: "Clientes",
-    description: "Veja contas, recorrencia de compra e cotações vinculadas."
+    description: "Veja contas de compradores, recorrencia de compra e cotações vinculadas."
+  },
+  "internal-users": {
+    title: "Usuarios internos",
+    description: "Gerencie a visibilidade de admins e contas internas da operacao."
   },
   reports: {
     title: "Relatorios",
@@ -140,6 +144,8 @@ export default async function AdminPage({
   const gameStats = getGameStats(allCards);
   const conditionStats = getConditionStats(allCards);
   const statusStats = getStatusStats(orders);
+  const customerAccounts = customers.filter((customer) => customer.role === "customer");
+  const internalUsers = customers.filter((customer) => customer.role !== "customer");
   const navItems = getNavItems(openSubmissions.length, orders.filter((order) => order.status === "pending").length);
   const page = tabLabels[activeTab];
 
@@ -251,7 +257,8 @@ export default async function AdminPage({
             {activeTab === "new-card" && <NewCardTab gameStats={gameStats} inventoryValue={inventoryValue} topCards={topCards} />}
             {activeTab === "buylists" && <BuylistsTab submissions={submissions} openCount={openSubmissions.length} />}
             {activeTab === "orders" && <OrdersTab orders={orders} />}
-            {activeTab === "customers" && <CustomersTab customers={customers} />}
+            {activeTab === "customers" && <CustomersTab customers={customerAccounts} />}
+            {activeTab === "internal-users" && <InternalUsersTab users={internalUsers} />}
             {activeTab === "reports" && (
               <ReportsTab
                 conditionStats={conditionStats}
@@ -548,6 +555,47 @@ function CustomersTab({ customers }: { customers: AdminCustomer[] }) {
                 <InfoValue label="Buylists" value={String(customer.buylistCount)} />
                 <InfoValue label="Total" value={formatCurrency(customer.totalSpentCents)} />
                 <InfoValue label="Ultima compra" value={customer.lastOrderAt ? formatDate(customer.lastOrderAt) : "Sem compra"} />
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+function InternalUsersTab({ users }: { users: AdminCustomer[] }) {
+  return (
+    <div className="grid gap-6">
+      <section className="grid gap-4 md:grid-cols-3">
+        <MetricCard icon={<ShieldCheck size={20} />} label="Usuarios internos" trend="acesso admin" value={String(users.length)} tone="cyan" />
+        <MetricCard icon={<ShoppingBag size={20} />} label="Pedidos criados" trend="pela conta" value={String(users.reduce((sum, user) => sum + user.orderCount, 0))} tone="green" />
+        <MetricCard icon={<Camera size={20} />} label="Buylists enviadas" trend="pela conta" value={String(users.reduce((sum, user) => sum + user.buylistCount, 0))} tone="orange" />
+      </section>
+
+      <Panel>
+        <PanelHeader title="Usuarios internos" text="Admins e contas de operacao ficam separadas da base de clientes." badge={`${users.length} contas internas`} />
+        {users.length === 0 ? (
+          <EmptyState icon={<ShieldCheck size={30} />} title="Nenhum usuario interno encontrado" text="Contas com role admin aparecem aqui quando existirem no Neon." />
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-[var(--line)]">
+            <div className="hidden grid-cols-[minmax(220px,1fr)_120px_140px_140px_140px] gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-xs font-semibold uppercase text-[var(--muted)] lg:grid">
+              <span>Usuario</span>
+              <span>Perfil</span>
+              <span>Pedidos</span>
+              <span>Buylists</span>
+              <span>Criado em</span>
+            </div>
+            {users.map((user) => (
+              <div key={user.id} className="grid gap-3 border-b border-[var(--line)] px-4 py-4 last:border-b-0 lg:grid-cols-[minmax(220px,1fr)_120px_140px_140px_140px] lg:items-center">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{user.name}</p>
+                  <p className="truncate text-sm text-[var(--muted)]">{user.email}</p>
+                </div>
+                <InfoValue label="Perfil" value={user.role} />
+                <InfoValue label="Pedidos" value={String(user.orderCount)} />
+                <InfoValue label="Buylists" value={String(user.buylistCount)} />
+                <InfoValue label="Criado em" value={formatDate(user.createdAt)} />
               </div>
             ))}
           </div>
@@ -910,6 +958,7 @@ function getNavItems(openSubmissions: number, pendingOrders: number) {
     { tab: "buylists" as const, icon: <ClipboardList size={19} />, label: "Buylists", badge: openSubmissions },
     { tab: "orders" as const, icon: <ShoppingBag size={19} />, label: "Pedidos", badge: pendingOrders },
     { tab: "customers" as const, icon: <UsersRound size={19} />, label: "Clientes" },
+    { tab: "internal-users" as const, icon: <ShieldCheck size={19} />, label: "Usuarios internos" },
     { tab: "reports" as const, icon: <BarChart3 size={19} />, label: "Relatorios" },
     { tab: "settings" as const, icon: <Settings size={19} />, label: "Ajustes" }
   ];
