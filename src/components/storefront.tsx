@@ -256,35 +256,37 @@ export function Storefront({
         </div>
       </nav>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_440px] lg:px-8 lg:py-16">
+      <section className="mx-auto grid max-w-7xl items-start gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:px-8 lg:py-6">
         <div className="flex flex-col justify-center">
-          <div className="mb-4 flex w-fit items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--muted)] sm:mb-5">
+          <div className="mb-3 flex w-fit items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--muted)]">
             <Sparkles size={15} className="text-[var(--gold)]" />
-            Singles verificadas, estoque real e envio rastreado
+            Loja TCG para comprar e vender cartas
           </div>
-          <h1 className="max-w-3xl text-balance text-3xl font-semibold leading-tight text-[var(--ink)] sm:text-5xl lg:text-6xl">
-            Cartas TCG prontas para jogar, colecionar e negociar.
+          <h1 className="max-w-3xl text-balance text-2xl font-semibold leading-tight text-[var(--ink)] sm:text-4xl">
+            Compre singles. Venda sua colecao TCG.
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--muted)] sm:mt-5 sm:text-lg sm:leading-7">
-            Uma loja enxuta para Magic, Yu-Gi-Oh! e Pokemon com compra rapida,
-            curadoria por condicao e um fluxo claro para vender sua colecao.
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            Compre cartas para jogar agora ou envie fotos da sua colecao para cotacao.
           </p>
-          <div className="mt-5 flex flex-col gap-3 sm:mt-8 sm:flex-row">
+          <div className="mt-5 grid grid-cols-2 gap-3">
             <a
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
               href="#catalogo"
             >
               Ver catalogo
               <ChevronRight size={17} />
             </a>
             <a
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-5 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)]"
               href="#venda"
             >
               Cotar colecao
             </a>
           </div>
-          <div className="mt-6 grid grid-cols-3 gap-2 sm:mt-10 sm:gap-3">
+          <a className="mt-3 text-sm font-semibold text-[var(--accent)] sm:hidden" href="#venda">
+            Tambem compramos cartas de player, bulk e colecoes
+          </a>
+          <div className="mt-4 hidden grid-cols-3 gap-2 sm:grid sm:gap-3">
             {[
               ["2.4k", "cartas em estoque"],
               ["3", "jogos curados"],
@@ -298,140 +300,143 @@ export function Storefront({
           </div>
         </div>
 
-        <div className="card-shadow hidden overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] sm:block">
-          <div className="grid grid-cols-2 gap-3 bg-[var(--background)] p-4">
-            {cards.slice(0, 4).map((card) => (
-              <CardFlip
-                key={card.id}
-                card={card}
-                priority={card.id === cards[0]?.id}
-                sizes="(min-width: 1024px) 190px, 45vw"
-              />
-            ))}
-          </div>
-          <div className="flex items-center justify-between gap-4 border-t border-[var(--line)] p-4">
-            <div>
-              <p className="text-sm font-semibold text-[var(--ink)]">Drop da semana</p>
-              <p className="text-sm text-[var(--muted)]">Cartas com preco abaixo do mercado.</p>
-            </div>
-            <span className="rounded-md bg-[var(--accent)]/10 px-3 py-2 text-sm font-semibold text-[var(--accent)]">
-              -12%
+        <aside className="hidden self-start rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 sm:grid">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[var(--accent)]/15 text-[var(--accent)]">
+              <Camera size={18} />
             </span>
+            <div>
+              <p className="font-semibold text-[var(--ink)]">Vendemos e compramos cartas</p>
+              <p className="mt-1 hidden text-sm leading-5 text-[var(--muted)] sm:block">
+                Tem cartas de player, bulk ou colecao parada? Envie fotos para avaliacao.
+              </p>
+            </div>
           </div>
-        </div>
+          <a
+            className="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 text-sm font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/15"
+            href="#venda"
+          >
+            Quero vender cartas
+          </a>
+        </aside>
       </section>
 
       <section id="catalogo" className="border-y border-[var(--line)] bg-[var(--surface)]/30 backdrop-blur-md">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-            <div>
-              <p className="mb-2 text-sm font-semibold text-[var(--accent)]">Catalogo</p>
-              <h2 className="text-2xl font-semibold text-[var(--ink)] sm:text-3xl">Singles em destaque</h2>
-            </div>
-            <form className="grid gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 sm:grid-cols-[minmax(220px,1fr)_180px_96px] lg:min-w-[660px]" method="get" action="/">
-              <input type="hidden" name="game" value={game} />
-              <label className="relative block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
-                <input
-                  className="h-11 w-full rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/35 pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
-                  name="q"
-                  placeholder="Buscar por nome, colecao ou tag"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-              </label>
-              <label className="relative block">
-                <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
-                <select
-                  className="h-11 w-full appearance-none rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/35 pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
-                  name="sort"
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value as SortMode)}
-                >
-                  <option value="relevance">Maior desconto</option>
-                  <option value="price-asc">Menor preco</option>
-                  <option value="price-desc">Maior preco</option>
-                </select>
-              </label>
-              <button className="h-11 rounded-md bg-[var(--accent)] text-sm font-semibold text-white hover:bg-[var(--accent-strong)] transition active:scale-95" type="submit">
-                Buscar
-              </button>
-            </form>
-          </div>
-
-          <div className="sticky top-[65px] z-30 -mx-4 mb-5 flex items-center gap-2 overflow-x-auto border-y border-[var(--line)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur-xl scrollbar-none snap-x snap-mandatory sm:static sm:mx-0 sm:mb-6 sm:border-0 sm:bg-transparent sm:px-0 sm:py-1">
-            <span className="inline-flex items-center gap-2 pr-1 text-sm font-semibold text-[var(--muted)] shrink-0">
-              <Filter size={16} />
-              Jogos
-            </span>
-            {games.map((item) => (
-              <button
-                key={item}
-                className={`h-11 rounded-full border px-5 text-sm font-semibold transition shrink-0 snap-start ${
-                  game === item
-                    ? "border-[var(--accent)] bg-[var(--accent)] text-white shadow-lg shadow-teal-950/30"
-                    : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-white hover:text-white"
-                }`}
-                type="button"
-                onClick={() => setGame(item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredCards.map((card) => (
-              <article
-                key={card.id}
-                className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[116px_1fr] sm:gap-4"
-              >
-                <CardFlip card={card} sizes="(min-width: 640px) 116px, 92px" />
-                <div className="min-w-0 flex flex-col justify-between flex-1">
-                  <div>
-                    <div className="mb-1.5 flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]" title={card.name}>{card.name}</p>
-                        <p className="truncate text-xs text-[var(--muted)]" title={card.setName}>{card.setName}</p>
-                      </div>
-                      <span className={`rounded px-2 py-1 text-[10px] font-bold tracking-wider shrink-0 ${conditionColors[card.condition] || "bg-[var(--line)] text-[var(--muted)]"}`}>
-                        {card.condition}
-                      </span>
-                    </div>
-                    <div className="mb-2 hidden flex-wrap gap-1 sm:flex">
-                      {[card.game, card.finish, card.language].map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded bg-[var(--surface-hover)] border border-[var(--line)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xl font-semibold text-[var(--ink)]">{formatCurrency(card.priceCents)}</p>
-                    <p className="text-xs text-[var(--muted)] truncate">
-                      {formatStock(card.stock)}
-                    </p>
-                    <button
-                      className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 sm:mt-3"
-                      type="button"
-                      onClick={() => addToCart(card)}
-                    >
-                      <ShoppingBag size={14} />
-                      Adicionar
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-            {filteredCards.length === 0 && (
-              <div className="rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface)] p-8 text-center text-sm text-[var(--muted)] col-span-2 lg:col-span-3">
-                Nenhuma carta encontrada. Tente outro nome, colecao ou jogo.
+        <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:px-8">
+          <div className="min-w-0">
+            <div className="mb-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-[var(--accent)]">Catalogo</p>
+                <h2 className="text-2xl font-semibold text-[var(--ink)]">Singles em destaque</h2>
+                <p className="mt-2 text-sm text-[var(--muted)]">Compre cartas avulsas direto do estoque.</p>
               </div>
-            )}
+              <form className="grid grid-cols-[1fr_92px] gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 sm:grid-cols-[minmax(220px,1fr)_180px_96px] xl:min-w-[620px]" method="get" action="/">
+                <input type="hidden" name="game" value={game} />
+                <label className="relative col-span-2 block sm:col-span-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
+                  <input
+                    className="h-11 w-full rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/35 pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
+                    name="q"
+                    placeholder="Buscar por nome, colecao ou tag"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                </label>
+                <label className="relative block">
+                  <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
+                  <select
+                    className="h-11 w-full appearance-none rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/35 pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
+                    name="sort"
+                    value={sort}
+                    onChange={(event) => setSort(event.target.value as SortMode)}
+                  >
+                    <option value="relevance">Maior desconto</option>
+                    <option value="price-asc">Menor preco</option>
+                    <option value="price-desc">Maior preco</option>
+                  </select>
+                </label>
+                <button className="h-11 rounded-md bg-[var(--accent)] text-sm font-semibold text-white hover:bg-[var(--accent-strong)] transition active:scale-95" type="submit">
+                  Buscar
+                </button>
+              </form>
+            </div>
+
+            <div className="sticky top-[65px] z-30 -mx-4 mb-4 flex items-center gap-2 overflow-x-auto border-y border-[var(--line)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur-xl scrollbar-none snap-x snap-mandatory sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-1">
+              <span className="inline-flex items-center gap-2 pr-1 text-sm font-semibold text-[var(--muted)] shrink-0">
+                <Filter size={16} />
+                Jogos
+              </span>
+              {games.map((item) => (
+                <button
+                  key={item}
+                  className={`h-11 rounded-full border px-5 text-sm font-semibold transition shrink-0 snap-start ${
+                    game === item
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white shadow-lg shadow-teal-950/30"
+                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-white hover:text-white"
+                  }`}
+                  type="button"
+                  onClick={() => setGame(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredCards.map((card) => (
+                <article
+                  key={card.id}
+                  className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[116px_1fr] sm:gap-4"
+                >
+                  <CardFlip card={card} sizes="(min-width: 640px) 116px, 92px" />
+                  <div className="min-w-0 flex flex-col justify-between flex-1">
+                    <div>
+                      <div className="mb-1.5 flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]" title={card.name}>{card.name}</p>
+                          <p className="truncate text-xs text-[var(--muted)]" title={card.setName}>{card.setName}</p>
+                        </div>
+                        <span className={`rounded px-2 py-1 text-[10px] font-bold tracking-wider shrink-0 ${conditionColors[card.condition] || "bg-[var(--line)] text-[var(--muted)]"}`}>
+                          {card.condition}
+                        </span>
+                      </div>
+                      <div className="mb-2 hidden flex-wrap gap-1 sm:flex">
+                        {[card.game, card.finish, card.language].map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded bg-[var(--surface-hover)] border border-[var(--line)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xl font-semibold text-[var(--ink)]">{formatCurrency(card.priceCents)}</p>
+                      <p className="text-xs text-[var(--muted)] truncate">
+                        {formatStock(card.stock)}
+                      </p>
+                      <button
+                        className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 sm:mt-3"
+                        type="button"
+                        onClick={() => addToCart(card)}
+                      >
+                        <ShoppingBag size={14} />
+                        Adicionar
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+              {filteredCards.length === 0 && (
+                <div className="rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface)] p-8 text-center text-sm text-[var(--muted)] sm:col-span-2 xl:col-span-3">
+                  Nenhuma carta encontrada. Tente outro nome, colecao ou jogo.
+                </div>
+              )}
+            </div>
           </div>
+
+          <WeeklyDropPanel cards={cards.slice(0, 4)} />
         </div>
       </section>
 
@@ -673,6 +678,42 @@ export function Storefront({
         </div>
       )}
     </main>
+  );
+}
+
+function WeeklyDropPanel({ cards }: { cards: TcgCard[] }) {
+  if (cards.length === 0) return null;
+
+  return (
+    <aside className="card-shadow overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] lg:sticky lg:top-24 lg:self-start">
+      <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] p-4">
+        <div>
+          <p className="text-sm font-semibold text-[var(--ink)]">Drop da semana</p>
+          <p className="text-sm text-[var(--muted)]">Ofertas para comprar agora.</p>
+        </div>
+        <span className="rounded-md bg-[var(--accent)]/10 px-3 py-2 text-sm font-semibold text-[var(--accent)]">
+          -12%
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-3 bg-[var(--background)] p-4">
+        {cards.map((card, index) => (
+          <CardFlip
+            key={card.id}
+            card={card}
+            priority={index === 0}
+            sizes="(min-width: 1024px) 150px, 45vw"
+          />
+        ))}
+      </div>
+      <div className="border-t border-[var(--line)] p-4">
+        <a
+          className="inline-flex h-11 w-full items-center justify-center rounded-md bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+          href="#catalogo"
+        >
+          Ver cartas em destaque
+        </a>
+      </div>
+    </aside>
   );
 }
 
