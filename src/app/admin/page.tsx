@@ -842,8 +842,24 @@ function InventoryRow({ card }: { card: TcgCard }) {
       <input type="hidden" name="tab" value="inventory" />
 
       <div className="grid min-w-0 gap-4 sm:grid-cols-[88px_minmax(0,1fr)] sm:items-center">
-        <div className="relative h-28 w-[88px] overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
-          <Image src={card.imageUrl} alt={card.name} fill unoptimized sizes="88px" className="object-cover" />
+        <div
+          aria-label={`${card.name}. Passe o mouse para ampliar.`}
+          className="group/preview relative h-28 w-[88px] overflow-visible rounded-lg outline-none"
+          tabIndex={0}
+        >
+          <div className="absolute inset-0 overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+            <Image src={card.imageUrl} alt={card.name} fill unoptimized sizes="88px" className="object-cover" />
+          </div>
+          <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-4 hidden aspect-[5/7] w-[min(260px,72vw)] -translate-y-1/2 scale-95 overflow-hidden rounded-lg border border-white/15 bg-[var(--surface)] opacity-0 shadow-[0_28px_80px_rgba(0,0,0,0.62)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover/preview:scale-100 group-hover/preview:opacity-100 group-focus/preview:scale-100 group-focus/preview:opacity-100 md:block">
+            <Image
+              src={card.imageUrl}
+              alt={`${card.name} ampliada`}
+              fill
+              unoptimized
+              sizes="260px"
+              className="object-cover"
+            />
+          </div>
         </div>
 
         <div className="min-w-0 space-y-3">
