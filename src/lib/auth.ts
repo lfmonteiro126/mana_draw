@@ -5,8 +5,8 @@ import { randomBytes, pbkdf2Sync, timingSafeEqual } from "node:crypto";
 import { getSql, hasDatabase, mapUser } from "./db";
 import type { StoreUser, UserRole } from "./types";
 
-const sessionCookie = "nova_mana_session";
-const demoCookie = "nova_mana_demo_user";
+const sessionCookie = "mana_draw_session";
+const demoCookie = "mana_draw_demo_user";
 
 type DbSessionUser = {
   id: string;
