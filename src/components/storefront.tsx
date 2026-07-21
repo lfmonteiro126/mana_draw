@@ -734,7 +734,7 @@ function CardFlip({
       tabIndex={0}
       aria-label={`${card.name}. Passe o mouse para ver o verso.`}
     >
-      <div className="absolute inset-0 rounded-md transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus:[transform:rotateY(180deg)]">
+      <div className="absolute inset-0 rounded-md shadow-[0_18px_42px_rgba(0,0,0,0.32)] transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)_rotateZ(-1deg)] group-focus:[transform:rotateY(180deg)_rotateZ(-1deg)]">
         <div className="absolute inset-0 overflow-hidden rounded-md border border-[var(--line)] bg-stone-800 [backface-visibility:hidden]">
           <Image
             src={card.imageUrl}
@@ -747,26 +747,43 @@ function CardFlip({
           />
         </div>
         <div className={`absolute inset-0 overflow-hidden rounded-md border [backface-visibility:hidden] [transform:rotateY(180deg)] ${back.frame}`}>
-          <div className={`absolute inset-2 rounded-[6px] border ${back.inner}`} />
-          <div className="absolute inset-[13px] rounded-[5px] border border-white/10 bg-black/25" />
-          <div className={`absolute inset-[22px] rounded-[4px] border ${back.inner}`} />
-          <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-2 text-[9px] font-bold uppercase text-white/65">
-            <span>{card.game}</span>
-            <span>{card.finish}</span>
-          </div>
-          <div className="absolute inset-0 grid place-items-center p-4 text-center">
-            <div className="relative grid h-[46%] w-[64%] place-items-center rounded-full border border-white/15 bg-black/20 shadow-2xl">
-              <div className={`absolute inset-2 rounded-full border ${back.inner}`} />
-              <span className={`grid h-10 w-10 place-items-center rounded-md text-xs font-bold text-white shadow-lg ${back.badge}`}>
-                MD
-              </span>
-            </div>
-          </div>
-          <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-2 text-[9px] font-semibold uppercase text-white/55">
-            <span>Mana Draw</span>
-            <span>{card.language}</span>
-          </div>
-          <div className={`absolute inset-0 opacity-35 ${back.sheen}`} />
+          {back.imageUrl ? (
+            <>
+              <Image
+                src={back.imageUrl}
+                alt="Verso de carta Magic: The Gathering"
+                fill
+                unoptimized
+                sizes={sizes}
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.24)_43%,transparent_57%)] opacity-0 transition-opacity duration-500 group-hover:opacity-45 group-focus:opacity-45" />
+              <div className="absolute inset-0 rounded-md shadow-[inset_0_0_28px_rgba(0,0,0,0.55)]" />
+            </>
+          ) : (
+            <>
+              <div className={`absolute inset-2 rounded-[6px] border ${back.inner}`} />
+              <div className="absolute inset-[13px] rounded-[5px] border border-white/10 bg-black/25" />
+              <div className={`absolute inset-[22px] rounded-[4px] border ${back.inner}`} />
+              <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-2 text-[9px] font-bold uppercase text-white/65">
+                <span>{card.game}</span>
+                <span>{card.finish}</span>
+              </div>
+              <div className="absolute inset-0 grid place-items-center p-4 text-center">
+                <div className="relative grid h-[46%] w-[64%] place-items-center rounded-full border border-white/15 bg-black/20 shadow-2xl">
+                  <div className={`absolute inset-2 rounded-full border ${back.inner}`} />
+                  <span className={`grid h-10 w-10 place-items-center rounded-md text-xs font-bold text-white shadow-lg ${back.badge}`}>
+                    MD
+                  </span>
+                </div>
+              </div>
+              <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-2 text-[9px] font-semibold uppercase text-white/55">
+                <span>Mana Draw</span>
+                <span>{card.language}</span>
+              </div>
+              <div className={`absolute inset-0 opacity-35 ${back.sheen}`} />
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -777,7 +794,8 @@ function getCardBack(game: TcgCard["game"]) {
   if (game === "Magic") {
     return {
       badge: "bg-violet-500",
-      frame: "border-violet-400/35 bg-[#17111f]",
+      frame: "border-black bg-black",
+      imageUrl: "/card-backs/magic-back.png",
       inner: "border-violet-300/20",
       sheen: "bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_58%)]"
     };
