@@ -44,7 +44,7 @@ const games: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
 const conditions: CardCondition[] = ["NM", "SP", "MP", "HP"];
 const buylistStatuses = ["new", "reviewing", "approved", "declined", "paid"];
 const orderStatuses = ["pending", "paid", "shipped", "delivered", "cancelled"];
-const tabs = ["overview", "inventory", "buylists", "orders", "customers", "reports", "settings"] as const;
+const tabs = ["overview", "inventory", "new-card", "buylists", "orders", "customers", "reports", "settings"] as const;
 
 type AdminTab = (typeof tabs)[number];
 
@@ -56,6 +56,10 @@ const tabLabels: Record<AdminTab, { title: string; description: string }> = {
   inventory: {
     title: "Inventario",
     description: "Busque, filtre e ajuste preco, estoque e condicao das cartas."
+  },
+  "new-card": {
+    title: "Nova carta",
+    description: "Cadastre singles com autocomplete, print selecionado e preço de mercado."
   },
   buylists: {
     title: "Buylists",
@@ -244,6 +248,7 @@ export default async function AdminPage({
             {activeTab === "inventory" && (
               <InventoryTab cards={cards} game={game} gameStats={gameStats} inventoryValue={inventoryValue} query={query} stock={stock} topCards={topCards} />
             )}
+            {activeTab === "new-card" && <NewCardTab gameStats={gameStats} inventoryValue={inventoryValue} topCards={topCards} />}
             {activeTab === "buylists" && <BuylistsTab submissions={submissions} openCount={openSubmissions.length} />}
             {activeTab === "orders" && <OrdersTab orders={orders} />}
             {activeTab === "customers" && <CustomersTab customers={customers} />}
@@ -378,7 +383,43 @@ function InventoryTab({
       </Panel>
 
       <div className="grid gap-6">
-        <NewCardPanel />
+        <DistributionPanel gameStats={gameStats} inventoryValue={inventoryValue} />
+        <TopCardsPanel topCards={topCards} />
+      </div>
+    </section>
+  );
+}
+
+function NewCardTab({
+  gameStats,
+  inventoryValue,
+  topCards
+}: {
+  gameStats: ReturnType<typeof getGameStats>;
+  inventoryValue: number;
+  topCards: TcgCard[];
+}) {
+  return (
+    <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]">
+      <NewCardPanel />
+      <div className="grid gap-6">
+        <Panel>
+          <PanelHeader title="Como cadastrar melhor" text="Use a busca para escolher o print correto e evitar dados duplicados." />
+          <div className="grid gap-3 text-sm text-[var(--muted)]">
+            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+              <p className="font-semibold text-[var(--ink)]">1. Escolha o jogo e busque pelo nome</p>
+              <p className="mt-1 leading-6">A integração preenche coleção, raridade, imagem e preço médio quando disponível.</p>
+            </div>
+            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+              <p className="font-semibold text-[var(--ink)]">2. Selecione o print exato</p>
+              <p className="mt-1 leading-6">Prefira a versão com arte, acabamento e coleção corretos para reduzir retrabalho.</p>
+            </div>
+            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+              <p className="font-semibold text-[var(--ink)]">3. Revise preço e estoque</p>
+              <p className="mt-1 leading-6">O preço sugerido é referência de mercado; ajuste antes de publicar na vitrine.</p>
+            </div>
+          </div>
+        </Panel>
         <DistributionPanel gameStats={gameStats} inventoryValue={inventoryValue} />
         <TopCardsPanel topCards={topCards} />
       </div>
@@ -624,7 +665,7 @@ function NewCardPanel() {
         <Plus className="text-[var(--accent)]" size={20} />
       </div>
       <form action={createCardAction} className="grid gap-3">
-        <input type="hidden" name="tab" value="inventory" />
+        <input type="hidden" name="tab" value="new-card" />
         <CardAutocomplete />
         <label className="flex items-center gap-2 text-sm font-medium text-[var(--muted)]">
           <input className="h-4 w-4 accent-[var(--accent)]" name="featured" type="checkbox" />
@@ -865,6 +906,7 @@ function getNavItems(openSubmissions: number, pendingOrders: number) {
   return [
     { tab: "overview" as const, icon: <Gauge size={19} />, label: "Overview" },
     { tab: "inventory" as const, icon: <Layers3 size={19} />, label: "Inventario" },
+    { tab: "new-card" as const, icon: <Plus size={19} />, label: "Nova carta" },
     { tab: "buylists" as const, icon: <ClipboardList size={19} />, label: "Buylists", badge: openSubmissions },
     { tab: "orders" as const, icon: <ShoppingBag size={19} />, label: "Pedidos", badge: pendingOrders },
     { tab: "customers" as const, icon: <UsersRound size={19} />, label: "Clientes" },

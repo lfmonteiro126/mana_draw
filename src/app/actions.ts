@@ -36,7 +36,7 @@ function readString(formData: FormData, key: string) {
 
 function adminTabFrom(formData: FormData, fallback: string) {
   const tab = readString(formData, "tab");
-  return ["inventory", "buylists", "orders"].includes(tab) ? tab : fallback;
+  return ["inventory", "new-card", "buylists", "orders"].includes(tab) ? tab : fallback;
 }
 
 export async function registerAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -262,7 +262,7 @@ export async function updateCardAction(formData: FormData) {
   const priceCents = Math.round(Number(readString(formData, "price")) * 100);
   const stock = Number(readString(formData, "stock"));
   const condition = readString(formData, "condition") as CardCondition;
-  const tab = adminTabFrom(formData, "inventory");
+  const tab = adminTabFrom(formData, "new-card");
 
   if (!id || !Number.isFinite(priceCents) || !Number.isInteger(stock)) {
     redirect(`/admin?tab=${tab}&error=invalid-card`);
