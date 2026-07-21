@@ -804,7 +804,8 @@ function getCardBack(game: TcgCard["game"]) {
   if (game === "Pokemon") {
     return {
       badge: "bg-amber-500",
-      frame: "border-amber-300/35 bg-[#1d1720]",
+      frame: "border-black bg-black",
+      imageUrl: "/card-backs/pokemon-back.png",
       inner: "border-amber-200/20",
       sheen: "bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.2)_42%,transparent_58%)]"
     };
