@@ -58,18 +58,37 @@ export function CardAutocomplete() {
   const [priceMode, setPriceMode] = useState<PriceMode>(defaultPresets.priceMode);
   const [suggestions, setSuggestions] = useState<CardSuggestion[]>([]);
   const [selectedSuggestion, setSelectedSuggestion] = useState<CardSuggestion | null>(null);
+  const [selectedCardName, setSelectedCardName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const selectedExternalId = selectedSuggestion?.externalId ?? "";
   const selectedSource = selectedSuggestion?.source ?? "";
 
   const canSearch = name.trim().length >= 2;
+  const cardNameOptions = useMemo(() => {
+    const names = new Map<string, { count: number; name: string }>();
+
+    suggestions.forEach((suggestion) => {
+      const current = names.get(suggestion.name);
+      names.set(suggestion.name, {
+        count: (current?.count ?? 0) + 1,
+        name: suggestion.name
+      });
+    });
+
+    return Array.from(names.values()).sort((first, second) => first.name.localeCompare(second.name));
+  }, [suggestions]);
+  const printOptions = useMemo(
+    () => suggestions.filter((suggestion) => suggestion.name === selectedCardName),
+    [selectedCardName, suggestions]
+  );
   const helperText = useMemo(() => {
-    if (!canSearch) return "Digite pelo menos 2 letras para buscar prints.";
+    if (!canSearch) return "Digite pelo menos 2 letras para buscar cartas.";
     if (isLoading) return "Buscando nas bases externas...";
-    if (suggestions.length > 0) return `${suggestions.length} prints encontrados. Clique no correto para preencher.`;
-    return "Sem prints para esta busca.";
-  }, [canSearch, isLoading, suggestions.length]);
+    if (selectedCardName && printOptions.length > 0) return `${printOptions.length} prints disponiveis. Escolha o print para preencher arte, colecao e preco.`;
+    if (cardNameOptions.length > 0) return `${cardNameOptions.length} cartas encontradas. Escolha o nome para ver os prints.`;
+    return "Sem cartas para esta busca.";
+  }, [canSearch, cardNameOptions.length, isLoading, printOptions.length, selectedCardName]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(presetKey);
@@ -123,7 +142,7 @@ export function CardAutocomplete() {
         });
         const payload = (await response.json()) as { suggestions?: CardSuggestion[] };
         setSuggestions(payload.suggestions ?? []);
-        setIsOpen(true);
+        setIsOpen(!selectedCardName);
       } catch {
         if (!controller.signal.aborted) {
           setSuggestions([]);
@@ -138,7 +157,14 @@ export function CardAutocomplete() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [canSearch, collectionName, game, name, selectedSuggestion]);
+  }, [canSearch, collectionName, game, name, selectedCardName, selectedSuggestion]);
+
+  function chooseCardName(nextName: string) {
+    setName(nextName);
+    setSelectedCardName(nextName);
+    setSelectedSuggestion(null);
+    setIsOpen(false);
+  }
 
   function applySuggestion(suggestion: CardSuggestion) {
     const nextMarketPrice = suggestion.marketPriceCents > 0
@@ -146,6 +172,7 @@ export function CardAutocomplete() {
       : "";
 
     setSelectedSuggestion(suggestion);
+    setSelectedCardName(suggestion.name);
     setGame(suggestion.game);
     setName(suggestion.name);
     setCollectionName(suggestion.setName);
@@ -156,7 +183,6 @@ export function CardAutocomplete() {
     setPrice(applyPriceMode(nextMarketPrice, priceMode));
     setImageUrl(suggestion.imageUrl);
     setTags(suggestion.tags.join(", "));
-    setSuggestions([]);
     setIsOpen(false);
   }
 
@@ -183,6 +209,7 @@ export function CardAutocomplete() {
     setTags("");
     setSuggestions([]);
     setSelectedSuggestion(null);
+    setSelectedCardName("");
     setIsOpen(false);
   }
 
@@ -218,6 +245,7 @@ export function CardAutocomplete() {
                 setGame(item);
                 setSuggestions([]);
                 setSelectedSuggestion(null);
+                setSelectedCardName("");
               }}
             >
               {item}
@@ -234,41 +262,29 @@ export function CardAutocomplete() {
             value={name}
             onChange={(event) => {
               setName(event.target.value);
+              setSelectedCardName("");
               clearSelectedPrint();
             }}
-            onFocus={() => setIsOpen(!selectedSuggestion && suggestions.length > 0)}
+            onFocus={() => setIsOpen(!selectedSuggestion && !selectedCardName && cardNameOptions.length > 0)}
             autoComplete="off"
             required
           />
           {isLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[var(--muted)]" size={18} />}
 
-          {isOpen && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-14 z-30 max-h-[460px] overflow-auto rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 shadow-2xl">
-              <div className="grid gap-2 sm:grid-cols-2">
-                {suggestions.map((suggestion) => (
+          {isOpen && cardNameOptions.length > 0 && (
+            <div className="absolute left-0 right-0 top-14 z-30 max-h-80 overflow-auto rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 shadow-2xl">
+              <div className="grid gap-1">
+                {cardNameOptions.map((option) => (
                   <button
-                    key={`${suggestion.source}-${suggestion.externalId}`}
-                    className="grid w-full grid-cols-[54px_1fr] gap-3 rounded-lg p-2 text-left transition hover:bg-[var(--surface-hover)]"
+                    key={option.name}
+                    className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-[var(--surface-hover)]"
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => applySuggestion(suggestion)}
+                    onClick={() => chooseCardName(option.name)}
                   >
-                    <span
-                      className="block aspect-[3/4] rounded-md border border-[var(--line)] bg-[var(--surface-soft)] bg-cover bg-center"
-                      style={{ backgroundImage: `url(${suggestion.imageUrl})` }}
-                    />
-                    <span className="min-w-0">
-                      <span className="flex items-start justify-between gap-2">
-                        <span className="block truncate text-sm font-semibold text-[var(--ink)]">{suggestion.name}</span>
-                        {selectedSuggestion?.externalId === suggestion.externalId ? <Check size={15} className="shrink-0 text-[var(--accent)]" /> : null}
-                      </span>
-                      <span className="block truncate text-xs text-[var(--muted)]">{suggestion.setName} · {suggestion.rarity}</span>
-                      <span className="mt-1 flex flex-wrap gap-1">
-                        <span className="inline-flex rounded-md bg-[var(--surface-hover)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">{suggestion.printLabel}</span>
-                        <span className="inline-flex rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-semibold text-[var(--accent)]">
-                          {suggestion.marketPriceCents > 0 ? `R$ ${(suggestion.marketPriceCents / 100).toFixed(2)}` : "Sem preco"}
-                        </span>
-                      </span>
+                    <span className="min-w-0 truncate text-sm font-semibold text-[var(--ink)]">{option.name}</span>
+                    <span className="shrink-0 rounded-md bg-[var(--surface-hover)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">
+                      {option.count} {option.count === 1 ? "print" : "prints"}
                     </span>
                   </button>
                 ))}
@@ -281,6 +297,59 @@ export function CardAutocomplete() {
           <WandSparkles className="shrink-0 text-[var(--accent)]" size={15} />
           {helperText}
         </div>
+        {selectedCardName && printOptions.length > 0 && (
+          <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Print desejado</p>
+                <p className="text-sm font-semibold text-[var(--ink)]">{selectedCardName}</p>
+              </div>
+              {selectedSuggestion ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-[var(--accent)]/15 px-2 py-1 text-xs font-bold text-[var(--accent)]">
+                  <Check size={14} />
+                  Print selecionado
+                </span>
+              ) : null}
+            </div>
+
+            <div className="grid max-h-[420px] gap-2 overflow-auto pr-1 sm:grid-cols-2">
+              {printOptions.map((suggestion) => {
+                const isSelected = selectedSuggestion?.externalId === suggestion.externalId && selectedSuggestion?.source === suggestion.source;
+
+                return (
+                  <button
+                    key={`${suggestion.source}-${suggestion.externalId}`}
+                    className={`grid w-full grid-cols-[58px_1fr] gap-3 rounded-lg border p-2 text-left transition ${
+                      isSelected
+                        ? "border-[var(--accent)] bg-[var(--accent)]/10"
+                        : "border-[var(--line)] bg-[var(--surface-soft)] hover:border-[var(--accent)]"
+                    }`}
+                    type="button"
+                    onClick={() => applySuggestion(suggestion)}
+                  >
+                    <span
+                      className="block aspect-[5/7] rounded-md border border-[var(--line)] bg-[var(--surface)] bg-cover bg-center"
+                      style={{ backgroundImage: `url(${suggestion.imageUrl})` }}
+                    />
+                    <span className="min-w-0">
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="block truncate text-sm font-semibold text-[var(--ink)]">{suggestion.setName}</span>
+                        {isSelected ? <Check size={15} className="shrink-0 text-[var(--accent)]" /> : null}
+                      </span>
+                      <span className="block truncate text-xs text-[var(--muted)]">{suggestion.rarity}</span>
+                      <span className="mt-2 flex flex-wrap gap-1">
+                        <span className="inline-flex rounded-md bg-[var(--surface-hover)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">{suggestion.printLabel}</span>
+                        <span className="inline-flex rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-semibold text-[var(--accent)]">
+                          {suggestion.marketPriceCents > 0 ? `R$ ${(suggestion.marketPriceCents / 100).toFixed(2)}` : "Sem preco"}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {!selectedSuggestion && (
           <p className="mt-2 rounded-lg border border-[var(--gold)]/25 bg-[var(--gold)]/10 px-3 py-2 text-xs font-semibold text-[var(--gold)]">
             Para cadastrar, selecione um print retornado pela busca.
