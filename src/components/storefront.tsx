@@ -256,20 +256,20 @@ export function Storefront({
         </div>
       </nav>
 
-      <section className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_440px] lg:px-8 lg:py-16">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,1fr)_440px] lg:px-8 lg:py-16">
         <div className="flex flex-col justify-center">
-          <div className="mb-5 flex w-fit items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--muted)]">
+          <div className="mb-4 flex w-fit items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--muted)] sm:mb-5">
             <Sparkles size={15} className="text-[var(--gold)]" />
             Singles verificadas, estoque real e envio rastreado
           </div>
-          <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-tight text-[var(--ink)] sm:text-5xl lg:text-6xl">
+          <h1 className="max-w-3xl text-balance text-3xl font-semibold leading-tight text-[var(--ink)] sm:text-5xl lg:text-6xl">
             Cartas TCG prontas para jogar, colecionar e negociar.
           </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--muted)] sm:text-lg">
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--muted)] sm:mt-5 sm:text-lg sm:leading-7">
             Uma loja enxuta para Magic, Yu-Gi-Oh! e Pokemon com compra rapida,
             curadoria por condicao e um fluxo claro para vender sua colecao.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-5 flex flex-col gap-3 sm:mt-8 sm:flex-row">
             <a
               className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
               href="#catalogo"
@@ -284,21 +284,21 @@ export function Storefront({
               Cotar colecao
             </a>
           </div>
-          <div className="mt-10 grid gap-3 sm:grid-cols-3">
+          <div className="mt-6 grid grid-cols-3 gap-2 sm:mt-10 sm:gap-3">
             {[
               ["2.4k", "cartas em estoque"],
               ["98%", "pedidos no prazo"],
               ["24h", "para cotacoes"]
             ].map(([value, label]) => (
-              <div key={label} className="border-l border-[var(--line)] pl-4">
-                <strong className="block text-2xl text-[var(--ink)]">{value}</strong>
-                <span className="text-sm text-[var(--muted)]">{label}</span>
+              <div key={label} className="border-l border-[var(--line)] pl-3 sm:pl-4">
+                <strong className="block text-lg text-[var(--ink)] sm:text-2xl">{value}</strong>
+                <span className="text-[11px] leading-4 text-[var(--muted)] sm:text-sm">{label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="card-shadow overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+        <div className="card-shadow hidden overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] sm:block">
           <div className="grid grid-cols-2 gap-3 bg-[var(--background)] p-4">
             {cards.slice(0, 4).map((card) => (
               <div key={card.id} className="relative aspect-[5/7] overflow-hidden rounded-md bg-stone-800">
@@ -328,17 +328,17 @@ export function Storefront({
 
       <section id="catalogo" className="border-y border-[var(--line)] bg-[var(--surface)]/30 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+          <div className="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div>
               <p className="mb-2 text-sm font-semibold text-[var(--accent)]">Catalogo</p>
-              <h2 className="text-3xl font-semibold text-[var(--ink)]">Singles em destaque</h2>
+              <h2 className="text-2xl font-semibold text-[var(--ink)] sm:text-3xl">Singles em destaque</h2>
             </div>
-            <form className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_180px_96px] lg:min-w-[660px]" method="get" action="/">
+            <form className="grid gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 sm:grid-cols-[minmax(220px,1fr)_180px_96px] lg:min-w-[660px]" method="get" action="/">
               <input type="hidden" name="game" value={game} />
               <label className="relative block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                 <input
-                  className="h-11 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
+                  className="h-11 w-full rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/35 pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
                   name="q"
                   placeholder="Buscar por nome, colecao ou tag"
                   value={query}
@@ -348,7 +348,7 @@ export function Storefront({
               <label className="relative block">
                 <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                 <select
-                  className="h-11 w-full appearance-none rounded-md border border-[var(--line)] bg-[var(--surface)] pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
+                  className="h-11 w-full appearance-none rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/35 pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
                   name="sort"
                   value={sort}
                   onChange={(event) => setSort(event.target.value as SortMode)}
@@ -364,17 +364,17 @@ export function Storefront({
             </form>
           </div>
 
-          <div className="mb-6 flex items-center gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory py-1">
-            <span className="inline-flex items-center gap-2 pr-2 text-sm text-[var(--muted)] shrink-0">
+          <div className="sticky top-[65px] z-30 -mx-4 mb-5 flex items-center gap-2 overflow-x-auto border-y border-[var(--line)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur-xl scrollbar-none snap-x snap-mandatory sm:static sm:mx-0 sm:mb-6 sm:border-0 sm:bg-transparent sm:px-0 sm:py-1">
+            <span className="inline-flex items-center gap-2 pr-1 text-sm font-semibold text-[var(--muted)] shrink-0">
               <Filter size={16} />
               Jogos
             </span>
             {games.map((item) => (
               <button
                 key={item}
-                className={`h-10 rounded-full border px-5 text-sm font-medium transition shrink-0 snap-start ${
+                className={`h-11 rounded-full border px-5 text-sm font-semibold transition shrink-0 snap-start ${
                   game === item
-                    ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-white shadow-lg shadow-teal-950/30"
                     : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-white hover:text-white"
                 }`}
                 type="button"
@@ -385,34 +385,34 @@ export function Storefront({
             ))}
           </div>
 
-          <div className="grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredCards.map((card) => (
               <article
                 key={card.id}
-                className="flex flex-col sm:grid sm:grid-cols-[116px_1fr] gap-3 sm:gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition hover:-translate-y-0.5 hover:shadow-lg"
+                className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[116px_1fr] sm:gap-4"
               >
-                <div className="relative aspect-[5/7] w-full sm:w-auto overflow-hidden rounded-md bg-stone-800 shrink-0">
+                <div className="relative aspect-[5/7] w-full overflow-hidden rounded-md bg-stone-800 shrink-0">
                   <Image
                     src={card.imageUrl}
                     alt={card.name}
                     fill
                     unoptimized
-                    sizes="(min-width: 640px) 116px, 45vw"
+                    sizes="(min-width: 640px) 116px, 92px"
                     className="object-cover"
                   />
                 </div>
                 <div className="min-w-0 flex flex-col justify-between flex-1">
                   <div>
-                    <div className="mb-1.5 flex items-start justify-between gap-1">
+                    <div className="mb-1.5 flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[var(--ink)]" title={card.name}>{card.name}</p>
+                        <p className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]" title={card.name}>{card.name}</p>
                         <p className="truncate text-xs text-[var(--muted)]" title={card.setName}>{card.setName}</p>
                       </div>
-                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider shrink-0 ${conditionColors[card.condition] || "bg-[var(--line)] text-[var(--muted)]"}`}>
+                      <span className={`rounded px-2 py-1 text-[10px] font-bold tracking-wider shrink-0 ${conditionColors[card.condition] || "bg-[var(--line)] text-[var(--muted)]"}`}>
                         {card.condition}
                       </span>
                     </div>
-                    <div className="mb-3 flex flex-wrap gap-1">
+                    <div className="mb-2 hidden flex-wrap gap-1 sm:flex">
                       {[card.game, card.finish, card.language].map((tag) => (
                         <span
                           key={tag}
@@ -424,12 +424,12 @@ export function Storefront({
                     </div>
                   </div>
                   <div>
-                    <p className="text-lg font-semibold text-[var(--ink)]">{formatCurrency(card.priceCents)}</p>
-                    <p className="text-[10px] text-[var(--muted)] truncate">
-                      Mercado {formatCurrency(card.marketPriceCents)} · {formatStock(card.stock)}
+                    <p className="text-xl font-semibold text-[var(--ink)]">{formatCurrency(card.priceCents)}</p>
+                    <p className="text-xs text-[var(--muted)] truncate">
+                      {formatStock(card.stock)}
                     </p>
                     <button
-                      className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95"
+                      className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 sm:mt-3"
                       type="button"
                       onClick={() => addToCart(card)}
                     >
@@ -619,28 +619,28 @@ export function Storefront({
                 <span className="text-sm text-[var(--muted)]">Subtotal</span>
                 <strong className="text-xl text-[var(--ink)]">{formatCurrency(subtotal)}</strong>
               </div>
-              <button
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
-                type="button"
-                disabled={cart.length === 0}
-                onClick={() => {
-                  if (!currentUser) setAuthOpen(true);
-                }}
-              >
-                <BadgeCheck size={17} />
-                {currentUser ? "Finalizar pedido" : "Entrar para finalizar"}
-              </button>
-              {currentUser && (
-                <form action={orderFormAction} className="mt-3">
+              {currentUser ? (
+                <form action={orderFormAction}>
                   <input type="hidden" name="cart" value={cartPayload} />
                   <button
-                    className="h-11 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-sm font-semibold text-[var(--ink)] disabled:opacity-50 transition active:scale-95"
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                     disabled={cart.length === 0 || orderPending}
                     type="submit"
                   >
-                    {orderPending ? "Criando pedido..." : "Confirmar pedido"}
+                    <BadgeCheck size={17} />
+                    {orderPending ? "Criando pedido..." : "Finalizar compra"}
                   </button>
                 </form>
+              ) : (
+                <button
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+                  type="button"
+                  disabled={cart.length === 0}
+                  onClick={() => setAuthOpen(true)}
+                >
+                  <BadgeCheck size={17} />
+                  Entrar e finalizar
+                </button>
               )}
               {orderState.message && (
                 <p className={`mt-3 text-sm ${orderState.ok ? "text-[var(--accent)]" : "text-red-400"}`}>
