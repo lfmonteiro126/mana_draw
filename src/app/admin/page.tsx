@@ -19,6 +19,7 @@ import {
   TrendingUp,
   UsersRound
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -352,8 +353,8 @@ function InventoryTab({
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.85fr)]">
       <Panel>
-        <PanelHeader title="Inventario" text="Busque, filtre e ajuste preco, estoque e condicao." badge={`${cards.length} registros`} />
-        <form className="mb-4 grid gap-3 lg:grid-cols-[minmax(180px,1fr)_160px_160px_auto]">
+        <PanelHeader title="Inventario" text="Cards consolidados por print, condicao, idioma e acabamento." badge={`${cards.length} itens unicos`} />
+        <form className="mb-5 grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 lg:grid-cols-[minmax(180px,1fr)_160px_160px_auto]">
           <input type="hidden" name="tab" value="inventory" />
           <label className="relative block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
@@ -373,14 +374,7 @@ function InventoryTab({
           </button>
         </form>
 
-        <div className="overflow-hidden rounded-lg border border-[var(--line)]">
-          <div className="hidden grid-cols-[minmax(230px,1fr)_145px_105px_135px_105px] gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-xs font-semibold uppercase text-[var(--muted)] xl:grid">
-            <span>Carta</span>
-            <span>Preco</span>
-            <span>Estoque</span>
-            <span>Condicao</span>
-            <span></span>
-          </div>
+        <div className="grid gap-3">
           {cards.length === 0 ? (
             <EmptyState icon={<Search size={30} />} title="Nenhuma carta encontrada" text="Ajuste os filtros ou cadastre uma nova carta." />
           ) : (
@@ -798,29 +792,55 @@ function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
 
 function InventoryRow({ card }: { card: TcgCard }) {
   return (
-    <form action={updateCardAction} className="grid gap-4 border-b border-[var(--line)] px-4 py-4 last:border-b-0 xl:grid-cols-[minmax(230px,1fr)_145px_105px_135px_105px] xl:items-center">
+    <form action={updateCardAction} className="group grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/50 hover:bg-[var(--surface-hover)]/40 lg:grid-cols-[72px_minmax(220px,1fr)_minmax(360px,0.9fr)] lg:items-center">
       <input type="hidden" name="id" value={card.id} />
       <input type="hidden" name="tab" value="inventory" />
-      <div className="min-w-0">
-        <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--surface-hover)] text-sm font-bold text-[var(--ink)]">{card.name.slice(0, 1)}</span>
-          <div className="min-w-0">
-            <p className="truncate font-semibold text-[var(--ink)]">{card.name}</p>
-            <p className="truncate text-sm text-[var(--muted)]">{card.game} · {card.setName} · {card.finish}</p>
+      <div className="relative h-24 w-[72px] overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] lg:h-24 lg:w-full">
+        <Image src={card.imageUrl} alt={card.name} fill unoptimized sizes="72px" className="object-cover" />
+      </div>
+
+      <div className="min-w-0 space-y-3">
+        <div className="min-w-0">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <span className="rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">{card.game}</span>
+            <span className="rounded-md bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.language}</span>
+            <span className="rounded-md bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.finish}</span>
           </div>
+          <p className="truncate text-base font-semibold text-[var(--ink)]" title={card.name}>{card.name}</p>
+          <p className="truncate text-sm text-[var(--muted)]" title={`${card.setName} · ${card.rarity}`}>
+            {card.setName} · {card.rarity}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <InventoryStat label="Mercado" value={formatCurrency(card.marketPriceCents)} />
+          <InventoryStat label="Total" value={formatCurrency(card.stock * card.priceCents)} />
+          <InventoryStat label="Estoque" value={`${card.stock} un.`} />
         </div>
       </div>
-      <FieldLabel label="Preco"><input className={inputClass} name="price" type="number" min="0" step="0.01" defaultValue={(card.priceCents / 100).toFixed(2)} /></FieldLabel>
-      <FieldLabel label="Estoque"><input className={inputClass} name="stock" type="number" min="0" step="1" defaultValue={card.stock} /></FieldLabel>
-      <FieldLabel label="Condicao">
-        <select className={inputClass} name="condition" defaultValue={card.condition}>
-          {conditions.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
-        </select>
-      </FieldLabel>
-      <button className="h-11 w-full rounded-lg bg-[var(--accent)] px-3 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]" type="submit">
-        Salvar
-      </button>
+
+      <div className="grid gap-3 sm:grid-cols-[1fr_120px_130px_104px] sm:items-end">
+        <FieldLabel label="Preco"><input className={inputClass} name="price" type="number" min="0" step="0.01" defaultValue={(card.priceCents / 100).toFixed(2)} /></FieldLabel>
+        <FieldLabel label="Estoque"><input className={inputClass} name="stock" type="number" min="0" step="1" defaultValue={card.stock} /></FieldLabel>
+        <FieldLabel label="Condicao">
+          <select className={inputClass} name="condition" defaultValue={card.condition}>
+            {conditions.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
+          </select>
+        </FieldLabel>
+        <button className="h-11 w-full rounded-lg bg-[var(--accent)] px-3 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] active:scale-95" type="submit">
+          Salvar
+        </button>
+      </div>
     </form>
+  );
+}
+
+function InventoryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase text-[var(--muted)]">{label}</p>
+      <p className="mt-1 truncate font-semibold text-[var(--ink)]">{value}</p>
+    </div>
   );
 }
 

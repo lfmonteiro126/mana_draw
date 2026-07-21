@@ -234,6 +234,8 @@ export async function getAdminCards({
       finish
     from cards
     where
+      active = true
+      and
       (${game} = 'Todos' or game::text = ${game})
       and (
         ${stock} = 'all'
@@ -248,12 +250,44 @@ export async function getAdminCards({
     limit ${normalizedLimit}
   `;
 
-  const cards = (rows as DbCard[]).map(mapCard);
+  const cards = dedupeCards((rows as DbCard[]).map(mapCard));
   if (cards.length === 0 && normalizedQuery === "" && game === "Todos" && stock === "all") {
     return fallbackCards;
   }
 
   return cards;
+}
+
+function dedupeCards(cards: TcgCard[]) {
+  const merged = new Map<string, TcgCard>();
+
+  for (const card of cards) {
+    const key = [
+      card.game,
+      card.name.trim().toLowerCase(),
+      card.setName.trim().toLowerCase(),
+      card.rarity.trim().toLowerCase(),
+      card.condition,
+      card.language,
+      card.finish,
+      card.imageUrl
+    ].join("|");
+    const existing = merged.get(key);
+
+    if (existing) {
+      merged.set(key, {
+        ...existing,
+        stock: existing.stock + card.stock,
+        priceCents: card.priceCents,
+        marketPriceCents: card.marketPriceCents,
+        tags: Array.from(new Set([...existing.tags, ...card.tags]))
+      });
+    } else {
+      merged.set(key, card);
+    }
+  }
+
+  return Array.from(merged.values());
 }
 
 export async function getAdminOrders(): Promise<OrderSummary[]> {

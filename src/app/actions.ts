@@ -343,7 +343,36 @@ export async function createCardAction(formData: FormData) {
   const sql = getSql();
   if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
 
-  await sql`
+  const existing = await sql`
+    select id
+    from cards
+    where game = ${game}
+      and active = true
+      and lower(name) = lower(${name})
+      and lower(set_name) = lower(${setName})
+      and lower(rarity) = lower(${rarity})
+      and condition = ${condition}
+      and language = ${language}
+      and finish = ${finish}
+      and image_url = ${imageUrl}
+    limit 1
+  `;
+
+  if (existing.length > 0) {
+    await sql`
+      update cards
+      set
+        stock = stock + ${stock},
+        price_cents = ${priceCents},
+        market_price_cents = ${marketPriceCents},
+        tags = ${tags},
+        featured = ${featured},
+        active = true,
+        updated_at = now()
+      where id = ${(existing[0] as { id: string }).id}
+    `;
+  } else {
+    await sql`
     insert into cards (
       name,
       game,
@@ -375,6 +404,7 @@ export async function createCardAction(formData: FormData) {
       ${featured}
     )
   `;
+  }
 
   revalidatePath("/");
   revalidatePath("/admin");
