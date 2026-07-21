@@ -4,13 +4,13 @@ import {
   ArrowUpDown,
   BadgeCheck,
   Boxes,
+  Camera,
   Check,
   ChevronRight,
   CreditCard,
   Filter,
   LayoutDashboard,
   LogOut,
-  Menu,
   Minus,
   PackageCheck,
   Plus,
@@ -39,6 +39,13 @@ type CartLine = {
 const games: FilterGame[] = ["Todos", "Magic", "Yu-Gi-Oh!", "Pokemon"];
 const orderInitialState = { ok: false, message: "" };
 
+const conditionColors: Record<string, string> = {
+  NM: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+  SP: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
+  MP: "bg-orange-500/10 text-orange-400 border border-orange-500/20",
+  HP: "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+};
+
 export function Storefront({
   cards,
   currentUser,
@@ -57,7 +64,6 @@ export function Storefront({
   const [sort, setSort] = useState<SortMode>(initialSort);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [orderState, orderFormAction, orderPending] = useActionState(
     createOrderAction,
@@ -125,7 +131,7 @@ export function Storefront({
 
   return (
     <main className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[#f7f5f0]/88 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[#090d16]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <a href="#" className="flex items-center gap-3" aria-label="Nova Mana">
             <span className="grid h-10 w-10 place-items-center rounded-md bg-[var(--ink)] text-sm font-semibold text-white">
@@ -157,7 +163,7 @@ export function Storefront({
               <>
                 {currentUser.role === "admin" && (
                   <a
-                    className="hidden h-10 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-sm font-semibold text-[var(--ink)] sm:inline-flex"
+                    className="hidden h-10 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--surface-hover)] sm:inline-flex"
                     href="/admin"
                   >
                     <LayoutDashboard size={16} />
@@ -165,7 +171,7 @@ export function Storefront({
                   </a>
                 )}
                 <a
-                  className="hidden h-10 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-sm font-semibold text-[var(--ink)] sm:inline-flex"
+                  className="hidden h-10 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--surface-hover)] sm:inline-flex"
                   href="/conta"
                 >
                   <UserRound size={16} />
@@ -173,7 +179,7 @@ export function Storefront({
                 </a>
                 <form action={logoutAction} className="hidden sm:block">
                   <button
-                    className="grid h-10 w-10 place-items-center rounded-md border border-[var(--line)] bg-white text-[var(--ink)]"
+                    className="grid h-10 w-10 place-items-center rounded-md border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-hover)]"
                     type="submit"
                     aria-label="Sair"
                   >
@@ -183,7 +189,7 @@ export function Storefront({
               </>
             ) : (
               <button
-                className="hidden h-10 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 text-sm font-semibold text-[var(--ink)] sm:inline-flex"
+                className="hidden h-10 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--surface-hover)] sm:inline-flex"
                 type="button"
                 onClick={() => setAuthOpen(true)}
               >
@@ -192,15 +198,7 @@ export function Storefront({
               </button>
             )}
             <button
-              className="grid h-10 w-10 place-items-center rounded-md border border-[var(--line)] bg-white text-[var(--ink)] md:hidden"
-              type="button"
-              aria-label="Abrir menu"
-              onClick={() => setMenuOpen((value) => !value)}
-            >
-              {menuOpen ? <X size={18} /> : <Menu size={18} />}
-            </button>
-            <button
-              className="relative grid h-10 w-10 place-items-center rounded-md bg-[var(--ink)] text-white"
+              className="relative grid h-10 w-10 place-items-center rounded-md bg-[var(--ink)] text-white hover:bg-[var(--accent-strong)] transition"
               type="button"
               aria-label="Abrir carrinho"
               onClick={() => setCartOpen(true)}
@@ -214,46 +212,53 @@ export function Storefront({
             </button>
           </div>
         </div>
-        {menuOpen && (
-          <div className="border-t border-[var(--line)] bg-white px-4 py-3 md:hidden">
-            <div className="mx-auto flex max-w-7xl flex-col gap-3 text-sm">
-              <a href="#catalogo" onClick={() => setMenuOpen(false)}>
-                Catalogo
-              </a>
-              <a href="#venda" onClick={() => setMenuOpen(false)}>
-                Venda suas cartas
-              </a>
-              <a href="#operacao" onClick={() => setMenuOpen(false)}>
-                Operacao
-              </a>
-              <a href="/conta" onClick={() => setMenuOpen(false)}>
-                Historico
-              </a>
-              {currentUser?.role === "admin" && (
-                <a href="/admin" onClick={() => setMenuOpen(false)}>
-                  Admin
-                </a>
-              )}
-              {!currentUser && (
-                <button
-                  className="w-fit font-semibold text-[var(--ink)]"
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setAuthOpen(true);
-                  }}
-                >
-                  Entrar
-                </button>
+      </header>
+
+      {/* Mobile Sticky Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--line)] bg-[#090d16]/90 backdrop-blur-xl md:hidden">
+        <div className="flex h-16 items-center justify-around px-2">
+          <a href="#catalogo" className="flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95">
+            <ShoppingBag size={20} />
+            <span>Catálogo</span>
+          </a>
+          <a href="#venda" className="flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95">
+            <Camera size={20} />
+            <span>Vender</span>
+          </a>
+          <button
+            onClick={() => setCartOpen(true)}
+            className="relative flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95"
+          >
+            <div className="relative">
+              <ShoppingBag size={20} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold text-white">
+                  {cartCount}
+                </span>
               )}
             </div>
-          </div>
-        )}
-      </header>
+            <span>Carrinho</span>
+          </button>
+          {currentUser ? (
+            <a href="/conta" className="flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95">
+              <UserRound size={20} />
+              <span className="max-w-[64px] truncate">{currentUser.name.split(" ")[0]}</span>
+            </a>
+          ) : (
+            <button
+              onClick={() => setAuthOpen(true)}
+              className="flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95"
+            >
+              <UserRound size={20} />
+              <span>Entrar</span>
+            </button>
+          )}
+        </div>
+      </nav>
 
       <section className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_440px] lg:px-8 lg:py-16">
         <div className="flex flex-col justify-center">
-          <div className="mb-5 flex w-fit items-center gap-2 rounded-md border border-[var(--line)] bg-white px-3 py-2 text-xs font-medium text-[var(--muted)]">
+          <div className="mb-5 flex w-fit items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--muted)]">
             <Sparkles size={15} className="text-[var(--gold)]" />
             Singles verificadas, estoque real e envio rastreado
           </div>
@@ -273,7 +278,7 @@ export function Storefront({
               <ChevronRight size={17} />
             </a>
             <a
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-white px-5 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--ink)]"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-5 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)]"
               href="#venda"
             >
               Cotar colecao
@@ -293,10 +298,10 @@ export function Storefront({
           </div>
         </div>
 
-        <div className="card-shadow overflow-hidden rounded-lg border border-[var(--line)] bg-white">
-          <div className="grid grid-cols-2 gap-3 bg-[var(--ink)] p-4">
+        <div className="card-shadow overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+          <div className="grid grid-cols-2 gap-3 bg-[var(--background)] p-4">
             {cards.slice(0, 4).map((card) => (
-              <div key={card.id} className="relative aspect-[5/7] overflow-hidden rounded-md bg-stone-200">
+              <div key={card.id} className="relative aspect-[5/7] overflow-hidden rounded-md bg-stone-800">
                 <Image
                   src={card.imageUrl}
                   alt={card.name}
@@ -314,18 +319,18 @@ export function Storefront({
               <p className="text-sm font-semibold text-[var(--ink)]">Drop da semana</p>
               <p className="text-sm text-[var(--muted)]">Cartas com preco abaixo do mercado.</p>
             </div>
-            <span className="rounded-md bg-[#eef8f6] px-3 py-2 text-sm font-semibold text-[var(--accent-strong)]">
+            <span className="rounded-md bg-[var(--accent)]/10 px-3 py-2 text-sm font-semibold text-[var(--accent)]">
               -12%
             </span>
           </div>
         </div>
       </section>
 
-      <section id="catalogo" className="border-y border-[var(--line)] bg-white/72">
+      <section id="catalogo" className="border-y border-[var(--line)] bg-[var(--surface)]/30 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div>
-              <p className="mb-2 text-sm font-semibold text-[var(--accent-strong)]">Catalogo</p>
+              <p className="mb-2 text-sm font-semibold text-[var(--accent)]">Catalogo</p>
               <h2 className="text-3xl font-semibold text-[var(--ink)]">Singles em destaque</h2>
             </div>
             <form className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_180px_96px] lg:min-w-[660px]" method="get" action="/">
@@ -333,7 +338,7 @@ export function Storefront({
               <label className="relative block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                 <input
-                  className="h-11 w-full rounded-md border border-[var(--line)] bg-white pl-10 pr-3 text-sm outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
+                  className="h-11 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
                   name="q"
                   placeholder="Buscar por nome, colecao ou tag"
                   value={query}
@@ -343,7 +348,7 @@ export function Storefront({
               <label className="relative block">
                 <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                 <select
-                  className="h-11 w-full appearance-none rounded-md border border-[var(--line)] bg-white pl-10 pr-3 text-sm outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
+                  className="h-11 w-full appearance-none rounded-md border border-[var(--line)] bg-[var(--surface)] pl-10 pr-3 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-teal-700/10"
                   name="sort"
                   value={sort}
                   onChange={(event) => setSort(event.target.value as SortMode)}
@@ -353,24 +358,24 @@ export function Storefront({
                   <option value="price-desc">Maior preco</option>
                 </select>
               </label>
-              <button className="h-11 rounded-md bg-[var(--ink)] text-sm font-semibold text-white" type="submit">
+              <button className="h-11 rounded-md bg-[var(--accent)] text-sm font-semibold text-white hover:bg-[var(--accent-strong)] transition active:scale-95" type="submit">
                 Buscar
               </button>
             </form>
           </div>
 
-          <div className="mb-6 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 pr-2 text-sm text-[var(--muted)]">
+          <div className="mb-6 flex items-center gap-2 overflow-x-auto scrollbar-none snap-x snap-mandatory py-1">
+            <span className="inline-flex items-center gap-2 pr-2 text-sm text-[var(--muted)] shrink-0">
               <Filter size={16} />
               Jogos
             </span>
             {games.map((item) => (
               <button
                 key={item}
-                className={`h-10 rounded-md border px-4 text-sm font-medium transition ${
+                className={`h-10 rounded-full border px-5 text-sm font-medium transition shrink-0 snap-start ${
                   game === item
-                    ? "border-[var(--ink)] bg-[var(--ink)] text-white"
-                    : "border-[var(--line)] bg-white text-[var(--muted)] hover:border-[var(--ink)] hover:text-[var(--ink)]"
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                    : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-white hover:text-white"
                 }`}
                 type="button"
                 onClick={() => setGame(item)}
@@ -380,59 +385,63 @@ export function Storefront({
             ))}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {filteredCards.map((card) => (
               <article
                 key={card.id}
-                className="grid grid-cols-[116px,1fr] gap-4 rounded-lg border border-[var(--line)] bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-lg"
+                className="flex flex-col sm:grid sm:grid-cols-[116px,1fr] gap-3 sm:gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition hover:-translate-y-0.5 hover:shadow-lg"
               >
-                <div className="relative aspect-[5/7] overflow-hidden rounded-md bg-stone-200">
+                <div className="relative aspect-[5/7] w-full sm:w-auto overflow-hidden rounded-md bg-stone-800 shrink-0">
                   <Image
                     src={card.imageUrl}
                     alt={card.name}
                     fill
                     unoptimized
-                    sizes="116px"
+                    sizes="(min-width: 640px) 116px, 45vw"
                     className="object-cover"
                   />
                 </div>
-                <div className="min-w-0">
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[var(--ink)]">{card.name}</p>
-                      <p className="truncate text-xs text-[var(--muted)]">{card.setName}</p>
-                    </div>
-                    <span className="rounded-md bg-[#f2efe7] px-2 py-1 text-[11px] font-semibold text-[var(--ink)]">
-                      {card.condition}
-                    </span>
-                  </div>
-                  <div className="mb-3 flex flex-wrap gap-1">
-                    {[card.game, card.finish, card.language].map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-md border border-[var(--line)] px-2 py-1 text-[11px] text-[var(--muted)]"
-                      >
-                        {tag}
+                <div className="min-w-0 flex flex-col justify-between flex-1">
+                  <div>
+                    <div className="mb-1.5 flex items-start justify-between gap-1">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[var(--ink)]" title={card.name}>{card.name}</p>
+                        <p className="truncate text-xs text-[var(--muted)]" title={card.setName}>{card.setName}</p>
+                      </div>
+                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wider shrink-0 ${conditionColors[card.condition] || "bg-[var(--line)] text-[var(--muted)]"}`}>
+                        {card.condition}
                       </span>
-                    ))}
+                    </div>
+                    <div className="mb-3 flex flex-wrap gap-1">
+                      {[card.game, card.finish, card.language].map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded bg-[var(--surface-hover)] border border-[var(--line)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-lg font-semibold text-[var(--ink)]">{formatCurrency(card.priceCents)}</p>
-                  <p className="text-xs text-[var(--muted)]">
-                    Mercado {formatCurrency(card.marketPriceCents)} · {formatStock(card.stock)}
-                  </p>
-                  <button
-                    className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[var(--ink)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-                    type="button"
-                    onClick={() => addToCart(card)}
-                  >
-                    <ShoppingBag size={16} />
-                    Adicionar
-                  </button>
+                  <div>
+                    <p className="text-lg font-semibold text-[var(--ink)]">{formatCurrency(card.priceCents)}</p>
+                    <p className="text-[10px] text-[var(--muted)] truncate">
+                      Mercado {formatCurrency(card.marketPriceCents)} · {formatStock(card.stock)}
+                    </p>
+                    <button
+                      className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95"
+                      type="button"
+                      onClick={() => addToCart(card)}
+                    >
+                      <ShoppingBag size={14} />
+                      Adicionar
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
             {filteredCards.length === 0 && (
-              <div className="rounded-lg border border-dashed border-[var(--line)] bg-white p-8 text-center text-sm text-[var(--muted)] sm:col-span-2 lg:col-span-3">
+              <div className="rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface)] p-8 text-center text-sm text-[var(--muted)] col-span-2 lg:col-span-3">
                 Nenhuma carta encontrada. Tente outro nome, colecao ou jogo.
               </div>
             )}
@@ -513,21 +522,24 @@ export function Storefront({
       </footer>
 
       {cartOpen && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50 animate-fade-in">
           <button
-            className="absolute inset-0 cursor-default bg-black/35"
+            className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-xs"
             type="button"
             aria-label="Fechar carrinho"
             onClick={() => setCartOpen(false)}
           />
-          <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
+          <aside className="fixed bottom-0 right-0 z-50 flex h-[80vh] w-full flex-col rounded-t-2xl bg-[var(--surface)] shadow-2xl transition-all duration-300 md:absolute md:top-0 md:h-full md:max-w-md md:rounded-t-none animate-slide-up md:animate-fade-in border-t md:border-t-0 md:border-l border-[var(--line)]">
+            {/* Handle do bottom sheet no mobile */}
+            <div className="mx-auto my-2.5 h-1 w-12 rounded-full bg-[var(--line)] md:hidden shrink-0" />
+
             <div className="flex items-center justify-between border-b border-[var(--line)] p-4">
               <div>
                 <p className="font-semibold text-[var(--ink)]">Carrinho</p>
-                <p className="text-sm text-[var(--muted)]">{cartCount} itens selecionados</p>
+                <p className="text-xs text-[var(--muted)]">{cartCount} itens selecionados</p>
               </div>
               <button
-                className="grid h-10 w-10 place-items-center rounded-md border border-[var(--line)]"
+                className="grid h-9 w-9 place-items-center rounded-md border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-hover)]"
                 type="button"
                 aria-label="Fechar carrinho"
                 onClick={() => setCartOpen(false)}
@@ -536,7 +548,7 @@ export function Storefront({
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto p-4">
+            <div className="flex-1 overflow-auto p-4 scrollbar-none">
               {cart.length === 0 ? (
                 <div className="grid h-full place-items-center text-center">
                   <div>
@@ -548,8 +560,8 @@ export function Storefront({
               ) : (
                 <div className="grid gap-3">
                   {cart.map((line) => (
-                    <div key={line.card.id} className="grid grid-cols-[64px,1fr] gap-3 rounded-lg border border-[var(--line)] p-3">
-                      <div className="relative aspect-[5/7] overflow-hidden rounded-md bg-stone-200">
+                    <div key={line.card.id} className="grid grid-cols-[64px,1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-hover)]/40 p-3">
+                      <div className="relative aspect-[5/7] overflow-hidden rounded-md bg-stone-800">
                         <Image
                           src={line.card.imageUrl}
                           alt={line.card.name}
@@ -565,21 +577,21 @@ export function Storefront({
                             <p className="truncate text-sm font-semibold text-[var(--ink)]">{line.card.name}</p>
                             <p className="truncate text-xs text-[var(--muted)]">{line.card.game} · {line.card.condition}</p>
                           </div>
-                          <p className="text-sm font-semibold">{formatCurrency(line.card.priceCents * line.quantity)}</p>
+                          <p className="text-sm font-semibold text-[var(--ink)]">{formatCurrency(line.card.priceCents * line.quantity)}</p>
                         </div>
                         <div className="mt-3 flex items-center justify-between">
-                          <div className="flex items-center rounded-md border border-[var(--line)]">
+                          <div className="flex items-center rounded-md border border-[var(--line)] bg-[var(--surface)]">
                             <button
-                              className="grid h-8 w-8 place-items-center"
+                              className="grid h-8 w-8 place-items-center text-[var(--ink)] hover:text-white"
                               type="button"
                               aria-label="Diminuir quantidade"
                               onClick={() => updateQuantity(line.card.id, line.quantity - 1)}
                             >
                               <Minus size={14} />
                             </button>
-                            <span className="grid h-8 min-w-8 place-items-center text-sm">{line.quantity}</span>
+                            <span className="grid h-8 min-w-8 place-items-center text-sm text-[var(--ink)] font-medium">{line.quantity}</span>
                             <button
-                              className="grid h-8 w-8 place-items-center"
+                              className="grid h-8 w-8 place-items-center text-[var(--ink)] hover:text-white"
                               type="button"
                               aria-label="Aumentar quantidade"
                               onClick={() => updateQuantity(line.card.id, line.quantity + 1)}
@@ -588,7 +600,7 @@ export function Storefront({
                             </button>
                           </div>
                           <button
-                            className="text-xs font-semibold text-[var(--muted)] underline-offset-4 hover:text-[var(--ink)] hover:underline"
+                            className="text-xs font-semibold text-[var(--muted)] hover:text-[var(--accent)] transition"
                             type="button"
                             onClick={() => updateQuantity(line.card.id, 0)}
                           >
@@ -602,13 +614,13 @@ export function Storefront({
               )}
             </div>
 
-            <div className="border-t border-[var(--line)] p-4">
+            <div className="border-t border-[var(--line)] bg-[var(--surface)] p-4">
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-sm text-[var(--muted)]">Subtotal</span>
                 <strong className="text-xl text-[var(--ink)]">{formatCurrency(subtotal)}</strong>
               </div>
               <button
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-45"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                 type="button"
                 disabled={cart.length === 0}
                 onClick={() => {
@@ -622,7 +634,7 @@ export function Storefront({
                 <form action={orderFormAction} className="mt-3">
                   <input type="hidden" name="cart" value={cartPayload} />
                   <button
-                    className="h-11 w-full rounded-md border border-[var(--line)] bg-white text-sm font-semibold text-[var(--ink)] disabled:opacity-50"
+                    className="h-11 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-sm font-semibold text-[var(--ink)] disabled:opacity-50 transition active:scale-95"
                     disabled={cart.length === 0 || orderPending}
                     type="submit"
                   >
@@ -631,7 +643,7 @@ export function Storefront({
                 </form>
               )}
               {orderState.message && (
-                <p className={`mt-3 text-sm ${orderState.ok ? "text-[var(--accent-strong)]" : "text-red-700"}`}>
+                <p className={`mt-3 text-sm ${orderState.ok ? "text-[var(--accent)]" : "text-red-400"}`}>
                   {orderState.message}
                 </p>
               )}
