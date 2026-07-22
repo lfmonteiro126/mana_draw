@@ -24,6 +24,7 @@ import {
   X
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { createOrderAction, logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
@@ -179,7 +180,7 @@ export function Storefront({
     <main className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--background)]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <a href="/" className="flex items-center gap-3" aria-label="Mana Draw">
+          <Link href="/" className="flex items-center gap-3" aria-label="Mana Draw">
             <span className="grid h-10 w-10 place-items-center rounded-md bg-[var(--accent)] text-sm font-semibold text-white">
               NM
             </span>
@@ -187,7 +188,7 @@ export function Storefront({
               <span className="block text-sm font-semibold tracking-wide">Mana Draw</span>
               <span className="block text-xs text-[var(--muted)]">TCG market</span>
             </span>
-          </a>
+          </Link>
 
           <nav className="hidden items-center gap-6 text-sm text-[var(--muted)] md:flex">
             <a className="transition hover:text-[var(--ink)]" href="#catalogo">
@@ -199,30 +200,30 @@ export function Storefront({
             <a className="transition hover:text-[var(--ink)]" href="#operacao">
               Operacao
             </a>
-            <a className="transition hover:text-[var(--ink)]" href="/conta">
+            <Link className="transition hover:text-[var(--ink)]" href="/conta">
               Historico
-            </a>
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2">
             {currentUser ? (
               <>
                 {currentUser.role === "admin" && (
-                  <a
+                  <Link
                     className="hidden h-10 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--surface-hover)] sm:inline-flex"
                     href="/admin"
                   >
                     <LayoutDashboard size={16} />
                     Admin
-                  </a>
+                  </Link>
                 )}
-                <a
+                <Link
                   className="hidden h-10 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--surface-hover)] sm:inline-flex"
                   href="/conta"
                 >
                   <UserRound size={16} />
                   {currentUser.name}
-                </a>
+                </Link>
                 <form action={logoutAction} className="hidden sm:block">
                   <button
                     className="grid h-10 w-10 place-items-center rounded-md border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-hover)]"
@@ -329,7 +330,7 @@ export function Storefront({
           </a>
 
           {currentUser ? (
-            <a
+            <Link
               href="/conta"
               onClick={() => setActiveSection("conta")}
               aria-current={activeSection === "conta" ? "page" : undefined}
@@ -344,7 +345,7 @@ export function Storefront({
               {activeSection === "conta" && (
                 <span className="absolute bottom-1 h-0.5 w-4 rounded-full bg-[var(--accent)]" />
               )}
-            </a>
+            </Link>
           ) : (
             <button
               type="button"
