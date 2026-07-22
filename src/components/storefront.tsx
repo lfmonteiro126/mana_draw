@@ -10,6 +10,7 @@ import {
   CreditCard,
   Filter,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
   Minus,
   PackageCheck,
@@ -65,6 +66,9 @@ export function Storefront({
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<"catalogo" | "venda" | "conta">(
+    "catalogo"
+  );
   const [orderState, orderFormAction, orderPending] = useActionState(
     createOrderAction,
     orderInitialState
@@ -105,6 +109,45 @@ export function Storefront({
     if (orderState.ok) setCart([]);
   }, [orderState.ok]);
 
+  useEffect(() => {
+    const locked = cartOpen || authOpen;
+    if (!locked) return;
+
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [cartOpen, authOpen]);
+
+  useEffect(() => {
+    const sectionIds = ["catalogo", "venda"] as const;
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => Boolean(el));
+
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+
+        if (visible[0]?.target.id === "catalogo" || visible[0]?.target.id === "venda") {
+          setActiveSection(visible[0].target.id as "catalogo" | "venda");
+        }
+      },
+      {
+        rootMargin: "-20% 0px -55% 0px",
+        threshold: [0.15, 0.35, 0.55]
+      }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   function addToCart(card: TcgCard) {
     if (card.stock <= 0) return;
 
@@ -136,7 +179,7 @@ export function Storefront({
     <main className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--background)]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <a href="#" className="flex items-center gap-3" aria-label="Mana Draw">
+          <a href="/" className="flex items-center gap-3" aria-label="Mana Draw">
             <span className="grid h-10 w-10 place-items-center rounded-md bg-[var(--accent)] text-sm font-semibold text-white">
               NM
             </span>
@@ -201,14 +244,14 @@ export function Storefront({
               </button>
             )}
             <button
-              className="relative grid h-10 w-10 place-items-center rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-strong)] transition"
+              className="relative hidden h-10 w-10 place-items-center rounded-md bg-[var(--accent)] text-white transition hover:bg-[var(--accent-strong)] md:grid"
               type="button"
               aria-label="Abrir carrinho"
               onClick={() => setCartOpen(true)}
             >
               <ShoppingBag size={18} />
               {cartCount > 0 && (
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--accent)] px-1 text-[11px] font-semibold">
+                <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-[var(--background)] bg-[var(--gold)] px-1 text-[11px] font-bold text-[#1a1205] animate-badge-pop">
                   {cartCount}
                 </span>
               )}
@@ -217,70 +260,126 @@ export function Storefront({
         </div>
       </header>
 
-      {/* Mobile Sticky Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--line)] bg-[var(--background)]/90 backdrop-blur-xl md:hidden">
-        <div className="flex h-16 items-center justify-around px-2">
-          <a href="#catalogo" className="flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95">
-            <ShoppingBag size={20} />
-            <span>Catálogo</span>
-          </a>
-          <a href="#venda" className="flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95">
-            <Camera size={20} />
-            <span>Vender</span>
-          </a>
-          <button
-            onClick={() => setCartOpen(true)}
-            className="relative flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95"
+      {/* Mobile floating dock */}
+      <nav
+        className={`fixed inset-x-0 bottom-0 z-40 px-3 md:hidden ${
+          cartOpen || authOpen ? "pointer-events-none opacity-0 translate-y-3" : "opacity-100 translate-y-0"
+        } transition-all duration-300 ease-out`}
+        style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+        aria-label="Navegacao principal"
+      >
+        <div className="mobile-dock animate-dock-in mx-auto grid h-[3.75rem] max-w-md grid-cols-5 items-center rounded-2xl border border-white/[0.08] bg-[var(--surface)]/92 px-1 backdrop-blur-2xl">
+          <a
+            href="#catalogo"
+            aria-current={activeSection === "catalogo" ? "page" : undefined}
+            className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
+              activeSection === "catalogo"
+                ? "text-[var(--accent)]"
+                : "text-[var(--muted)] hover:text-[var(--ink)]"
+            }`}
           >
-            <div className="relative">
-              <ShoppingBag size={20} />
+            <LayoutGrid size={20} strokeWidth={activeSection === "catalogo" ? 2.25 : 1.75} />
+            <span>Catalogo</span>
+            {activeSection === "catalogo" && (
+              <span className="absolute bottom-1 h-0.5 w-4 rounded-full bg-[var(--accent)]" />
+            )}
+          </a>
+
+          <a
+            href="#venda"
+            aria-current={activeSection === "venda" ? "page" : undefined}
+            className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
+              activeSection === "venda"
+                ? "text-[var(--accent)]"
+                : "text-[var(--muted)] hover:text-[var(--ink)]"
+            }`}
+          >
+            <Camera size={20} strokeWidth={activeSection === "venda" ? 2.25 : 1.75} />
+            <span>Vender</span>
+            {activeSection === "venda" && (
+              <span className="absolute bottom-1 h-0.5 w-4 rounded-full bg-[var(--accent)]" />
+            )}
+          </a>
+
+          <div className="relative flex items-center justify-center">
+            <button
+              type="button"
+              aria-label={`Abrir carrinho${cartCount > 0 ? `, ${cartCount} itens` : ""}`}
+              onClick={() => setCartOpen(true)}
+              className="relative -mt-5 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-white transition-transform duration-200 mobile-dock-cart active:scale-95 hover:bg-[var(--accent-strong)]"
+            >
+              <ShoppingBag size={22} strokeWidth={2} />
               {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold text-white">
+                <span
+                  key={cartCount}
+                  className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-[var(--surface)] bg-[var(--gold)] px-1 text-[10px] font-bold text-[#1a1205] animate-badge-pop"
+                >
                   {cartCount}
                 </span>
               )}
-            </div>
-            <span>Carrinho</span>
-          </button>
+            </button>
+          </div>
+
+          <a
+            href="#operacao"
+            className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
+          >
+            <ShieldCheck size={20} strokeWidth={1.75} />
+            <span>Loja</span>
+          </a>
+
           {currentUser ? (
-            <a href="/conta" className="flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95">
-              <UserRound size={20} />
-              <span className="max-w-[64px] truncate">{currentUser.name.split(" ")[0]}</span>
+            <a
+              href="/conta"
+              onClick={() => setActiveSection("conta")}
+              aria-current={activeSection === "conta" ? "page" : undefined}
+              className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
+                activeSection === "conta"
+                  ? "text-[var(--accent)]"
+                  : "text-[var(--muted)] hover:text-[var(--ink)]"
+              }`}
+            >
+              <UserRound size={20} strokeWidth={activeSection === "conta" ? 2.25 : 1.75} />
+              <span className="max-w-[3.25rem] truncate">{currentUser.name.split(" ")[0]}</span>
+              {activeSection === "conta" && (
+                <span className="absolute bottom-1 h-0.5 w-4 rounded-full bg-[var(--accent)]" />
+              )}
             </a>
           ) : (
             <button
+              type="button"
               onClick={() => setAuthOpen(true)}
-              className="flex flex-col items-center gap-1 text-[10px] font-medium text-[var(--muted)] hover:text-white transition active:scale-95"
+              className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
             >
-              <UserRound size={20} />
+              <UserRound size={20} strokeWidth={1.75} />
               <span>Entrar</span>
             </button>
           )}
         </div>
       </nav>
 
-      <section className="mx-auto grid max-w-7xl items-start gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:px-8 lg:py-6">
+      <section className="mx-auto grid max-w-7xl items-start gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:px-8 lg:py-8">
         <div className="flex flex-col justify-center">
-          <div className="mb-3 flex w-fit items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--muted)]">
-            <Sparkles size={15} className="text-[var(--gold)]" />
+          <div className="mb-3 flex w-fit items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)]/80 px-3 py-1.5 text-xs font-medium text-[var(--muted)]">
+            <Sparkles size={14} className="text-[var(--gold)]" />
             Loja TCG para comprar e vender cartas
           </div>
-          <h1 className="max-w-3xl text-balance text-2xl font-semibold leading-tight text-[var(--ink)] sm:text-4xl">
+          <h1 className="max-w-3xl text-balance text-[1.7rem] font-semibold leading-tight tracking-tight text-[var(--ink)] sm:text-4xl">
             Compre singles. Venda sua colecao TCG.
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
             Compre cartas para jogar agora ou envie fotos da sua colecao para cotacao.
           </p>
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
             <a
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
               href="#catalogo"
             >
               Ver catalogo
               <ChevronRight size={17} />
             </a>
             <a
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)] active:scale-[0.98]"
               href="#venda"
             >
               Cotar colecao
@@ -289,7 +388,7 @@ export function Storefront({
           <a className="mt-3 text-sm font-semibold text-[var(--accent)] sm:hidden" href="#venda">
             Tambem compramos cartas de player, bulk e colecoes
           </a>
-          <div className="mt-4 hidden grid-cols-3 gap-2 sm:grid sm:gap-3">
+          <div className="mt-5 hidden grid-cols-3 gap-2 sm:grid sm:gap-3">
             {[
               ["2.4k", "cartas em estoque"],
               ["3", "jogos curados"],
@@ -364,18 +463,18 @@ export function Storefront({
               </form>
             </div>
 
-            <div className="sticky top-[65px] z-30 -mx-4 mb-4 flex items-center gap-2 overflow-x-auto border-y border-[var(--line)] bg-[var(--background)]/95 px-4 py-3 backdrop-blur-xl scrollbar-none snap-x snap-mandatory sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-1">
-              <span className="inline-flex items-center gap-2 pr-1 text-sm font-semibold text-[var(--muted)] shrink-0">
-                <Filter size={16} />
+            <div className="sticky top-[65px] z-30 -mx-4 mb-4 flex items-center gap-2 overflow-x-auto border-y border-[var(--line)] bg-[var(--background)]/95 px-4 py-2.5 backdrop-blur-xl scrollbar-none snap-x snap-mandatory sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-1">
+              <span className="inline-flex items-center gap-2 pr-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)] shrink-0">
+                <Filter size={14} />
                 Jogos
               </span>
               {games.map((item) => (
                 <button
                   key={item}
-                  className={`h-11 rounded-full border px-5 text-sm font-semibold transition shrink-0 snap-start ${
+                  className={`h-9 rounded-full border px-4 text-sm font-semibold transition shrink-0 snap-start active:scale-95 ${
                     game === item
                       ? "border-[var(--accent)] bg-[var(--accent)] text-white shadow-lg shadow-teal-950/30"
-                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-white hover:text-white"
+                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-white/30 hover:text-white"
                   }`}
                   type="button"
                   onClick={() => setGame(item)}
@@ -389,7 +488,7 @@ export function Storefront({
               {filteredCards.map((card) => (
                 <article
                   key={card.id}
-                  className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[116px_1fr] sm:gap-4"
+                  className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition duration-200 hover:-translate-y-0.5 hover:border-white/15 hover:shadow-lg active:scale-[0.995] sm:grid-cols-[116px_1fr] sm:gap-4"
                 >
                   <CardFlip card={card} sizes="(min-width: 640px) 116px, 92px" />
                   <div className="min-w-0 flex flex-col justify-between flex-1">
@@ -491,28 +590,33 @@ export function Storefront({
       </section>
 
       <section id="operacao" className="border-y border-[var(--line)] bg-[var(--surface)]/70 text-[var(--ink)]">
-        <div className="mx-auto grid max-w-7xl gap-4 px-4 py-10 sm:px-6 md:grid-cols-4 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-10 sm:gap-4 sm:px-6 md:grid-cols-4 lg:px-8">
           {[
             [ShieldCheck, "Condicao auditada", "NM, SP, MP e HP com padrao fotografavel."],
             [Truck, "Envio rastreado", "Integracao pronta para frete e retirada local."],
             [CreditCard, "Checkout direto", "Carrinho preparado para Pix e cartao."],
             [Boxes, "Estoque real", "Neon como fonte unica para produtos e pedidos."]
           ].map(([Icon, title, copy]) => (
-            <div key={String(title)} className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-              <Icon size={22} className="mb-4 text-[var(--accent)]" />
-              <p className="font-semibold">{String(title)}</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{String(copy)}</p>
+            <div
+              key={String(title)}
+              className="flex gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4 md:flex-col md:gap-0"
+            >
+              <Icon size={22} className="mt-0.5 shrink-0 text-[var(--accent)] md:mb-4 md:mt-0" />
+              <div>
+                <p className="font-semibold">{String(title)}</p>
+                <p className="mt-1 text-sm leading-6 text-[var(--muted)] md:mt-2">{String(copy)}</p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      <footer className="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-4 py-8 text-sm text-[var(--muted)] sm:px-6 md:flex-row lg:px-8">
+      <footer className="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-4 py-8 pb-4 text-sm text-[var(--muted)] sm:px-6 md:flex-row md:pb-8 lg:px-8">
         <p>Mana Draw TCG Market</p>
-        <div className="flex gap-4">
-          <a href="#catalogo">Catalogo</a>
-          <a href="#venda">Buylist</a>
-          <a href="#operacao">Operacao</a>
+        <div className="flex flex-wrap gap-4">
+          <a className="transition hover:text-[var(--ink)]" href="#catalogo">Catalogo</a>
+          <a className="transition hover:text-[var(--ink)]" href="#venda">Buylist</a>
+          <a className="transition hover:text-[var(--ink)]" href="#operacao">Operacao</a>
         </div>
       </footer>
 
@@ -524,11 +628,11 @@ export function Storefront({
             aria-label="Fechar carrinho"
             onClick={() => setCartOpen(false)}
           />
-          <aside className="fixed bottom-0 right-0 z-50 flex h-[80vh] w-full flex-col rounded-t-2xl bg-[var(--surface)] shadow-2xl transition-all duration-300 md:absolute md:top-0 md:h-full md:max-w-md md:rounded-t-none animate-slide-up md:animate-fade-in border-t md:border-t-0 md:border-l border-[var(--line)]">
+          <aside className="fixed bottom-0 right-0 z-50 flex h-[min(86vh,720px)] w-full flex-col rounded-t-2xl bg-[var(--surface)] shadow-2xl transition-all duration-300 md:absolute md:top-0 md:h-full md:max-w-md md:rounded-t-none animate-slide-up md:animate-fade-in border-t md:border-t-0 md:border-l border-[var(--line)]">
             {/* Handle do bottom sheet no mobile */}
-            <div className="mx-auto my-2.5 h-1 w-12 rounded-full bg-[var(--line)] md:hidden shrink-0" />
+            <div className="mx-auto my-2.5 h-1 w-12 rounded-full bg-white/20 md:hidden shrink-0" />
 
-            <div className="flex items-center justify-between border-b border-[var(--line)] p-4">
+            <div className="flex items-center justify-between border-b border-[var(--line)] px-4 pb-4 pt-1 md:p-4">
               <div>
                 <p className="font-semibold text-[var(--ink)]">Carrinho</p>
                 <p className="text-xs text-[var(--muted)]">{cartCount} itens selecionados</p>
@@ -609,7 +713,7 @@ export function Storefront({
               )}
             </div>
 
-            <div className="border-t border-[var(--line)] bg-[var(--surface)] p-4">
+            <div className="border-t border-[var(--line)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-sm text-[var(--muted)]">Subtotal</span>
                 <strong className="text-xl text-[var(--ink)]">{formatCurrency(subtotal)}</strong>
@@ -648,15 +752,16 @@ export function Storefront({
       )}
 
       {authOpen && (
-        <div className="fixed inset-0 z-[60]">
+        <div className="fixed inset-0 z-[60] animate-fade-in">
           <button
-            className="absolute inset-0 cursor-default bg-black/35"
+            className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-xs"
             type="button"
             aria-label="Fechar autenticacao"
             onClick={() => setAuthOpen(false)}
           />
-          <div className="absolute left-1/2 top-1/2 w-[min(720px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2">
-            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 shadow-2xl">
+          <div className="absolute inset-x-0 bottom-0 w-full animate-slide-up md:left-1/2 md:top-1/2 md:bottom-auto md:w-[min(720px,calc(100vw-32px))] md:-translate-x-1/2 md:-translate-y-1/2 md:animate-fade-in">
+            <div className="rounded-t-2xl border border-[var(--line)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl md:rounded-lg md:pb-4">
+              <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-white/20 md:hidden" />
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-lg font-semibold text-[var(--ink)]">Conta Mana Draw</p>
@@ -665,7 +770,7 @@ export function Storefront({
                   </p>
                 </div>
                 <button
-                  className="grid h-9 w-9 place-items-center rounded-md border border-[var(--line)] bg-[var(--surface)]"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-[var(--line)] bg-[var(--surface)]"
                   type="button"
                   aria-label="Fechar"
                   onClick={() => setAuthOpen(false)}
