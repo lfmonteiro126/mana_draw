@@ -73,6 +73,7 @@ export function Storefront({
   const filteredCards = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     const visible = cards.filter((card) => {
+      const isAvailable = card.stock > 0;
       const matchesGame = game === "Todos" || card.game === game;
       const matchesQuery =
         normalized.length === 0 ||
@@ -81,7 +82,7 @@ export function Storefront({
           .toLowerCase()
           .includes(normalized);
 
-      return matchesGame && matchesQuery;
+      return isAvailable && matchesGame && matchesQuery;
     });
 
     return [...visible].sort((a, b) => {
@@ -105,6 +106,8 @@ export function Storefront({
   }, [orderState.ok]);
 
   function addToCart(card: TcgCard) {
+    if (card.stock <= 0) return;
+
     setCart((current) => {
       const existing = current.find((line) => line.card.id === card.id);
       if (!existing) return [...current, { card, quantity: 1 }];
@@ -417,8 +420,9 @@ export function Storefront({
                         {formatStock(card.stock)}
                       </p>
                       <button
-                        className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 sm:mt-3"
+                        className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:bg-[var(--line)] disabled:text-[var(--muted)] sm:mt-3"
                         type="button"
+                        disabled={card.stock <= 0}
                         onClick={() => addToCart(card)}
                       >
                         <ShoppingBag size={14} />

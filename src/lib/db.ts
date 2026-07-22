@@ -117,6 +117,7 @@ export async function getCatalogCards({
 
   if (!hasDatabase()) {
     const visible = fallbackCards.filter((card) => {
+      const isAvailable = card.stock > 0;
       const matchesGame = game === "Todos" || card.game === game;
       const matchesQuery =
         normalizedQuery.length === 0 ||
@@ -125,7 +126,7 @@ export async function getCatalogCards({
           .toLowerCase()
           .includes(normalizedQuery.toLowerCase());
 
-      return matchesGame && matchesQuery;
+      return isAvailable && matchesGame && matchesQuery;
     });
 
     return sortCards(visible, sort);
@@ -152,6 +153,7 @@ export async function getCatalogCards({
     from cards
     where
       active = true
+      and stock > 0
       and (${game} = 'Todos' or game::text = ${game})
       and (
         ${normalizedQuery} = ''
@@ -172,10 +174,6 @@ export async function getCatalogCards({
   `;
 
   const cards = (rows as DbCard[]).map(mapCard);
-  if (cards.length === 0 && normalizedQuery === "" && game === "Todos") {
-    return sortCards(fallbackCards, sort);
-  }
-
   return cards;
 }
 
@@ -250,12 +248,7 @@ export async function getAdminCards({
     limit ${normalizedLimit}
   `;
 
-  const cards = dedupeCards((rows as DbCard[]).map(mapCard));
-  if (cards.length === 0 && normalizedQuery === "" && game === "Todos" && stock === "all") {
-    return fallbackCards;
-  }
-
-  return cards;
+  return dedupeCards((rows as DbCard[]).map(mapCard));
 }
 
 function dedupeCards(cards: TcgCard[]) {

@@ -162,7 +162,7 @@ export function CardAutocomplete() {
   function chooseCardName(nextName: string) {
     setName(nextName);
     setSelectedCardName(nextName);
-    setSelectedSuggestion(null);
+    clearPrintDetails();
     setIsOpen(false);
   }
 
@@ -189,6 +189,16 @@ export function CardAutocomplete() {
 
   function clearSelectedPrint() {
     setSelectedSuggestion(null);
+  }
+
+  function clearPrintDetails() {
+    setSelectedSuggestion(null);
+    setCollectionName("");
+    setRarity("");
+    setPrice("");
+    setMarketPrice("");
+    setImageUrl("");
+    setTags("");
   }
 
   function updatePriceMode(nextMode: PriceMode) {
@@ -264,7 +274,7 @@ export function CardAutocomplete() {
             onChange={(event) => {
               setName(event.target.value);
               setSelectedCardName("");
-              clearSelectedPrint();
+              clearPrintDetails();
             }}
             onFocus={() => setIsOpen(!selectedSuggestion && !selectedCardName && cardNameOptions.length > 0)}
             autoComplete="off"
