@@ -391,65 +391,126 @@ export async function createCardAction(formData: FormData) {
   `;
 
   if (existing.length > 0) {
-    await sql`
-      update cards
-      set
-        stock = stock + ${stock},
-        price_cents = ${priceCents},
-        market_price_cents = ${marketPriceCents},
-        back_image_url = ${backImageUrl || null},
-        is_double_sided = ${isDoubleSided},
-        layout = ${layout || null},
-        tags = ${tags},
-        featured = ${featured},
-        active = true,
-        updated_at = now()
-      where id = ${(existing[0] as { id: string }).id}
-    `;
+    try {
+      await sql`
+        update cards
+        set
+          stock = stock + ${stock},
+          price_cents = ${priceCents},
+          market_price_cents = ${marketPriceCents},
+          back_image_url = ${backImageUrl || null},
+          is_double_sided = ${isDoubleSided},
+          layout = ${layout || null},
+          tags = ${tags},
+          featured = ${featured},
+          active = true,
+          updated_at = now()
+        where id = ${(existing[0] as { id: string }).id}
+      `;
+    } catch (error) {
+      if (!isMissingDoubleSideColumns(error)) throw error;
+      await sql`
+        update cards
+        set
+          stock = stock + ${stock},
+          price_cents = ${priceCents},
+          market_price_cents = ${marketPriceCents},
+          tags = ${tags},
+          featured = ${featured},
+          active = true,
+          updated_at = now()
+        where id = ${(existing[0] as { id: string }).id}
+      `;
+    }
   } else {
-    await sql`
-    insert into cards (
-      name,
-      game,
-      set_name,
-      rarity,
-      condition,
-      language,
-      price_cents,
-      market_price_cents,
-      stock,
-      image_url,
-      back_image_url,
-      is_double_sided,
-      layout,
-      tags,
-      finish,
-      featured
-    )
-    values (
-      ${name},
-      ${game},
-      ${setName},
-      ${rarity},
-      ${condition},
-      ${language},
-      ${priceCents},
-      ${marketPriceCents},
-      ${stock},
-      ${imageUrl},
-      ${backImageUrl || null},
-      ${isDoubleSided},
-      ${layout || null},
-      ${tags},
-      ${finish},
-      ${featured}
-    )
-  `;
+    try {
+      await sql`
+        insert into cards (
+          name,
+          game,
+          set_name,
+          rarity,
+          condition,
+          language,
+          price_cents,
+          market_price_cents,
+          stock,
+          image_url,
+          back_image_url,
+          is_double_sided,
+          layout,
+          tags,
+          finish,
+          featured
+        )
+        values (
+          ${name},
+          ${game},
+          ${setName},
+          ${rarity},
+          ${condition},
+          ${language},
+          ${priceCents},
+          ${marketPriceCents},
+          ${stock},
+          ${imageUrl},
+          ${backImageUrl || null},
+          ${isDoubleSided},
+          ${layout || null},
+          ${tags},
+          ${finish},
+          ${featured}
+        )
+      `;
+    } catch (error) {
+      if (!isMissingDoubleSideColumns(error)) throw error;
+      await sql`
+        insert into cards (
+          name,
+          game,
+          set_name,
+          rarity,
+          condition,
+          language,
+          price_cents,
+          market_price_cents,
+          stock,
+          image_url,
+          tags,
+          finish,
+          featured
+        )
+        values (
+          ${name},
+          ${game},
+          ${setName},
+          ${rarity},
+          ${condition},
+          ${language},
+          ${priceCents},
+          ${marketPriceCents},
+          ${stock},
+          ${imageUrl},
+          ${tags},
+          ${finish},
+          ${featured}
+        )
+      `;
+    }
   }
 
   revalidatePath("/");
   revalidatePath("/admin");
   redirect(`/admin?tab=${tab}&notice=card-created`);
+}
+
+function isMissingDoubleSideColumns(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("back_image_url") ||
+    message.includes("is_double_sided") ||
+    message.includes("layout")
+  );
 }
 
 export async function updateBuylistAction(formData: FormData) {
