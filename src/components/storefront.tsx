@@ -797,15 +797,24 @@ function CardFlip({
           )}
         </div>
       </div>
-      <div className="pointer-events-none absolute left-1/2 top-1/2 z-50 hidden aspect-[5/7] w-[min(260px,72vw)] -translate-x-1/2 -translate-y-1/2 scale-95 overflow-hidden rounded-lg border border-white/15 bg-[var(--surface)] opacity-0 shadow-[0_28px_80px_rgba(0,0,0,0.62)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover:scale-100 group-hover:opacity-100 group-focus:scale-100 group-focus:opacity-100 md:block">
-        <Image
-          src={card.imageUrl}
-          alt={`${card.name} ampliada`}
-          fill
-          unoptimized
-          sizes="260px"
-          className="object-cover"
-        />
+      <div className={`pointer-events-none absolute left-1/2 top-1/2 z-50 hidden -translate-x-1/2 -translate-y-1/2 scale-95 gap-3 rounded-lg border border-white/15 bg-[var(--surface)] p-2 opacity-0 shadow-[0_28px_80px_rgba(0,0,0,0.62)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover:scale-100 group-hover:opacity-100 group-focus:scale-100 group-focus:opacity-100 md:grid ${card.backImageUrl ? "grid-cols-2" : "grid-cols-1"}`}>
+        {[card.imageUrl, card.backImageUrl].filter((url): url is string => Boolean(url)).map((url, index) => (
+          <div key={`${card.id}-zoom-${index}`} className="relative aspect-[5/7] w-[min(240px,34vw)] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
+            <Image
+              src={url}
+              alt={index === 0 ? `${card.name} frente ampliada` : `${card.name} segunda face ampliada`}
+              fill
+              unoptimized
+              sizes="240px"
+              className="object-cover"
+            />
+            {index === 1 ? (
+              <span className="absolute left-2 top-2 rounded-md bg-violet-500/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
+                Face 2
+              </span>
+            ) : null}
+          </div>
+        ))}
       </div>
     </div>
   );
