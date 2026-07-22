@@ -54,6 +54,8 @@ export function CardAutocomplete() {
   const [marketPrice, setMarketPrice] = useState("");
   const [stock, setStock] = useState(defaultPresets.stock);
   const [imageUrl, setImageUrl] = useState("");
+  const [backImageUrl, setBackImageUrl] = useState("");
+  const [layout, setLayout] = useState("");
   const [tags, setTags] = useState("");
   const [priceMode, setPriceMode] = useState<PriceMode>(defaultPresets.priceMode);
   const [suggestions, setSuggestions] = useState<CardSuggestion[]>([]);
@@ -183,6 +185,8 @@ export function CardAutocomplete() {
     setPrice(applyPriceMode(nextMarketPrice, priceMode));
     setStock("1");
     setImageUrl(suggestion.imageUrl);
+    setBackImageUrl(suggestion.backImageUrl ?? "");
+    setLayout(suggestion.layout ?? "");
     setTags(suggestion.tags.join(", "));
     setIsOpen(false);
   }
@@ -198,6 +202,8 @@ export function CardAutocomplete() {
     setPrice("");
     setMarketPrice("");
     setImageUrl("");
+    setBackImageUrl("");
+    setLayout("");
     setTags("");
   }
 
@@ -217,6 +223,8 @@ export function CardAutocomplete() {
     setPrice("");
     setMarketPrice("");
     setImageUrl("");
+    setBackImageUrl("");
+    setLayout("");
     setTags("");
     setSuggestions([]);
     setSelectedSuggestion(null);
@@ -350,6 +358,11 @@ export function CardAutocomplete() {
                       <span className="block truncate text-xs text-[var(--muted)]">{suggestion.rarity}</span>
                       <span className="mt-2 flex flex-wrap gap-1">
                         <span className="inline-flex rounded-md bg-[var(--surface-hover)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">{suggestion.printLabel}</span>
+                        {suggestion.isDoubleSided ? (
+                          <span className="inline-flex rounded-md bg-violet-400/15 px-2 py-1 text-[11px] font-semibold text-violet-300">
+                            Dupla face
+                          </span>
+                        ) : null}
                         <span className="inline-flex rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-semibold text-[var(--accent)]">
                           {suggestion.marketPriceCents > 0 ? `R$ ${(suggestion.marketPriceCents / 100).toFixed(2)}` : "Sem preco"}
                         </span>
@@ -371,15 +384,27 @@ export function CardAutocomplete() {
       <div className="grid gap-4 lg:grid-cols-[150px_1fr]">
         <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
           {imageUrl ? (
-            <div className="relative aspect-[5/7] overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
-              <Image
-                src={imageUrl}
-                alt={name || "Carta selecionada"}
-                fill
-                unoptimized
-                sizes="150px"
-                className="object-cover"
-              />
+            <div className={`grid gap-2 ${backImageUrl ? "grid-cols-2 lg:grid-cols-1" : "grid-cols-1"}`}>
+              {[
+                { alt: name || "Carta selecionada", label: "Frente", url: imageUrl },
+                { alt: `${name || "Carta"} segunda face`, label: "Face 2", url: backImageUrl }
+              ].filter((item) => item.url).map((item) => (
+                <div key={item.label} className="relative aspect-[5/7] overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+                  <Image
+                    src={item.url}
+                    alt={item.alt}
+                    fill
+                    unoptimized
+                    sizes="150px"
+                    className="object-cover"
+                  />
+                  {item.label === "Face 2" ? (
+                    <span className="absolute left-2 top-2 rounded-md bg-violet-500/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
+                      Face 2
+                    </span>
+                  ) : null}
+                </div>
+              ))}
             </div>
           ) : (
             <div className="grid aspect-[5/7] place-items-center rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface)] p-4 text-center text-xs text-[var(--muted)]">
@@ -388,6 +413,9 @@ export function CardAutocomplete() {
           )}
           <p className="mt-3 truncate text-sm font-semibold text-[var(--ink)]">{name || "Nenhuma carta"}</p>
           <p className="truncate text-xs text-[var(--muted)]">{collectionName || "Colecao ainda nao definida"}</p>
+          {backImageUrl ? (
+            <p className="mt-2 rounded-md bg-violet-400/15 px-2 py-1 text-[11px] font-bold text-violet-300">Possui segunda face</p>
+          ) : null}
         </div>
 
         <div className="grid gap-4">
@@ -468,6 +496,10 @@ export function CardAutocomplete() {
                 setImageUrl(event.target.value);
                 clearSelectedPrint();
               }} required />
+              <input className={inputClass} name="backImageUrl" type="url" placeholder="URL da segunda face (opcional)" value={backImageUrl} onChange={(event) => {
+                setBackImageUrl(event.target.value);
+                clearSelectedPrint();
+              }} />
               <input className={inputClass} name="tags" placeholder="Tags separadas por virgula" value={tags} onChange={(event) => {
                 setTags(event.target.value);
                 clearSelectedPrint();
@@ -479,6 +511,8 @@ export function CardAutocomplete() {
 
       <input type="hidden" name="externalId" value={selectedExternalId} />
       <input type="hidden" name="source" value={selectedSource} />
+      <input type="hidden" name="isDoubleSided" value={backImageUrl ? "true" : "false"} />
+      <input type="hidden" name="layout" value={layout} />
       <input type="hidden" name="game" value={game} />
       <input type="hidden" name="condition" value={condition} />
       <input type="hidden" name="language" value={language} />

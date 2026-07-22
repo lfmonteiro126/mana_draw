@@ -23,6 +23,9 @@ type DbCard = {
   market_price_cents: number;
   stock: number;
   image_url: string;
+  back_image_url: string | null;
+  is_double_sided: boolean;
+  layout: string | null;
   tags: string[];
   finish: TcgCard["finish"];
 };
@@ -90,6 +93,9 @@ export function mapCard(card: DbCard): TcgCard {
     marketPriceCents: card.market_price_cents,
     stock: card.stock,
     imageUrl: card.image_url,
+    backImageUrl: card.back_image_url ?? undefined,
+    isDoubleSided: card.is_double_sided,
+    layout: card.layout ?? undefined,
     tags: card.tags,
     finish: card.finish
   };
@@ -148,6 +154,9 @@ export async function getCatalogCards({
       market_price_cents,
       stock,
       image_url,
+      back_image_url,
+      is_double_sided,
+      layout,
       tags,
       finish
     from cards
@@ -228,6 +237,9 @@ export async function getAdminCards({
       market_price_cents,
       stock,
       image_url,
+      back_image_url,
+      is_double_sided,
+      layout,
       tags,
       finish
     from cards
@@ -263,7 +275,8 @@ function dedupeCards(cards: TcgCard[]) {
       card.condition,
       card.language,
       card.finish,
-      card.imageUrl
+      card.imageUrl,
+      card.backImageUrl ?? ""
     ].join("|");
     const existing = merged.get(key);
 

@@ -731,6 +731,8 @@ function CardFlip({
   sizes: string;
 }) {
   const back = getCardBack(card.game);
+  const backImageUrl = card.backImageUrl ?? back.imageUrl;
+  const backAlt = card.backImageUrl ? `${card.name} segunda face` : `Verso de carta ${card.game}`;
 
   return (
     <div
@@ -751,16 +753,21 @@ function CardFlip({
           />
         </div>
         <div className={`absolute inset-0 overflow-hidden rounded-md border [backface-visibility:hidden] [transform:rotateY(180deg)] ${back.frame}`}>
-          {back.imageUrl ? (
+          {backImageUrl ? (
             <>
               <Image
-                src={back.imageUrl}
-                alt="Verso de carta Magic: The Gathering"
+                src={backImageUrl}
+                alt={backAlt}
                 fill
                 unoptimized
                 sizes={sizes}
                 className="object-cover"
               />
+              {card.backImageUrl ? (
+                <span className="absolute left-2 top-2 rounded-md bg-violet-500/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
+                  Face 2
+                </span>
+              ) : null}
               <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.24)_43%,transparent_57%)] opacity-0 transition-opacity duration-500 group-hover:opacity-45 group-focus:opacity-45" />
               <div className="absolute inset-0 rounded-md shadow-[inset_0_0_28px_rgba(0,0,0,0.55)]" />
             </>

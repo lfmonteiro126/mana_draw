@@ -14,6 +14,9 @@ export type TcgCard = {
   marketPriceCents: number;
   stock: number;
   imageUrl: string;
+  backImageUrl?: string;
+  isDoubleSided?: boolean;
+  layout?: string;
   tags: string[];
   finish: "Normal" | "Foil" | "Holo" | "Secret";
 };
@@ -70,6 +73,9 @@ export type CardSuggestion = {
   language: TcgCard["language"];
   marketPriceCents: number;
   imageUrl: string;
+  backImageUrl?: string;
+  isDoubleSided?: boolean;
+  layout?: string;
   tags: string[];
   finish: TcgCard["finish"];
   source: "Scryfall" | "Pokemon TCG" | "YGOPRODeck";

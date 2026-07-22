@@ -331,6 +331,9 @@ export async function createCardAction(formData: FormData) {
   const language = readString(formData, "language");
   const finish = readString(formData, "finish");
   const imageUrl = readString(formData, "imageUrl");
+  const backImageUrl = readString(formData, "backImageUrl");
+  const isDoubleSided = readString(formData, "isDoubleSided") === "true" || Boolean(backImageUrl);
+  const layout = readString(formData, "layout");
   const tags = readString(formData, "tags")
     .split(",")
     .map((tag) => tag.trim())
@@ -394,6 +397,9 @@ export async function createCardAction(formData: FormData) {
         stock = stock + ${stock},
         price_cents = ${priceCents},
         market_price_cents = ${marketPriceCents},
+        back_image_url = ${backImageUrl || null},
+        is_double_sided = ${isDoubleSided},
+        layout = ${layout || null},
         tags = ${tags},
         featured = ${featured},
         active = true,
@@ -413,6 +419,9 @@ export async function createCardAction(formData: FormData) {
       market_price_cents,
       stock,
       image_url,
+      back_image_url,
+      is_double_sided,
+      layout,
       tags,
       finish,
       featured
@@ -428,6 +437,9 @@ export async function createCardAction(formData: FormData) {
       ${marketPriceCents},
       ${stock},
       ${imageUrl},
+      ${backImageUrl || null},
+      ${isDoubleSided},
+      ${layout || null},
       ${tags},
       ${finish},
       ${featured}

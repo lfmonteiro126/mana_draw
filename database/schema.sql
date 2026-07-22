@@ -32,6 +32,9 @@ create table if not exists cards (
   market_price_cents integer not null check (market_price_cents >= 0),
   stock integer not null default 0 check (stock >= 0),
   image_url text not null,
+  back_image_url text,
+  is_double_sided boolean not null default false,
+  layout text,
   tags text[] not null default '{}',
   finish card_finish not null default 'Normal',
   active boolean not null default true,
@@ -44,7 +47,10 @@ create index if not exists cards_game_idx on cards (game);
 create index if not exists cards_featured_idx on cards (featured, updated_at desc);
 
 alter table cards
-  add column if not exists search_vector tsvector;
+  add column if not exists search_vector tsvector,
+  add column if not exists back_image_url text,
+  add column if not exists is_double_sided boolean not null default false,
+  add column if not exists layout text;
 
 create or replace function cards_search_vector_update()
 returns trigger

@@ -19,6 +19,7 @@ type ScryfallCard = {
   image_uris?: { normal?: string; large?: string };
   card_faces?: Array<{ image_uris?: { normal?: string; large?: string } }>;
   finishes?: string[];
+  layout?: string;
   type_line?: string;
 };
 
@@ -109,6 +110,16 @@ async function lookupMagic(query: string): Promise<CardSuggestion[]> {
     .slice(0, 12)
     .map((card) => {
       const price = Number(card.prices?.usd_foil ?? card.prices?.usd ?? 0);
+      const frontImageUrl =
+        card.image_uris?.normal ??
+        card.image_uris?.large ??
+        card.card_faces?.[0]?.image_uris?.normal ??
+        card.card_faces?.[0]?.image_uris?.large ??
+        "";
+      const backImageUrl =
+        card.card_faces?.[1]?.image_uris?.normal ??
+        card.card_faces?.[1]?.image_uris?.large ??
+        "";
       const printLabel = compact([
         card.set?.toUpperCase(),
         card.collector_number,
@@ -124,13 +135,11 @@ async function lookupMagic(query: string): Promise<CardSuggestion[]> {
         rarity: titleCase(card.rarity ?? "Unknown"),
         language: mapLanguage(card.lang),
         marketPriceCents: cents(price),
-        imageUrl:
-          card.image_uris?.normal ??
-          card.image_uris?.large ??
-          card.card_faces?.[0]?.image_uris?.normal ??
-          card.card_faces?.[0]?.image_uris?.large ??
-          "",
-        tags: compact(["Magic", card.set, card.collector_number, card.type_line, card.rarity]),
+        imageUrl: frontImageUrl,
+        backImageUrl,
+        isDoubleSided: Boolean(backImageUrl),
+        layout: card.layout,
+        tags: compact(["Magic", card.set, card.collector_number, card.type_line, card.rarity, card.layout]),
         finish: card.finishes?.includes("foil") ? "Foil" : "Normal",
         source: "Scryfall"
       } satisfies CardSuggestion;
