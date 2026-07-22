@@ -69,7 +69,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ suggestions: [] });
   }
 
-  const cacheKey = `prints:${normalizeQuery(query)}`;
+  const cacheKey = `prints:v2:${normalizeQuery(query)}`;
   const cached = await getCachedCardSuggestions({ game, query: cacheKey });
   if (cached) return NextResponse.json({ suggestions: cached });
 
