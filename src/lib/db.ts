@@ -141,49 +141,53 @@ export async function getCatalogCards({
   const sql = getSql();
   if (!sql) return fallbackCards;
 
-  const rows = await sql`
-    select
-      id,
-      name,
-      game,
-      set_name,
-      rarity,
-      condition,
-      language,
-      price_cents,
-      market_price_cents,
-      stock,
-      image_url,
-      back_image_url,
-      is_double_sided,
-      layout,
-      tags,
-      finish
-    from cards
-    where
-      active = true
-      and stock > 0
-      and (${game} = 'Todos' or game::text = ${game})
-      and (
-        ${normalizedQuery} = ''
-        or search_vector @@ websearch_to_tsquery('simple', ${normalizedQuery})
-      )
-    order by
-      case when ${sort} = 'price-asc' then price_cents end asc,
-      case when ${sort} = 'price-desc' then price_cents end desc,
-      case when ${sort} = 'relevance' and ${normalizedQuery} <> ''
-        then ts_rank(
-          search_vector,
-          websearch_to_tsquery('simple', ${normalizedQuery})
+  try {
+    const rows = await sql`
+      select
+        id,
+        name,
+        game,
+        set_name,
+        rarity,
+        condition,
+        language,
+        price_cents,
+        market_price_cents,
+        stock,
+        image_url,
+        back_image_url,
+        is_double_sided,
+        layout,
+        tags,
+        finish
+      from cards
+      where
+        active = true
+        and stock > 0
+        and (${game} = 'Todos' or game::text = ${game})
+        and (
+          ${normalizedQuery} = ''
+          or search_vector @@ websearch_to_tsquery('simple', ${normalizedQuery})
         )
-      end desc,
-      featured desc,
-      updated_at desc
-    limit 24
-  `;
+      order by
+        case when ${sort} = 'price-asc' then price_cents end asc,
+        case when ${sort} = 'price-desc' then price_cents end desc,
+        case when ${sort} = 'relevance' and ${normalizedQuery} <> ''
+          then ts_rank(
+            search_vector,
+            websearch_to_tsquery('simple', ${normalizedQuery})
+          )
+        end desc,
+        featured desc,
+        updated_at desc
+      limit 24
+    `;
 
-  const cards = (rows as DbCard[]).map(mapCard);
-  return cards;
+    return (rows as DbCard[]).map(mapCard);
+  } catch (error) {
+    if (!isMissingDoubleSideColumns(error)) throw error;
+    return getLegacyCatalogCards({ game, normalizedQuery, sort });
+  }
 }
 
 export async function getFeaturedCards(): Promise<TcgCard[]> {
@@ -224,6 +228,62 @@ export async function getAdminCards({
   const sql = getSql();
   if (!sql) return fallbackCards;
 
+  try {
+    const rows = await sql`
+      select
+        id,
+        name,
+        game,
+        set_name,
+        rarity,
+        condition,
+        language,
+        price_cents,
+        market_price_cents,
+        stock,
+        image_url,
+        back_image_url,
+        is_double_sided,
+        layout,
+        tags,
+        finish
+      from cards
+      where
+        active = true
+        and
+        (${game} = 'Todos' or game::text = ${game})
+        and (
+          ${stock} = 'all'
+          or (${stock} = 'low' and stock > 0 and stock <= 3)
+          or (${stock} = 'out' and stock = 0)
+        )
+        and (
+          ${normalizedQuery} = ''
+          or search_vector @@ websearch_to_tsquery('simple', ${normalizedQuery})
+        )
+      order by updated_at desc
+      limit ${normalizedLimit}
+    `;
+
+    return dedupeCards((rows as DbCard[]).map(mapCard));
+  } catch (error) {
+    if (!isMissingDoubleSideColumns(error)) throw error;
+    return getLegacyAdminCards({ game, normalizedLimit, normalizedQuery, stock });
+  }
+}
+
+async function getLegacyCatalogCards({
+  game,
+  normalizedQuery,
+  sort
+}: {
+  game: FilterGame;
+  normalizedQuery: string;
+  sort: SortMode;
+}) {
+  const sql = getSql();
+  if (!sql) return fallbackCards;
+
   const rows = await sql`
     select
       id,
@@ -237,9 +297,63 @@ export async function getAdminCards({
       market_price_cents,
       stock,
       image_url,
-      back_image_url,
-      is_double_sided,
-      layout,
+      tags,
+      finish
+    from cards
+    where
+      active = true
+      and stock > 0
+      and (${game} = 'Todos' or game::text = ${game})
+      and (
+        ${normalizedQuery} = ''
+        or search_vector @@ websearch_to_tsquery('simple', ${normalizedQuery})
+      )
+    order by
+      case when ${sort} = 'price-asc' then price_cents end asc,
+      case when ${sort} = 'price-desc' then price_cents end desc,
+      case when ${sort} = 'relevance' and ${normalizedQuery} <> ''
+        then ts_rank(
+          search_vector,
+          websearch_to_tsquery('simple', ${normalizedQuery})
+        )
+      end desc,
+      featured desc,
+      updated_at desc
+    limit 24
+  `;
+
+  return (rows as Array<Omit<DbCard, "back_image_url" | "is_double_sided" | "layout">>)
+    .map(withoutDoubleSideColumns)
+    .map(mapCard);
+}
+
+async function getLegacyAdminCards({
+  game,
+  normalizedLimit,
+  normalizedQuery,
+  stock
+}: {
+  game: FilterGame;
+  normalizedLimit: number;
+  normalizedQuery: string;
+  stock: "all" | "low" | "out";
+}) {
+  const sql = getSql();
+  if (!sql) return fallbackCards;
+
+  const rows = await sql`
+    select
+      id,
+      name,
+      game,
+      set_name,
+      rarity,
+      condition,
+      language,
+      price_cents,
+      market_price_cents,
+      stock,
+      image_url,
       tags,
       finish
     from cards
@@ -260,7 +374,30 @@ export async function getAdminCards({
     limit ${normalizedLimit}
   `;
 
-  return dedupeCards((rows as DbCard[]).map(mapCard));
+  const cards = (rows as Array<Omit<DbCard, "back_image_url" | "is_double_sided" | "layout">>)
+    .map(withoutDoubleSideColumns)
+    .map(mapCard);
+  return dedupeCards(cards);
+}
+
+function withoutDoubleSideColumns(
+  card: Omit<DbCard, "back_image_url" | "is_double_sided" | "layout">
+): DbCard {
+  return {
+    ...card,
+    back_image_url: null,
+    is_double_sided: false,
+    layout: null
+  };
+}
+
+function isMissingDoubleSideColumns(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("back_image_url") ||
+    message.includes("is_double_sided") ||
+    message.includes("layout")
+  );
 }
 
 function dedupeCards(cards: TcgCard[]) {
