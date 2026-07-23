@@ -76,6 +76,7 @@ export type AnalyzedCard = {
   quantity: number;
   section: "commander" | "main";
   cmc: number;
+  manaCost: string;
   typeLine: string;
   oracleText: string;
   colorIdentity: string[];

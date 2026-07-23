@@ -151,18 +151,73 @@ button {
     0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-.deck-stack-card {
-  transition:
-    transform 0.18s ease,
-    z-index 0s;
+.deck-app {
+  --deck-rail: #0a0f18;
+  --deck-panel: #101826;
+  --deck-panel-2: #131c2b;
+  --deck-stroke: rgba(148, 163, 184, 0.14);
+  --deck-glow: rgba(20, 184, 166, 0.18);
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(20, 184, 166, 0.08), transparent 55%),
+    radial-gradient(700px 380px at 90% 0%, rgba(242, 169, 59, 0.05), transparent 50%),
+    linear-gradient(180deg, #070a10 0%, #0a1018 45%, #070a10 100%);
 }
 
-.deck-stack-card:hover,
-.deck-stack-card:focus-visible {
-  transform: translateY(-10px) scale(1.02);
-  z-index: 40 !important;
+.deck-stack-row {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.deck-stack-row:hover {
+  transform: translateX(2px);
+}
+
+.deck-preview-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 42%,
+    transparent 58%
+  );
 }
 
 .deck-status-bar {
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(90deg, #0d3d38 0%, #0f766e 48%, #115e59 100%);
+  box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.4);
+}
+
+body.deck-lab {
+  padding-bottom: 0;
+}
+
+.deck-mobile-dock {
+  box-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 36px rgba(0, 0, 0, 0.45);
+}
+
+.deck-stacks-scroll {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.deck-stack-pane {
+  scroll-snap-align: start;
+}
+
+@keyframes deck-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.deck-rise {
+  animation: deck-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

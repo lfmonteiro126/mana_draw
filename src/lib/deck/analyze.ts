@@ -208,6 +208,7 @@ function toAnalyzedCard(
     quantity,
     section,
     cmc: card.cmc ?? 0,
+    manaCost: card.mana_cost ?? card.card_faces?.[0]?.mana_cost ?? "",
     typeLine,
     oracleText,
     colorIdentity: card.color_identity ?? [],
