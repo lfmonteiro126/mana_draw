@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Swords,
   Truck,
   UserRound,
   X
@@ -194,6 +195,9 @@ export function Storefront({
             <a className="transition hover:text-[var(--ink)]" href="#catalogo">
               Catalogo
             </a>
+            <Link className="transition hover:text-[var(--ink)]" href="/analisar-deck">
+              Analisar deck
+            </Link>
             <a className="transition hover:text-[var(--ink)]" href="#venda">
               Venda suas cartas
             </a>
@@ -321,13 +325,13 @@ export function Storefront({
             </button>
           </div>
 
-          <a
-            href="#operacao"
+          <Link
+            href="/analisar-deck"
             className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
           >
-            <ShieldCheck size={20} strokeWidth={1.75} />
-            <span>Loja</span>
-          </a>
+            <Swords size={20} strokeWidth={1.75} />
+            <span>Deck</span>
+          </Link>
 
           {currentUser ? (
             <Link
@@ -386,7 +390,14 @@ export function Storefront({
               Cotar colecao
             </a>
           </div>
-          <a className="mt-3 text-sm font-semibold text-[var(--accent)] sm:hidden" href="#venda">
+          <Link
+            href="/analisar-deck"
+            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]"
+          >
+            <Swords size={15} />
+            Analisar deck Commander
+          </Link>
+          <a className="mt-2 text-sm font-semibold text-[var(--accent)] sm:hidden" href="#venda">
             Tambem compramos cartas de player, bulk e colecoes
           </a>
           <div className="mt-5 hidden grid-cols-3 gap-2 sm:grid sm:gap-3">
@@ -616,6 +627,7 @@ export function Storefront({
         <p>Mana Draw TCG Market</p>
         <div className="flex flex-wrap gap-4">
           <a className="transition hover:text-[var(--ink)]" href="#catalogo">Catalogo</a>
+          <Link className="transition hover:text-[var(--ink)]" href="/analisar-deck">Analisar deck</Link>
           <a className="transition hover:text-[var(--ink)]" href="#venda">Buylist</a>
           <a className="transition hover:text-[var(--ink)]" href="#operacao">Operacao</a>
         </div>

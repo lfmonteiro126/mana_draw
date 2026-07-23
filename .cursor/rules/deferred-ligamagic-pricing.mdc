@@ -1,0 +1,12 @@
+---
+description: Preços BRL LigaMagic/Maxun estão adiados — não implementar sem pedido explícito
+alwaysApply: false
+---
+
+# Deferred: LigaMagic BRL pricing
+
+Do **not** implement LigaMagic/Maxun market-price integration unless the user explicitly asks to resume it.
+
+Canonical plan: `docs/deferred/ligamagic-br-pricing.md`
+
+Locked MVP rule (summary): only active Magic stock; `priceMid` → `market_price_cents`; featured TTL 24h / others 72h; daily cap 150; ≤6/min; 1 card/request; 8–15s jitter; circuit breaker on 429/CAPTCHA; no full-catalog scrape; no scrape on user request.
