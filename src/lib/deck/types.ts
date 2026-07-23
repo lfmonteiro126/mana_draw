@@ -129,6 +129,7 @@ export type DeckStrength = {
 export type DeckAnalysis = {
   commander: AnalyzedCard | null;
   partners: AnalyzedCard[];
+  cards: AnalyzedCard[];
   colorIdentity: string[];
   totalCards: number;
   maindeckCount: number;

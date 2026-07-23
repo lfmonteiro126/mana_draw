@@ -172,6 +172,7 @@ export async function analyzeCommanderDeck(input: {
   return {
     commander,
     partners,
+    cards: analyzed,
     colorIdentity,
     totalCards,
     maindeckCount,

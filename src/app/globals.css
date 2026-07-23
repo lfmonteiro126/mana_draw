@@ -150,3 +150,19 @@ button {
     0 8px 24px rgba(20, 184, 166, 0.35),
     0 2px 8px rgba(0, 0, 0, 0.35);
 }
+
+.deck-stack-card {
+  transition:
+    transform 0.18s ease,
+    z-index 0s;
+}
+
+.deck-stack-card:hover,
+.deck-stack-card:focus-visible {
+  transform: translateY(-10px) scale(1.02);
+  z-index: 40 !important;
+}
+
+.deck-status-bar {
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+}
