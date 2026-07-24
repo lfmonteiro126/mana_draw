@@ -27,6 +27,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createOrderAction, logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { BuylistForm } from "@/components/buylist-form";
@@ -503,7 +504,7 @@ export function Storefront({
                   key={card.id}
                   className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:shadow-md active:scale-[0.995] sm:grid-cols-[116px_1fr] sm:gap-4"
                 >
-                  <CardFlip card={card} sizes="(min-width: 640px) 116px, 92px" />
+                  <CardThumb card={card} sizes="(min-width: 640px) 116px, 92px" />
                   <div className="min-w-0 flex flex-col justify-between flex-1">
                     <div>
                       <div className="mb-1.5 flex items-start justify-between gap-2">
@@ -820,7 +821,7 @@ function WeeklyDropPanel({ cards }: { cards: TcgCard[] }) {
       </div>
       <div className="grid grid-cols-2 gap-3 bg-[var(--background)] p-4">
         {cards.map((card, index) => (
-          <CardFlip
+          <CardThumb
             key={card.id}
             card={card}
             priority={index === 0}
@@ -840,7 +841,7 @@ function WeeklyDropPanel({ cards }: { cards: TcgCard[] }) {
   );
 }
 
-function CardFlip({
+function CardThumb({
   card,
   priority = false,
   sizes
@@ -849,159 +850,121 @@ function CardFlip({
   priority?: boolean;
   sizes: string;
 }) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [zoomSide, setZoomSide] = useState<"left" | "right">("right");
-  const back = getCardBack(card.game);
+  const rootRef = useRef<HTMLButtonElement>(null);
+  const [preview, setPreview] = useState<{ top: number; left: number } | null>(null);
+  const [face, setFace] = useState<"front" | "back">("front");
+  const [mounted, setMounted] = useState(false);
   const secondFaceUrl = resolveCardBackImageUrl(card);
   const hasSecondFace = cardHasSecondFace(card);
-  const flipBackUrl = secondFaceUrl ?? back.imageUrl;
-  const backAlt = hasSecondFace ? `${card.name} segunda face` : `Verso de carta ${card.game}`;
-  const zoomUrls = [card.imageUrl, secondFaceUrl].filter((url): url is string => Boolean(url));
+  const thumbUrl = face === "back" && secondFaceUrl ? secondFaceUrl : card.imageUrl;
 
-  function placeZoom() {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  function openPreview() {
     const el = rootRef.current;
-    if (!el) return;
+    if (!el || window.matchMedia("(max-width: 767px)").matches) return;
+
     const rect = el.getBoundingClientRect();
-    const zoomWidth = (hasSecondFace ? 2 : 1) * 248 + 24;
-    const spaceRight = window.innerWidth - rect.right;
-    setZoomSide(spaceRight < zoomWidth + 16 ? "left" : "right");
+    const panelWidth = (hasSecondFace ? 2 : 1) * 210 + 20;
+    const panelHeight = 310;
+    const preferRight = window.innerWidth - rect.right >= panelWidth + 16;
+    const left = preferRight
+      ? Math.min(rect.right + 12, window.innerWidth - panelWidth - 12)
+      : Math.max(12, rect.left - panelWidth - 12);
+    const top = Math.max(12, Math.min(rect.top, window.innerHeight - panelHeight - 12));
+    setPreview({ top, left });
+  }
+
+  function closePreview() {
+    setPreview(null);
+    setFace("front");
+  }
+
+  function toggleFace() {
+    if (!hasSecondFace) return;
+    setFace((current) => (current === "front" ? "back" : "front"));
   }
 
   return (
-    <div
-      ref={rootRef}
-      className="group relative z-0 aspect-[5/7] w-full shrink-0 overflow-visible [perspective:1200px] hover:z-40 focus-within:z-40"
-      tabIndex={0}
-      aria-label={
-        hasSecondFace
-          ? `${card.name}. Passe o mouse para ver a segunda face e ampliar.`
-          : `${card.name}. Passe o mouse para ampliar e ver o verso.`
-      }
-      onMouseEnter={placeZoom}
-      onFocus={placeZoom}
-    >
-      <div className="absolute inset-0 rounded-md shadow-[0_18px_42px_rgba(15,23,42,0.2)] transition-transform duration-500 ease-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus:[transform:rotateY(180deg)]">
-        <div className="absolute inset-0 overflow-hidden rounded-md border border-[var(--line)] bg-stone-800 [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
-          <Image
-            src={card.imageUrl}
-            alt={card.name}
-            fill
-            unoptimized
-            sizes={sizes}
-            className="object-cover"
-            priority={priority}
-          />
-        </div>
-
-        <div
-          className={`absolute inset-0 overflow-hidden rounded-md border [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] ${
-            hasSecondFace ? "border-[var(--line)] bg-stone-900" : back.frame
-          }`}
-        >
-          {flipBackUrl ? (
-            <>
-              <Image
-                src={flipBackUrl}
-                alt={backAlt}
-                fill
-                unoptimized
-                sizes={sizes}
-                className="object-cover"
-              />
-              {hasSecondFace ? (
-                <span className="absolute left-2 top-2 rounded-md bg-violet-500/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
-                  Face 2
-                </span>
-              ) : (
-                <>
-                  <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.24)_43%,transparent_57%)] opacity-0 transition-opacity duration-500 group-hover:opacity-35 group-focus:opacity-35" />
-                  <div className="absolute inset-0 rounded-md shadow-[inset_0_0_28px_rgba(0,0,0,0.45)]" />
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              <div className={`absolute inset-2 rounded-[6px] border ${back.inner}`} />
-              <div className="absolute inset-[13px] rounded-[5px] border border-white/10 bg-black/25" />
-              <div className={`absolute inset-[22px] rounded-[4px] border ${back.inner}`} />
-              <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-2 text-[9px] font-bold uppercase text-white/65">
-                <span>{card.game}</span>
-                <span>{card.finish}</span>
-              </div>
-              <div className="absolute inset-0 grid place-items-center p-4 text-center">
-                <div className="relative grid h-[46%] w-[64%] place-items-center rounded-full border border-white/15 bg-black/20 shadow-2xl">
-                  <div className={`absolute inset-2 rounded-full border ${back.inner}`} />
-                  <span className={`grid h-10 w-10 place-items-center rounded-md text-xs font-bold text-white shadow-lg ${back.badge}`}>
-                    MD
-                  </span>
-                </div>
-              </div>
-              <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-2 text-[9px] font-semibold uppercase text-white/55">
-                <span>Mana Draw</span>
-                <span>{card.language}</span>
-              </div>
-              <div className={`absolute inset-0 opacity-35 ${back.sheen}`} />
-            </>
-          )}
-        </div>
-      </div>
-
-      <div
-        className={`pointer-events-none absolute top-1/2 z-50 hidden -translate-y-1/2 scale-95 gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/20 transition duration-200 delay-150 group-hover:scale-100 group-hover:opacity-100 group-focus:scale-100 group-focus:opacity-100 md:grid ${
-          hasSecondFace ? "grid-cols-2" : "grid-cols-1"
-        } ${zoomSide === "right" ? "left-full ml-3" : "right-full mr-3"}`}
+    <>
+      <button
+        ref={rootRef}
+        type="button"
+        className="relative aspect-[5/7] w-full shrink-0 overflow-hidden rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] outline-none transition hover:border-[var(--accent)]/50 hover:shadow-[0_6px_16px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
+        aria-label={
+          hasSecondFace
+            ? `${card.name}. Passe o mouse para ampliar as duas faces. Toque para alternar.`
+            : `${card.name}. Passe o mouse para ampliar.`
+        }
+        onMouseEnter={openPreview}
+        onMouseLeave={closePreview}
+        onFocus={openPreview}
+        onBlur={closePreview}
+        onClick={toggleFace}
       >
-        {zoomUrls.map((url, index) => (
-          <div
-            key={`${card.id}-zoom-${index}`}
-            className="relative aspect-[5/7] w-[min(240px,34vw)] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]"
-          >
-            <Image
-              src={url}
-              alt={index === 0 ? `${card.name} frente ampliada` : `${card.name} segunda face ampliada`}
-              fill
-              unoptimized
-              sizes="240px"
-              className="object-cover"
-            />
-            {index === 1 ? (
-              <span className="absolute left-2 top-2 rounded-md bg-violet-500/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
-                Face 2
-              </span>
-            ) : null}
-          </div>
-        ))}
-      </div>
+        <Image
+          src={thumbUrl}
+          alt={card.name}
+          fill
+          unoptimized
+          sizes={sizes}
+          className="object-cover"
+          priority={priority}
+        />
+        {hasSecondFace ? (
+          <span className="absolute left-1.5 top-1.5 rounded bg-violet-600/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+            {face === "back" ? "Face 2" : "2 faces"}
+          </span>
+        ) : null}
+      </button>
+
+      {mounted && preview
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed z-[120] hidden gap-2 rounded-xl border border-[var(--line)] bg-white p-2 shadow-[0_24px_60px_rgba(15,23,42,0.22)] md:flex"
+              style={{ top: preview.top, left: preview.left }}
+              role="presentation"
+            >
+              <PreviewFace
+                url={card.imageUrl}
+                label={hasSecondFace ? "Face 1" : undefined}
+                alt={`${card.name} frente ampliada`}
+              />
+              {secondFaceUrl ? (
+                <PreviewFace
+                  url={secondFaceUrl}
+                  label="Face 2"
+                  alt={`${card.name} segunda face ampliada`}
+                />
+              ) : null}
+            </div>,
+            document.body
+          )
+        : null}
+    </>
+  );
+}
+
+function PreviewFace({
+  url,
+  label,
+  alt
+}: {
+  url: string;
+  label?: string;
+  alt: string;
+}) {
+  return (
+    <div className="relative aspect-[5/7] w-[200px] overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface-soft)]">
+      <Image src={url} alt={alt} fill unoptimized sizes="200px" className="object-cover" />
+      {label ? (
+        <span className="absolute left-2 top-2 rounded-md bg-slate-900/80 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+          {label}
+        </span>
+      ) : null}
     </div>
   );
 }
 
-function getCardBack(game: TcgCard["game"]) {
-  if (game === "Magic") {
-    return {
-      badge: "bg-violet-500",
-      frame: "border-black bg-black",
-      imageUrl: "/card-backs/magic-back.png",
-      inner: "border-violet-300/20",
-      sheen: "bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_58%)]"
-    };
-  }
-
-  if (game === "Pokemon") {
-    return {
-      badge: "bg-amber-500",
-      frame: "border-black bg-black",
-      imageUrl: "/card-backs/pokemon-back.png",
-      inner: "border-amber-200/20",
-      sheen: "bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.2)_42%,transparent_58%)]"
-    };
-  }
-
-  return {
-    badge: "bg-cyan-500",
-    frame: "border-black bg-black",
-    imageUrl: "/card-backs/yugioh-back.png",
-    inner: "border-cyan-200/20",
-    sheen: "bg-[linear-gradient(135deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_58%)]"
-  };
-}
