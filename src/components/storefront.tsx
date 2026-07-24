@@ -271,13 +271,13 @@ export function Storefront({
           cartOpen || authOpen ? "pointer-events-none opacity-0 translate-y-3" : "opacity-100 translate-y-0"
         } transition-all duration-300 ease-out`}
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
-        aria-label="Navegacao principal"
+        aria-label="Navegação principal"
       >
-        <div className="mobile-dock animate-dock-in mx-auto grid h-[3.75rem] max-w-md grid-cols-5 items-center rounded-2xl border border-[var(--line)] bg-white/95 px-1 backdrop-blur-2xl">
+        <div className="mobile-dock animate-dock-in mx-auto grid h-[3.75rem] max-w-md grid-cols-5 items-center rounded-[var(--radius-sheet)] border border-[var(--line)] bg-white/95 px-1 backdrop-blur-2xl">
           <a
             href="#catalogo"
             aria-current={activeSection === "catalogo" ? "page" : undefined}
-            className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
+            className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
               activeSection === "catalogo"
                 ? "text-[var(--accent)]"
                 : "text-[var(--muted)] hover:text-[var(--ink)]"
@@ -293,7 +293,7 @@ export function Storefront({
           <a
             href="#venda"
             aria-current={activeSection === "venda" ? "page" : undefined}
-            className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
+            className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
               activeSection === "venda"
                 ? "text-[var(--accent)]"
                 : "text-[var(--muted)] hover:text-[var(--ink)]"
@@ -311,7 +311,7 @@ export function Storefront({
               type="button"
               aria-label={`Abrir carrinho${cartCount > 0 ? `, ${cartCount} itens` : ""}`}
               onClick={() => setCartOpen(true)}
-              className="relative -mt-5 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-white transition-transform duration-200 mobile-dock-cart active:scale-95 hover:bg-[var(--accent-strong)]"
+              className="relative -mt-5 flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.05rem] bg-[var(--accent)] text-white transition-transform duration-200 mobile-dock-cart active:scale-95 hover:bg-[var(--accent-strong)]"
             >
               <ShoppingBag size={22} strokeWidth={2} />
               {cartCount > 0 && (
@@ -327,7 +327,7 @@ export function Storefront({
 
           <Link
             href="/analisar-deck"
-            className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
+            className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
           >
             <Swords size={20} strokeWidth={1.75} />
             <span>Deck</span>
@@ -338,7 +338,7 @@ export function Storefront({
               href="/conta"
               onClick={() => setActiveSection("conta")}
               aria-current={activeSection === "conta" ? "page" : undefined}
-              className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
+              className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
                 activeSection === "conta"
                   ? "text-[var(--accent)]"
                   : "text-[var(--muted)] hover:text-[var(--ink)]"
@@ -354,7 +354,7 @@ export function Storefront({
             <button
               type="button"
               onClick={() => setAuthOpen(true)}
-              className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
+              className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
             >
               <UserRound size={20} strokeWidth={1.75} />
               <span>Entrar</span>

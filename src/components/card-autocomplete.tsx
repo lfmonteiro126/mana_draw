@@ -23,7 +23,7 @@ const finishes: TcgCard["finish"][] = ["Normal", "Foil", "Holo", "Secret"];
 const presetKey = "mana-draw-card-catalog-presets";
 
 const inputClass =
-  "h-11 w-full min-w-0 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]";
+  "field-input h-11 w-full min-w-0 rounded-[var(--radius-control)] px-3 text-sm placeholder:text-[var(--muted)]";
 const labelClass = "grid gap-1 text-sm font-medium text-[var(--muted)]";
 
 type PriceMode = "market" | "under" | "over" | "manual";
@@ -278,7 +278,7 @@ export function CardAutocomplete() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
           <input
-            className="h-12 w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] pl-10 pr-10 text-base text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
+            className="field-input h-12 w-full rounded-[var(--radius-control)] pl-10 pr-10 text-base placeholder:text-[var(--muted)]"
             name="name"
             placeholder="Escaneie/digite o nome da carta"
             value={name}

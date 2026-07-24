@@ -59,8 +59,8 @@ const tabLabels: Record<AdminTab, { title: string; description: string }> = {
     description: "Resumo operacional de estoque, pedidos e cotações."
   },
   inventory: {
-    title: "Inventario",
-    description: "Busque, filtre e ajuste preco, estoque e condicao das cartas."
+    title: "Inventário",
+    description: "Busque, filtre e ajuste preço, estoque e condição das cartas."
   },
   "new-card": {
     title: "Nova carta",
@@ -76,15 +76,15 @@ const tabLabels: Record<AdminTab, { title: string; description: string }> = {
   },
   customers: {
     title: "Clientes",
-    description: "Veja contas de compradores, recorrencia de compra e cotações vinculadas."
+    description: "Veja contas de compradores, recorrência de compra e cotações vinculadas."
   },
   "internal-users": {
-    title: "Usuarios internos",
-    description: "Gerencie a visibilidade de admins e contas internas da operacao."
+    title: "Usuários internos",
+    description: "Gerencie a visibilidade de admins e contas internas da operação."
   },
   reports: {
-    title: "Relatorios",
-    description: "Indicadores para decidir reposicao, precificacao e prioridade."
+    title: "Relatórios",
+    description: "Indicadores para decidir reposição, precificação e prioridade."
   },
   settings: {
     title: "Ajustes",
@@ -113,10 +113,11 @@ export default async function AdminPage({
           <Link className="text-sm font-semibold text-[var(--accent)]" href="/">
             Voltar para loja
           </Link>
-          <div className="card-shadow mt-8 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-6">
-            <h1 className="text-3xl font-semibold">Admin Mana Draw</h1>
+          <div className="surface-card mt-8 p-6 sm:p-8">
+            <p className="text-3xl font-semibold tracking-tight">Mana Draw</p>
+            <h1 className="mt-2 text-xl font-medium text-[var(--ink)]">Acesso admin</h1>
             <p className="mt-2 text-[var(--muted)]">
-              Entre com uma conta admin para gerenciar estoque, precos, pedidos e cotações.
+              Entre com uma conta admin para gerenciar estoque, preços, pedidos e cotações.
             </p>
             <div className="mt-6">
               <AuthPanel redirectTo="/admin" />
@@ -159,16 +160,16 @@ export default async function AdminPage({
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         <aside className="hidden border-r border-[var(--line)] bg-white/95 backdrop-blur-xl lg:flex lg:flex-col">
           <div className="flex h-[76px] items-center gap-3 border-b border-[var(--line)] px-6">
-            <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--accent)] text-white">
-              <CircleDollarSign size={22} />
+            <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white shadow-[0_8px_18px_rgba(15,159,144,0.28)]">
+              MD
             </span>
             <div>
-              <p className="text-lg font-semibold">Mana Draw</p>
+              <p className="text-lg font-semibold tracking-tight">Mana Draw</p>
               <p className="text-xs text-[var(--muted)]">TCG Admin</p>
             </div>
           </div>
 
-          <nav className="flex-1 space-y-2 px-4 py-6 text-sm font-medium text-[var(--muted)]">
+          <nav className="flex-1 space-y-1.5 px-4 py-6 text-sm font-medium text-[var(--muted)]">
             {navItems.map((item) => (
               <NavItem key={item.tab} active={activeTab === item.tab} badge={item.badge} href={`/admin?tab=${item.tab}`} icon={item.icon} label={item.label} />
             ))}
@@ -176,7 +177,7 @@ export default async function AdminPage({
 
           <div className="border-t border-[var(--line)] p-4">
             <Link
-              className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
+              className="flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-3 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
               href="/"
             >
               <ChevronLeft size={18} />
@@ -190,10 +191,10 @@ export default async function AdminPage({
             <div className="flex min-h-[76px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-7">
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-semibold sm:text-2xl">{page.title}</h1>
+                  <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
                   <span className="hidden items-center gap-2 text-sm text-[var(--muted)] sm:inline-flex">
-                    <Sparkles size={15} />
-                    Operacao TCG
+                    <Sparkles size={15} className="text-[var(--accent)]" />
+                    Operação TCG
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-[var(--muted)]">{page.description}</p>
@@ -206,17 +207,21 @@ export default async function AdminPage({
                   <input className={inputClassWithIcon} name="query" placeholder="Busca global" defaultValue={query} />
                 </form>
                 <Link
-                  className="hidden h-11 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--accent)] sm:inline-flex"
+                  className="hidden h-11 items-center justify-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] sm:inline-flex"
                   href="/"
                 >
                   Loja
                 </Link>
-                <Link className="relative grid h-11 w-11 place-items-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]" href="/admin?tab=buylists" aria-label="Notificacoes">
+                <Link
+                  className="relative grid h-11 w-11 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-soft)]"
+                  href="/admin?tab=buylists"
+                  aria-label="Notificações"
+                >
                   <Bell size={18} />
                   {openSubmissions.length > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />}
                 </Link>
-                <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
-                  NM
+                <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white">
+                  MD
                 </span>
               </div>
             </div>
@@ -225,10 +230,8 @@ export default async function AdminPage({
               {navItems.map((item) => (
                 <Link
                   key={item.tab}
-                  className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition ${
-                    activeTab === item.tab
-                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
+                  className={`chip inline-flex h-10 shrink-0 items-center gap-2 px-3 text-sm ${
+                    activeTab === item.tab ? "chip-active" : "text-[var(--muted)]"
                   }`}
                   href={`/admin?tab=${item.tab}`}
                 >
@@ -252,7 +255,7 @@ export default async function AdminPage({
 
           <div className="px-4 py-6 sm:px-6 lg:px-7">
             {(notice || error) && (
-              <p className={`mb-5 rounded-lg border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-700" : "border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent-strong)]"}`}>
+              <p className={`mb-5 rounded-[var(--radius-control)] border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-700" : "border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent-strong)]"}`}>
                 {messageFor(error || notice)}
               </p>
             )}
@@ -324,23 +327,23 @@ function OverviewTab({
 }) {
   return (
     <div className="grid gap-6">
-      <section className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+      <section className="surface-card overflow-hidden">
         <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)]">
+              <span className="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)]">
                 <Diamond size={14} />
                 Painel executivo
               </span>
-              <span className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)]">
+              <span className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)]">
                 {cards.length} prints ativos
               </span>
             </div>
-            <h2 className="mt-5 max-w-3xl text-2xl font-semibold leading-tight text-[var(--ink)] sm:text-3xl">
-              Operacao de estoque, compra e venda em uma leitura rapida.
+            <h2 className="mt-5 max-w-3xl text-2xl font-semibold leading-tight tracking-tight text-[var(--ink)] sm:text-3xl">
+              Estoque, compra e venda em uma leitura rápida.
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Priorize reposicao, acompanhe buylist e leia a distribuicao por jogo sem depender de tabelas densas.
+              Priorize reposição, acompanhe buylist e veja a distribuição por jogo sem tabelas densas.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -961,33 +964,37 @@ function EmptyState({ icon, title, text }: { icon: ReactNode; title: string; tex
 function NavItem({ active, badge, href, icon, label }: { active?: boolean; badge?: number; href: string; icon: ReactNode; label: string }) {
   return (
     <Link
-      className={`flex items-center gap-3 rounded-lg px-3 py-3 transition ${
+      className={`flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 transition ${
         active
-          ? "bg-[var(--surface-hover)] text-[var(--ink)] before:-ml-3 before:h-7 before:w-1 before:rounded-r-full before:bg-[var(--accent)]"
+          ? "bg-[var(--accent)]/10 text-[var(--ink)] ring-1 ring-[var(--accent)]/25"
           : "hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
       }`}
       href={href}
     >
       <span className={active ? "text-[var(--accent)]" : "text-[var(--muted)]"}>{icon}</span>
       <span className="min-w-0 flex-1">{label}</span>
-      {badge ? <span className="rounded-md bg-[var(--accent)]/15 px-2 py-0.5 text-xs text-[var(--accent)]">{badge}</span> : null}
+      {badge ? (
+        <span className="rounded-[0.45rem] bg-[var(--accent)]/15 px-2 py-0.5 text-xs font-semibold text-[var(--accent)]">
+          {badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
 
 function Panel({ children }: { children: ReactNode }) {
-  return <div className="card-shadow rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5 lg:p-6">{children}</div>;
+  return <div className="surface-card p-5 lg:p-6">{children}</div>;
 }
 
 function PanelHeader({ badge, text, title, tone = "muted" }: { badge?: string; text: string; title: string; tone?: "muted" | "gold" }) {
   return (
     <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
       <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">{text}</p>
       </div>
       {badge ? (
-        <span className={`w-fit rounded-lg bg-[var(--surface-hover)] px-3 py-2 text-xs font-semibold ${tone === "gold" ? "text-[var(--gold)]" : "text-[var(--muted)]"}`}>
+        <span className={`w-fit rounded-[var(--radius-control)] bg-[var(--surface-hover)] px-3 py-2 text-xs font-semibold ${tone === "gold" ? "text-[var(--gold)]" : "text-[var(--muted)]"}`}>
           {badge}
         </span>
       ) : null}
@@ -1004,13 +1011,13 @@ function MetricCard({ icon, label, trend, value, tone }: { icon: ReactNode; labe
   }[tone];
 
   return (
-    <div className="card-shadow rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
+    <div className="surface-card p-5">
       <div className="mb-5 flex items-start justify-between gap-4">
         <p className="text-sm font-semibold text-[var(--muted)]">{label}</p>
-        <span className={`grid h-11 w-11 place-items-center rounded-lg ${toneClass}`}>{icon}</span>
+        <span className={`grid h-11 w-11 place-items-center rounded-[var(--radius-control)] ${toneClass}`}>{icon}</span>
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <strong className="text-3xl font-semibold text-[var(--ink)]">{value}</strong>
+        <strong className="text-3xl font-semibold tracking-tight text-[var(--ink)]">{value}</strong>
         <span className="pb-1 text-sm font-semibold text-[var(--accent)]">{trend}</span>
       </div>
     </div>
@@ -1019,8 +1026,8 @@ function MetricCard({ icon, label, trend, value, tone }: { icon: ReactNode; labe
 
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-      <p className="text-xs font-semibold uppercase text-[var(--muted)]">{label}</p>
+    <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</p>
       <p className="mt-2 truncate text-xl font-semibold text-[var(--ink)]">{value}</p>
     </div>
   );
@@ -1028,8 +1035,8 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 
 function PriorityCard({ href, label, text, value }: { href: string; label: string; text: string; value: string }) {
   return (
-    <Link className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4 transition hover:border-[var(--accent)] hover:bg-[var(--surface-hover)]/60" href={href}>
-      <strong className="text-3xl">{value}</strong>
+    <Link className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-soft)] p-4 transition hover:border-[var(--accent)] hover:bg-[var(--surface-hover)]/60" href={href}>
+      <strong className="text-3xl tracking-tight">{value}</strong>
       <p className="mt-3 font-semibold">{label}</p>
       <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{text}</p>
     </Link>
@@ -1091,13 +1098,13 @@ function InfoValue({ label, value }: { label: string; value: string }) {
 function getNavItems(openSubmissions: number, pendingOrders: number) {
   return [
     { tab: "overview" as const, icon: <Gauge size={19} />, label: "Overview" },
-    { tab: "inventory" as const, icon: <Layers3 size={19} />, label: "Inventario" },
+    { tab: "inventory" as const, icon: <Layers3 size={19} />, label: "Inventário" },
     { tab: "new-card" as const, icon: <Plus size={19} />, label: "Nova carta" },
     { tab: "buylists" as const, icon: <ClipboardList size={19} />, label: "Buylists", badge: openSubmissions },
     { tab: "orders" as const, icon: <ShoppingBag size={19} />, label: "Pedidos", badge: pendingOrders },
     { tab: "customers" as const, icon: <UsersRound size={19} />, label: "Clientes" },
-    { tab: "internal-users" as const, icon: <ShieldCheck size={19} />, label: "Usuarios internos" },
-    { tab: "reports" as const, icon: <BarChart3 size={19} />, label: "Relatorios" },
+    { tab: "internal-users" as const, icon: <ShieldCheck size={19} />, label: "Usuários internos" },
+    { tab: "reports" as const, icon: <BarChart3 size={19} />, label: "Relatórios" },
     { tab: "settings" as const, icon: <Settings size={19} />, label: "Ajustes" }
   ];
 }
@@ -1106,7 +1113,7 @@ function getGameStats(cards: Array<{ game: Game; stock: number }>) {
   const items: Array<{ game: Game; barClass: string }> = [
     { game: "Magic", barClass: "bg-[var(--accent)]" },
     { game: "Pokemon", barClass: "bg-[var(--gold)]" },
-    { game: "Yu-Gi-Oh!", barClass: "bg-violet-400" }
+    { game: "Yu-Gi-Oh!", barClass: "bg-sky-500" }
   ];
   const total = Math.max(cards.reduce((sum, card) => sum + card.stock, 0), 1);
 
@@ -1122,7 +1129,7 @@ function getConditionStats(cards: Array<{ condition: CardCondition; stock: numbe
   const items: Array<{ condition: CardCondition; barClass: string }> = [
     { condition: "NM", barClass: "bg-[var(--accent)]" },
     { condition: "SP", barClass: "bg-[var(--gold)]" },
-    { condition: "MP", barClass: "bg-violet-400" },
+    { condition: "MP", barClass: "bg-orange-400" },
     { condition: "HP", barClass: "bg-red-400" }
   ];
   const total = Math.max(cards.reduce((sum, card) => sum + card.stock, 0), 1);
@@ -1182,6 +1189,6 @@ function messageFor(code: string) {
 }
 
 const inputClass =
-  "h-11 w-full min-w-0 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]";
+  "field-input h-11 w-full min-w-0 rounded-[var(--radius-control)] px-3 text-sm placeholder:text-[var(--muted)]";
 const inputClassWithIcon =
-  "h-11 w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] pl-10 pr-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]";
+  "field-input h-11 w-full rounded-[var(--radius-control)] pl-10 pr-3 text-sm placeholder:text-[var(--muted)]";
