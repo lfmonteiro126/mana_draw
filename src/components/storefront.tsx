@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { createOrderAction, logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
@@ -850,95 +850,136 @@ function CardThumb({
   priority?: boolean;
   sizes: string;
 }) {
-  const rootRef = useRef<HTMLButtonElement>(null);
-  const [preview, setPreview] = useState<{ top: number; left: number } | null>(null);
-  const [face, setFace] = useState<"front" | "back">("front");
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const back = getCardBack(card.game);
   const secondFaceUrl = resolveCardBackImageUrl(card);
   const hasSecondFace = cardHasSecondFace(card);
-  const thumbUrl = face === "back" && secondFaceUrl ? secondFaceUrl : card.imageUrl;
+  const flipBackUrl = secondFaceUrl ?? back.imageUrl;
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  function openPreview() {
-    const el = rootRef.current;
-    if (!el || window.matchMedia("(max-width: 767px)").matches) return;
+  useEffect(() => {
+    if (!lightboxOpen) return;
 
-    const rect = el.getBoundingClientRect();
-    const panelWidth = (hasSecondFace ? 2 : 1) * 210 + 20;
-    const panelHeight = 310;
-    const preferRight = window.innerWidth - rect.right >= panelWidth + 16;
-    const left = preferRight
-      ? Math.min(rect.right + 12, window.innerWidth - panelWidth - 12)
-      : Math.max(12, rect.left - panelWidth - 12);
-    const top = Math.max(12, Math.min(rect.top, window.innerHeight - panelHeight - 12));
-    setPreview({ top, left });
-  }
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-  function closePreview() {
-    setPreview(null);
-    setFace("front");
-  }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setLightboxOpen(false);
+    }
 
-  function toggleFace() {
-    if (!hasSecondFace) return;
-    setFace((current) => (current === "front" ? "back" : "front"));
-  }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [lightboxOpen]);
 
   return (
     <>
       <button
-        ref={rootRef}
         type="button"
-        className="relative aspect-[5/7] w-full shrink-0 overflow-hidden rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] outline-none transition hover:border-[var(--accent)]/50 hover:shadow-[0_6px_16px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
+        className="group relative z-0 aspect-[5/7] w-full shrink-0 overflow-visible rounded-lg outline-none [perspective:1200px] hover:z-20 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
         aria-label={
           hasSecondFace
-            ? `${card.name}. Passe o mouse para ampliar as duas faces. Toque para alternar.`
-            : `${card.name}. Passe o mouse para ampliar.`
+            ? `${card.name}. Passe o mouse para ver a segunda face. Clique para ampliar.`
+            : `${card.name}. Passe o mouse para ver o verso. Clique para ampliar.`
         }
-        onMouseEnter={openPreview}
-        onMouseLeave={closePreview}
-        onFocus={openPreview}
-        onBlur={closePreview}
-        onClick={toggleFace}
+        onClick={() => setLightboxOpen(true)}
       >
-        <Image
-          src={thumbUrl}
-          alt={card.name}
-          fill
-          unoptimized
-          sizes={sizes}
-          className="object-cover"
-          priority={priority}
-        />
-        {hasSecondFace ? (
-          <span className="absolute left-1.5 top-1.5 rounded bg-violet-600/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
-            {face === "back" ? "Face 2" : "2 faces"}
-          </span>
-        ) : null}
+        <div className="absolute inset-0 rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition duration-500 ease-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus-visible:[transform:rotateY(180deg)] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.14)]">
+          <div className="absolute inset-0 overflow-hidden rounded-lg [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
+            <Image
+              src={card.imageUrl}
+              alt={card.name}
+              fill
+              unoptimized
+              sizes={sizes}
+              className="object-cover"
+              priority={priority}
+            />
+            {hasSecondFace ? (
+              <span className="absolute left-1.5 top-1.5 rounded bg-violet-600/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+                2 faces
+              </span>
+            ) : null}
+          </div>
+
+          <div
+            className={`absolute inset-0 overflow-hidden rounded-lg border [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] ${
+              hasSecondFace ? "border-[var(--line)] bg-stone-900" : back.frame
+            }`}
+          >
+            <Image
+              src={flipBackUrl}
+              alt={hasSecondFace ? `${card.name} segunda face` : `Verso de carta ${card.game}`}
+              fill
+              unoptimized
+              sizes={sizes}
+              className="object-cover"
+            />
+            {hasSecondFace ? (
+              <span className="absolute left-1.5 top-1.5 rounded bg-violet-600/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+                Face 2
+              </span>
+            ) : (
+              <div className="absolute inset-0 rounded-lg shadow-[inset_0_0_24px_rgba(0,0,0,0.35)]" />
+            )}
+          </div>
+        </div>
       </button>
 
-      {mounted && preview
+      {mounted && lightboxOpen
         ? createPortal(
-            <div
-              className="pointer-events-none fixed z-[120] hidden gap-2 rounded-xl border border-[var(--line)] bg-white p-2 shadow-[0_24px_60px_rgba(15,23,42,0.22)] md:flex"
-              style={{ top: preview.top, left: preview.left }}
-              role="presentation"
-            >
-              <PreviewFace
-                url={card.imageUrl}
-                label={hasSecondFace ? "Face 1" : undefined}
-                alt={`${card.name} frente ampliada`}
+            <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 sm:p-6">
+              <button
+                type="button"
+                className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+                aria-label="Fechar ampliação"
+                onClick={() => setLightboxOpen(false)}
               />
-              {secondFaceUrl ? (
-                <PreviewFace
-                  url={secondFaceUrl}
-                  label="Face 2"
-                  alt={`${card.name} segunda face ampliada`}
-                />
-              ) : null}
+              <div
+                className="relative z-10 w-full max-w-[min(92vw,720px)] animate-fade-in rounded-2xl border border-[var(--line)] bg-white p-3 shadow-[0_30px_80px_rgba(15,23,42,0.28)] sm:p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${card.name} ampliada`}
+              >
+                <div className="mb-3 flex items-start justify-between gap-3 px-1">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{card.name}</p>
+                    <p className="truncate text-xs text-[var(--muted)]">
+                      {card.setName}
+                      {hasSecondFace ? " · duas faces" : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] text-[var(--ink)] transition hover:bg-[var(--surface-hover)]"
+                    aria-label="Fechar"
+                    onClick={() => setLightboxOpen(false)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className={`grid justify-center gap-3 ${hasSecondFace ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+                  <LightboxFace
+                    url={card.imageUrl}
+                    alt={`${card.name} frente ampliada`}
+                    label={hasSecondFace ? "Face 1" : undefined}
+                  />
+                  {secondFaceUrl ? (
+                    <LightboxFace
+                      url={secondFaceUrl}
+                      alt={`${card.name} segunda face ampliada`}
+                      label="Face 2"
+                    />
+                  ) : null}
+                </div>
+              </div>
             </div>,
             document.body
           )
@@ -947,7 +988,7 @@ function CardThumb({
   );
 }
 
-function PreviewFace({
+function LightboxFace({
   url,
   label,
   alt
@@ -957,8 +998,8 @@ function PreviewFace({
   alt: string;
 }) {
   return (
-    <div className="relative aspect-[5/7] w-[200px] overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface-soft)]">
-      <Image src={url} alt={alt} fill unoptimized sizes="200px" className="object-cover" />
+    <div className="relative mx-auto aspect-[5/7] w-full max-w-[320px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] shadow-sm">
+      <Image src={url} alt={alt} fill unoptimized sizes="320px" className="object-cover" priority />
       {label ? (
         <span className="absolute left-2 top-2 rounded-md bg-slate-900/80 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
           {label}
@@ -966,5 +1007,26 @@ function PreviewFace({
       ) : null}
     </div>
   );
+}
+
+function getCardBack(game: TcgCard["game"]) {
+  if (game === "Magic") {
+    return {
+      frame: "border-black bg-black",
+      imageUrl: "/card-backs/magic-back.png"
+    };
+  }
+
+  if (game === "Pokemon") {
+    return {
+      frame: "border-black bg-black",
+      imageUrl: "/card-backs/pokemon-back.png"
+    };
+  }
+
+  return {
+    frame: "border-black bg-black",
+    imageUrl: "/card-backs/yugioh-back.png"
+  };
 }
 
