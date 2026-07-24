@@ -363,7 +363,7 @@ export function Storefront({
         </div>
       </nav>
 
-      <section className="relative mx-auto max-w-7xl overflow-hidden px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+      <section className="relative mx-auto grid max-w-7xl items-center gap-10 overflow-hidden px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:gap-12 lg:px-8 lg:py-16">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-16 top-0 h-56 w-56 rounded-full bg-[var(--accent)]/10 blur-3xl sm:h-72 sm:w-72"
@@ -401,6 +401,8 @@ export function Storefront({
             Analisar deck Commander
           </Link>
         </div>
+
+        <HeroGameShowcase />
       </section>
 
       <section id="catalogo" className="border-y border-[var(--line)] bg-[var(--surface)]/40 backdrop-blur-md">
@@ -825,6 +827,120 @@ export function Storefront({
         </div>
       )}
     </main>
+  );
+}
+
+const heroShowcase = [
+  {
+    game: "Magic",
+    name: "Lightning Bolt",
+    imageUrl:
+      "https://cards.scryfall.io/normal/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1783912538"
+  },
+  {
+    game: "Pokémon",
+    name: "Charizard ex",
+    imageUrl: "https://images.pokemontcg.io/sv3/223_hires.png"
+  },
+  {
+    game: "Yu-Gi-Oh!",
+    name: "Blue-Eyes White Dragon",
+    imageUrl: "https://images.ygoprodeck.com/images/cards/89631139.jpg"
+  }
+] as const;
+
+function HeroGameShowcase() {
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActive((current) => (current + 1) % heroShowcase.length);
+    }, 4200);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const current = heroShowcase[active];
+
+  return (
+    <div className="relative mx-auto w-full max-w-[420px] lg:mx-0 lg:ml-auto lg:max-w-none">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-8 top-10 h-48 rounded-full bg-[var(--accent)]/12 blur-3xl"
+      />
+
+      <div className="hero-float relative mx-auto aspect-[5/4] w-full max-w-[380px]">
+        {heroShowcase.map((item, index) => {
+          const offset = (index - active + heroShowcase.length) % heroShowcase.length;
+          const isActive = offset === 0;
+          const isLeft = offset === heroShowcase.length - 1;
+          const isRight = offset === 1;
+
+          let transform = "translate(-50%, -46%) scale(0.78) rotate(0deg)";
+          let opacity = 0;
+          let zIndex = 1;
+
+          if (isActive) {
+            transform = "translate(-50%, -50%) scale(1) rotate(0deg)";
+            opacity = 1;
+            zIndex = 30;
+          } else if (isLeft) {
+            transform = "translate(-78%, -48%) scale(0.84) rotate(-10deg)";
+            opacity = 0.72;
+            zIndex = 20;
+          } else if (isRight) {
+            transform = "translate(-22%, -48%) scale(0.84) rotate(10deg)";
+            opacity = 0.72;
+            zIndex = 10;
+          }
+
+          return (
+            <div
+              key={item.game}
+              className="absolute left-1/2 top-1/2 w-[46%] max-w-[168px] overflow-hidden border border-black/10 bg-slate-200 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] hero-card-shell sm:max-w-[180px]"
+              style={{
+                aspectRatio: "5 / 7",
+                transform,
+                opacity,
+                zIndex
+              }}
+            >
+              <Image
+                src={item.imageUrl}
+                alt={`${item.name} — ${item.game}`}
+                fill
+                unoptimized
+                priority={index === 0}
+                sizes="180px"
+                className="object-cover"
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="relative mt-2 text-center">
+        <p className="text-sm font-semibold tracking-tight text-[var(--ink)] transition-opacity duration-500">
+          {current.game}
+        </p>
+        <p className="mt-0.5 text-xs text-[var(--muted)]">{current.name}</p>
+        <div className="mt-3 flex items-center justify-center gap-2">
+          {heroShowcase.map((item, index) => (
+            <button
+              key={item.game}
+              type="button"
+              aria-label={`Mostrar ${item.game}`}
+              aria-current={index === active ? "true" : undefined}
+              onClick={() => setActive(index)}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                index === active
+                  ? "w-6 bg-[var(--accent)]"
+                  : "w-1.5 bg-[var(--line)] hover:bg-[var(--muted)]"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
