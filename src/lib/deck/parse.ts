@@ -3,17 +3,27 @@ import type { ParsedDeckLine } from "./types";
 const SECTION_MAP: Record<string, ParsedDeckLine["section"]> = {
   commander: "commander",
   commanders: "commander",
+  comandante: "commander",
+  comandantes: "commander",
   "commander partners": "commander",
   partner: "commander",
   partners: "commander",
   main: "main",
   mainboard: "main",
+  "main board": "main",
+  "main deck": "main",
+  maindeck: "main",
   deck: "main",
+  baralho: "main",
+  principal: "main",
   maybeboard: "maybe",
   maybe: "maybe",
+  consider: "maybe",
   sideboard: "ignore",
   side: "ignore",
-  consider: "maybe"
+  about: "ignore",
+  tokens: "ignore",
+  token: "ignore"
 };
 
 /**
@@ -23,6 +33,8 @@ const SECTION_MAP: Record<string, ParsedDeckLine["section"]> = {
  * 1 Sol Ring (CMM) 698
  * Sol Ring
  * // Commander
+ * Commander
+ * Comandante (1)
  * 1 Atraxa, Praetors' Voice
  */
 export function parseDeckList(raw: string): ParsedDeckLine[] {
@@ -34,13 +46,11 @@ export function parseDeckList(raw: string): ParsedDeckLine[] {
     const line = original.trim();
     if (!line) continue;
 
-    if (line.startsWith("//") || line.startsWith("#")) {
-      const label = line.replace(/^\/\/\s*|^#\s*/, "").trim().toLowerCase();
-      section = SECTION_MAP[label] ?? section;
+    const headerSection = readSectionHeader(line);
+    if (headerSection) {
+      section = headerSection;
       continue;
     }
-
-    if (/^(about|tokens|token)\b/i.test(line)) continue;
 
     const match = line.match(
       /^(?:(\d+)\s*x\s+|(\d+)x\s*|(\d+)\s+)?(.+?)(?:\s+\(([A-Za-z0-9]+)\)(?:\s+([A-Za-z0-9★☆✦]+))?)?(?:\s+\*\w+\*)?\s*$/i
@@ -66,6 +76,17 @@ export function parseDeckList(raw: string): ParsedDeckLine[] {
   }
 
   return parsed.filter((line) => line.section !== "ignore");
+}
+
+function readSectionHeader(line: string): ParsedDeckLine["section"] | null {
+  const cleaned = line
+    .replace(/^\/\/\s*|^#\s*/i, "")
+    .replace(/\s*\(\d+\)\s*$/g, "")
+    .replace(/:\s*$/g, "")
+    .trim()
+    .toLowerCase();
+
+  return SECTION_MAP[cleaned] ?? null;
 }
 
 function cleanCardName(value: string) {

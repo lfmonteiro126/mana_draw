@@ -1,0 +1,13 @@
+---
+description: Commit and push without asking when work is done
+alwaysApply: true
+---
+
+# Git: commit + push direto
+
+Quando terminar uma correção ou feature pedida pelo usuário, **faça commit e push sem perguntar** antes.
+
+Só pergunte se:
+- houver dúvida sobre incluir algum arquivo sensível (`.env`, secrets)
+- o usuário pediu explicitamente para **não** commit/push
+- a mudança for ambígua ou claramente incompleta

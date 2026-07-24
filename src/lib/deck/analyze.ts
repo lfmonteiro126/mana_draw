@@ -4,6 +4,7 @@ import {
   cardImageUrl,
   cardOracleText,
   cardTypeLine,
+  fetchScryfallCardByName,
   fetchScryfallCollection,
   normalizeName
 } from "./scryfall";
@@ -81,32 +82,12 @@ export async function analyzeCommanderDeck(input: {
       seenMain.set(key, previous + line.quantity);
     }
 
-    analyzed.push(toAnalyzedCard(card, line.quantity, line.section === "commander" ? "commander" : "main"));
-  }
-
-  let commanders = analyzed.filter((card) => card.section === "commander");
-  if (commanders.length === 0 && input.commanderName) {
-    const named = analyzed.find(
-      (card) => normalizeName(card.name) === normalizeName(input.commanderName!)
+    analyzed.push(
+      toAnalyzedCard(card, line.quantity, line.section === "commander" ? "commander" : "main")
     );
-    if (named) {
-      named.section = "commander";
-      commanders = [named];
-    }
   }
 
-  if (commanders.length === 0) {
-    const legendary = analyzed.filter(
-      (card) =>
-        /legendary/i.test(card.typeLine) &&
-        /creature|planeswalker/i.test(card.typeLine)
-    );
-    if (legendary.length === 1) {
-      legendary[0].section = "commander";
-      commanders = legendary;
-    }
-  }
-
+  const commanders = await resolveCommanders(analyzed, input.commanderName);
   const commander = commanders[0] ?? null;
   const partners = commanders.slice(1);
   const colorIdentity = uniqueColors([
@@ -114,7 +95,12 @@ export async function analyzeCommanderDeck(input: {
     ...partners.flatMap((card) => card.colorIdentity)
   ]);
 
-  const maindeck = analyzed.filter((card) => card.section === "main");
+  const commanderKeys = new Set(
+    commanders.map((card) => normalizeName(card.name))
+  );
+  const maindeck = analyzed.filter(
+    (card) => card.section === "main" && !commanderKeys.has(normalizeName(card.name))
+  );
   const maindeckCount = maindeck.reduce((sum, card) => sum + card.quantity, 0);
   const expectedMaindeck: 99 | 98 = partners.length > 0 ? 98 : 99;
   const totalCards =
@@ -218,6 +204,77 @@ function toAnalyzedCard(
     isGameChanger: GAME_CHANGERS.has(card.name.toLowerCase()),
     isFastMana: roles.includes("fastMana")
   };
+}
+
+async function resolveCommanders(
+  analyzed: AnalyzedCard[],
+  commanderName?: string
+): Promise<AnalyzedCard[]> {
+  const fromSection = analyzed.filter((card) => card.section === "commander");
+  const manual = commanderName?.trim();
+
+  if (manual) {
+    let match = findCardByLooseName(analyzed, manual);
+
+    if (!match) {
+      const remote = await fetchScryfallCardByName(manual);
+      if (remote) {
+        const existing = findCardByLooseName(analyzed, remote.name);
+        if (existing) {
+          match = existing;
+        } else {
+          match = toAnalyzedCard(remote, 1, "commander");
+          analyzed.unshift(match);
+        }
+      }
+    }
+
+    if (match) {
+      match.section = "commander";
+      // Evita duplicar o mesmo comandante se já veio da seção.
+      const others = fromSection.filter(
+        (card) => normalizeName(card.name) !== normalizeName(match!.name)
+      );
+      return [match, ...others];
+    }
+  }
+
+  if (fromSection.length > 0) return fromSection;
+
+  const legendaries = analyzed.filter(
+    (card) =>
+      card.section === "main" &&
+      /legendary/i.test(card.typeLine) &&
+      /creature|planeswalker/i.test(card.typeLine)
+  );
+
+  if (legendaries.length === 1) {
+    legendaries[0].section = "commander";
+    return [legendaries[0]];
+  }
+
+  return [];
+}
+
+function findCardByLooseName(cards: AnalyzedCard[], query: string) {
+  const q = normalizeName(query);
+  if (!q) return undefined;
+
+  const scored = cards
+    .map((card) => {
+      const full = normalizeName(card.name);
+      const front = normalizeName(card.name.split(" // ")[0] ?? card.name);
+      let score = 0;
+      if (full === q || front === q) score = 100;
+      else if (full.startsWith(`${q},`) || front.startsWith(`${q},`)) score = 90;
+      else if (full.startsWith(`${q} `) || front.startsWith(`${q} `)) score = 80;
+      else if (full.includes(q) || front.includes(q)) score = 50;
+      return { card, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return scored[0]?.card;
 }
 
 function buildManaCurve(cards: AnalyzedCard[]): ManaCurveBin[] {

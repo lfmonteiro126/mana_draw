@@ -74,6 +74,10 @@ async function fetchScryfallNamed(name: string) {
   return (await response.json()) as ScryfallCardData;
 }
 
+export async function fetchScryfallCardByName(name: string) {
+  return fetchScryfallNamed(name.trim());
+}
+
 export function normalizeName(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
 }
