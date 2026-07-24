@@ -794,7 +794,7 @@ const heroShowcase = [
   {
     game: "Magic",
     label: "Magic: The Gathering",
-    imageUrl: "/hero/magic.png"
+    imageUrl: "/hero/magic.jpg"
   },
   {
     game: "Pokémon",
