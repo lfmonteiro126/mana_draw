@@ -43,10 +43,10 @@ const games: FilterGame[] = ["Todos", "Magic", "Yu-Gi-Oh!", "Pokemon"];
 const orderInitialState = { ok: false, message: "" };
 
 const conditionColors: Record<string, string> = {
-  NM: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-  SP: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-  MP: "bg-orange-500/10 text-orange-400 border border-orange-500/20",
-  HP: "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+  NM: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  SP: "bg-amber-50 text-amber-700 border border-amber-200",
+  MP: "bg-orange-50 text-orange-700 border border-orange-200",
+  HP: "bg-rose-50 text-rose-700 border border-rose-200"
 };
 
 export function Storefront({
@@ -179,7 +179,7 @@ export function Storefront({
 
   return (
     <main className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--background)]/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-white/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3" aria-label="Mana Draw">
             <span className="grid h-10 w-10 place-items-center rounded-md bg-[var(--accent)] text-sm font-semibold text-white">
@@ -273,7 +273,7 @@ export function Storefront({
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         aria-label="Navegacao principal"
       >
-        <div className="mobile-dock animate-dock-in mx-auto grid h-[3.75rem] max-w-md grid-cols-5 items-center rounded-2xl border border-white/[0.08] bg-[var(--surface)]/92 px-1 backdrop-blur-2xl">
+        <div className="mobile-dock animate-dock-in mx-auto grid h-[3.75rem] max-w-md grid-cols-5 items-center rounded-2xl border border-[var(--line)] bg-white/95 px-1 backdrop-blur-2xl">
           <a
             href="#catalogo"
             aria-current={activeSection === "catalogo" ? "page" : undefined}
@@ -485,8 +485,8 @@ export function Storefront({
                   key={item}
                   className={`h-9 rounded-full border px-4 text-sm font-semibold transition shrink-0 snap-start active:scale-95 ${
                     game === item
-                      ? "border-[var(--accent)] bg-[var(--accent)] text-white shadow-lg shadow-teal-950/30"
-                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-white/30 hover:text-white"
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white shadow-lg shadow-teal-700/15"
+                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--accent)]/40 hover:text-[var(--ink)]"
                   }`}
                   type="button"
                   onClick={() => setGame(item)}
@@ -500,7 +500,7 @@ export function Storefront({
               {filteredCards.map((card) => (
                 <article
                   key={card.id}
-                  className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 transition duration-200 hover:-translate-y-0.5 hover:border-white/15 hover:shadow-lg active:scale-[0.995] sm:grid-cols-[116px_1fr] sm:gap-4"
+                  className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:shadow-md active:scale-[0.995] sm:grid-cols-[116px_1fr] sm:gap-4"
                 >
                   <CardFlip card={card} sizes="(min-width: 640px) 116px, 92px" />
                   <div className="min-w-0 flex flex-col justify-between flex-1">
@@ -643,7 +643,7 @@ export function Storefront({
           />
           <aside className="fixed bottom-0 right-0 z-50 flex h-[min(86vh,720px)] w-full flex-col rounded-t-2xl bg-[var(--surface)] shadow-2xl transition-all duration-300 md:absolute md:top-0 md:h-full md:max-w-md md:rounded-t-none animate-slide-up md:animate-fade-in border-t md:border-t-0 md:border-l border-[var(--line)]">
             {/* Handle do bottom sheet no mobile */}
-            <div className="mx-auto my-2.5 h-1 w-12 rounded-full bg-white/20 md:hidden shrink-0" />
+            <div className="mx-auto my-2.5 h-1 w-12 rounded-full bg-slate-300 md:hidden shrink-0" />
 
             <div className="flex items-center justify-between border-b border-[var(--line)] px-4 pb-4 pt-1 md:p-4">
               <div>
@@ -694,7 +694,7 @@ export function Storefront({
                         <div className="mt-3 flex items-center justify-between">
                           <div className="flex items-center rounded-md border border-[var(--line)] bg-[var(--surface)]">
                             <button
-                              className="grid h-8 w-8 place-items-center text-[var(--ink)] hover:text-white"
+                              className="grid h-8 w-8 place-items-center text-[var(--ink)] hover:text-[var(--accent)]"
                               type="button"
                               aria-label="Diminuir quantidade"
                               onClick={() => updateQuantity(line.card.id, line.quantity - 1)}
@@ -703,7 +703,7 @@ export function Storefront({
                             </button>
                             <span className="grid h-8 min-w-8 place-items-center text-sm text-[var(--ink)] font-medium">{line.quantity}</span>
                             <button
-                              className="grid h-8 w-8 place-items-center text-[var(--ink)] hover:text-white"
+                              className="grid h-8 w-8 place-items-center text-[var(--ink)] hover:text-[var(--accent)]"
                               type="button"
                               aria-label="Aumentar quantidade"
                               onClick={() => updateQuantity(line.card.id, line.quantity + 1)}
@@ -755,7 +755,7 @@ export function Storefront({
                 </button>
               )}
               {orderState.message && (
-                <p className={`mt-3 text-sm ${orderState.ok ? "text-[var(--accent)]" : "text-red-400"}`}>
+                <p className={`mt-3 text-sm ${orderState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}>
                   {orderState.message}
                 </p>
               )}
@@ -774,7 +774,7 @@ export function Storefront({
           />
           <div className="absolute inset-x-0 bottom-0 w-full animate-slide-up md:left-1/2 md:top-1/2 md:bottom-auto md:w-[min(720px,calc(100vw-32px))] md:-translate-x-1/2 md:-translate-y-1/2 md:animate-fade-in">
             <div className="rounded-t-2xl border border-[var(--line)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl md:rounded-lg md:pb-4">
-              <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-white/20 md:hidden" />
+              <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-slate-300 md:hidden" />
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-lg font-semibold text-[var(--ink)]">Conta Mana Draw</p>
@@ -915,7 +915,7 @@ function CardFlip({
           )}
         </div>
       </div>
-      <div className={`pointer-events-none absolute left-1/2 top-1/2 z-50 hidden -translate-x-1/2 -translate-y-1/2 scale-95 gap-3 rounded-lg border border-white/15 bg-[var(--surface)] p-2 opacity-0 shadow-[0_28px_80px_rgba(0,0,0,0.62)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover:scale-100 group-hover:opacity-100 group-focus:scale-100 group-focus:opacity-100 md:grid ${card.backImageUrl ? "grid-cols-2" : "grid-cols-1"}`}>
+      <div className={`pointer-events-none absolute left-1/2 top-1/2 z-50 hidden -translate-x-1/2 -translate-y-1/2 scale-95 gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover:scale-100 group-hover:opacity-100 group-focus:scale-100 group-focus:opacity-100 md:grid ${card.backImageUrl ? "grid-cols-2" : "grid-cols-1"}`}>
         {[card.imageUrl, card.backImageUrl].filter((url): url is string => Boolean(url)).map((url, index) => (
           <div key={`${card.id}-zoom-${index}`} className="relative aspect-[5/7] w-[min(240px,34vw)] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
             <Image

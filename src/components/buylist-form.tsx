@@ -62,7 +62,7 @@ export function BuylistForm() {
       </div>
 
       <div className={step === 1 ? "grid gap-3" : "hidden sm:grid sm:gap-3"}>
-        <label className="flex min-h-28 items-center justify-center gap-2 rounded-md border border-dashed border-[var(--line)] bg-[var(--surface-hover)]/20 p-4 text-sm font-medium text-[var(--muted)] hover:border-white hover:text-white transition cursor-pointer">
+        <label className="flex min-h-28 items-center justify-center gap-2 rounded-md border border-dashed border-[var(--line)] bg-[var(--surface-hover)]/20 p-4 text-sm font-medium text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--ink)] cursor-pointer">
           <UploadCloud size={18} />
           {files.length > 0 ? `${files.length} foto(s) selecionada(s)` : "Adicionar fotos do lote"}
           <input
@@ -129,7 +129,7 @@ export function BuylistForm() {
       </div>
 
       {state.message && (
-        <div className={`mt-4 flex items-start gap-2 rounded-md px-3 py-2 text-sm ${state.ok ? "bg-[var(--accent)]/15 text-[var(--accent)]" : "bg-red-500/15 text-red-400"}`}>
+        <div className={`mt-4 flex items-start gap-2 rounded-md px-3 py-2 text-sm ${state.ok ? "bg-[var(--accent)]/10 text-[var(--accent-strong)]" : "bg-rose-50 text-rose-700"}`}>
           {!state.ok && <X size={16} />}
           {state.message}
         </div>

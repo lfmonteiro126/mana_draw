@@ -156,7 +156,7 @@ export default async function AdminPage({
   return (
     <main className="min-h-screen text-[var(--ink)]">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="hidden border-r border-[var(--line)] bg-[#090d15]/95 backdrop-blur-xl lg:flex lg:flex-col">
+        <aside className="hidden border-r border-[var(--line)] bg-white/95 backdrop-blur-xl lg:flex lg:flex-col">
           <div className="flex h-[76px] items-center gap-3 border-b border-[var(--line)] px-6">
             <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--accent)] text-white">
               <CircleDollarSign size={22} />
@@ -233,7 +233,17 @@ export default async function AdminPage({
                 >
                   {item.icon}
                   {item.label}
-                  {item.badge ? <span className="rounded bg-white/15 px-1.5 text-xs">{item.badge}</span> : null}
+                  {item.badge ? (
+                    <span
+                      className={`rounded px-1.5 text-xs ${
+                        activeTab === item.tab
+                          ? "bg-white/20 text-white"
+                          : "bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  ) : null}
                 </Link>
               ))}
             </nav>
@@ -241,7 +251,7 @@ export default async function AdminPage({
 
           <div className="px-4 py-6 sm:px-6 lg:px-7">
             {(notice || error) && (
-              <p className={`mb-5 rounded-lg border px-4 py-3 text-sm ${error ? "border-red-500/25 bg-red-500/15 text-red-300" : "border-[var(--accent)]/25 bg-[var(--accent)]/15 text-[var(--accent)]"}`}>
+              <p className={`mb-5 rounded-lg border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-700" : "border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent-strong)]"}`}>
                 {messageFor(error || notice)}
               </p>
             )}
@@ -850,7 +860,7 @@ function InventoryRow({ card }: { card: TcgCard }) {
           <div className="absolute inset-0 overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
             <Image src={card.imageUrl} alt={card.name} fill unoptimized sizes="88px" className="object-cover" />
           </div>
-          <div className={`pointer-events-none absolute left-full top-1/2 z-50 ml-4 hidden -translate-y-1/2 scale-95 gap-3 rounded-lg border border-white/15 bg-[var(--surface)] p-2 opacity-0 shadow-[0_28px_80px_rgba(0,0,0,0.62)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover/preview:scale-100 group-hover/preview:opacity-100 group-focus/preview:scale-100 group-focus/preview:opacity-100 md:grid ${card.backImageUrl ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div className={`pointer-events-none absolute left-full top-1/2 z-50 ml-4 hidden -translate-y-1/2 scale-95 gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover/preview:scale-100 group-hover/preview:opacity-100 group-focus/preview:scale-100 group-focus/preview:opacity-100 md:grid ${card.backImageUrl ? "grid-cols-2" : "grid-cols-1"}`}>
             {[card.imageUrl, card.backImageUrl].filter((url): url is string => Boolean(url)).map((url, index) => (
               <div key={`${card.id}-${index}`} className="relative aspect-[5/7] w-[min(240px,34vw)] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
                 <Image
@@ -875,8 +885,8 @@ function InventoryRow({ card }: { card: TcgCard }) {
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <span className="rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">{card.game}</span>
-              <span className="rounded-md border border-[var(--line)] bg-[#0b111c] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.language}</span>
-              <span className="rounded-md border border-[var(--line)] bg-[#0b111c] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.finish}</span>
+              <span className="rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.language}</span>
+              <span className="rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.finish}</span>
             </div>
             <p className="truncate text-base font-semibold text-[var(--ink)]" title={card.name}>{card.name}</p>
             <p className="truncate text-sm text-[var(--muted)]" title={`${card.setName} · ${card.rarity}`}>
@@ -905,7 +915,7 @@ function InventoryRow({ card }: { card: TcgCard }) {
         </button>
         <button
           aria-label={`Excluir ${card.name} do estoque`}
-          className="grid h-11 w-full place-items-center rounded-lg border border-red-500/25 bg-red-500/10 text-red-300 transition hover:border-red-400/60 hover:bg-red-500/20 active:scale-95"
+          className="grid h-11 w-full place-items-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 active:scale-95"
           formAction={deleteCardAction}
           title="Excluir do estoque"
           type="submit"
@@ -919,7 +929,7 @@ function InventoryRow({ card }: { card: TcgCard }) {
 
 function InventoryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[#0b111c] px-3 py-2">
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2">
       <p className="text-[10px] font-semibold uppercase text-[var(--muted)]">{label}</p>
       <p className="mt-1 truncate font-semibold text-[var(--ink)]">{value}</p>
     </div>
@@ -975,10 +985,10 @@ function PanelHeader({ badge, text, title, tone = "muted" }: { badge?: string; t
 
 function MetricCard({ icon, label, trend, value, tone }: { icon: ReactNode; label: string; trend: string; value: string; tone: "cyan" | "green" | "orange" | "red" }) {
   const toneClass = {
-    cyan: "text-[var(--accent)] bg-[var(--accent)]/15",
-    green: "text-emerald-300 bg-emerald-500/15",
-    orange: "text-[var(--gold)] bg-[var(--gold)]/15",
-    red: "text-red-300 bg-red-500/15"
+    cyan: "text-teal-700 bg-teal-50",
+    green: "text-emerald-700 bg-emerald-50",
+    orange: "text-amber-700 bg-amber-50",
+    red: "text-rose-700 bg-rose-50"
   }[tone];
 
   return (
@@ -1037,7 +1047,7 @@ function DataBar({ accentClass, label, meta, percent, value }: { accentClass: st
         </div>
         <span className="shrink-0 text-sm font-semibold text-[var(--ink)]">{value}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-[#0b111c]">
+      <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-hover)]">
         <div className={`h-full rounded-full ${accentClass}`} style={{ width: `${Math.max(percent, 3)}%` }} />
       </div>
     </div>

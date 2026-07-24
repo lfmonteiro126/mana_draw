@@ -42,7 +42,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
             {loginPending ? "Entrando..." : "Entrar"}
           </button>
           {loginState.message && (
-            <p className={`text-sm ${loginState.ok ? "text-[var(--accent)]" : "text-red-400"}`}>
+            <p className={`text-sm ${loginState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}>
               {loginState.message}
             </p>
           )}
@@ -62,7 +62,7 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
             {registerPending ? "Criando..." : "Criar conta"}
           </button>
           {registerState.message && (
-            <p className={`text-sm ${registerState.ok ? "text-[var(--accent)]" : "text-red-400"}`}>
+            <p className={`text-sm ${registerState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}>
               {registerState.message}
             </p>
           )}
