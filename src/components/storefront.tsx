@@ -363,43 +363,41 @@ export function Storefront({
         </div>
       </nav>
 
-      <section className="relative mx-auto grid max-w-7xl items-center gap-10 overflow-hidden px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)] lg:gap-12 lg:px-8 lg:py-16">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-16 top-0 h-56 w-56 rounded-full bg-[var(--accent)]/10 blur-3xl sm:h-72 sm:w-72"
-        />
-        <div className="relative max-w-2xl">
-          <p className="text-[2.35rem] font-semibold leading-none tracking-tight text-[var(--ink)] sm:text-6xl">
-            Mana Draw
-          </p>
-          <h1 className="mt-4 max-w-xl text-balance text-xl font-medium leading-snug text-[var(--ink)] sm:text-2xl">
-            Compre singles. Venda sua coleção.
-          </h1>
-          <p className="mt-3 max-w-lg text-sm leading-6 text-[var(--muted)] sm:text-base">
-            Marketplace TCG para Magic, Yu-Gi-Oh! e Pokémon — estoque pronto e cotação por foto.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-2.5 sm:gap-3">
-            <a
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
-              href="#catalogo"
+      <section className="relative overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 sm:pt-12 lg:px-8 lg:pt-14">
+          <div className="relative max-w-2xl">
+            <p className="text-[2.35rem] font-semibold leading-none tracking-tight text-[var(--ink)] sm:text-6xl">
+              Mana Draw
+            </p>
+            <h1 className="mt-4 max-w-xl text-balance text-xl font-medium leading-snug text-[var(--ink)] sm:text-2xl">
+              Compre singles. Venda sua coleção.
+            </h1>
+            <p className="mt-3 max-w-lg text-sm leading-6 text-[var(--muted)] sm:text-base">
+              Marketplace TCG para Magic, Yu-Gi-Oh! e Pokémon — estoque pronto e cotação por foto.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2.5 sm:gap-3">
+              <a
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
+                href="#catalogo"
+              >
+                Ver catálogo
+                <ChevronRight size={17} />
+              </a>
+              <a
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-5 text-sm font-semibold text-[var(--ink)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--surface-hover)] active:scale-[0.98]"
+                href="#venda"
+              >
+                Cotar coleção
+              </a>
+            </div>
+            <Link
+              href="/analisar-deck"
+              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
             >
-              Ver catálogo
-              <ChevronRight size={17} />
-            </a>
-            <a
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-5 text-sm font-semibold text-[var(--ink)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--surface-hover)] active:scale-[0.98]"
-              href="#venda"
-            >
-              Cotar coleção
-            </a>
+              <Swords size={15} />
+              Analisar deck Commander
+            </Link>
           </div>
-          <Link
-            href="/analisar-deck"
-            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
-          >
-            <Swords size={15} />
-            Analisar deck Commander
-          </Link>
         </div>
 
         <HeroGameShowcase />
@@ -833,97 +831,67 @@ export function Storefront({
 const heroShowcase = [
   {
     game: "Magic",
-    name: "Lightning Bolt",
-    imageUrl:
-      "https://cards.scryfall.io/normal/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1783912538"
+    label: "Magic: The Gathering",
+    imageUrl: "/hero/magic.jpg"
   },
   {
     game: "Pokémon",
-    name: "Charizard ex",
-    imageUrl: "https://images.pokemontcg.io/sv3/223_hires.png"
+    label: "Pokémon TCG",
+    imageUrl: "/hero/pokemon.jpg"
   },
   {
     game: "Yu-Gi-Oh!",
-    name: "Blue-Eyes White Dragon",
-    imageUrl: "https://images.ygoprodeck.com/images/cards/89631139.jpg"
+    label: "Yu-Gi-Oh!",
+    imageUrl: "/hero/yugioh.png"
   }
 ] as const;
 
 function HeroGameShowcase() {
   const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
+    if (paused) return;
     const timer = window.setInterval(() => {
       setActive((current) => (current + 1) % heroShowcase.length);
-    }, 4200);
+    }, 4500);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [paused]);
 
   const current = heroShowcase[active];
 
   return (
-    <div className="relative mx-auto w-full max-w-[420px] lg:mx-0 lg:ml-auto lg:max-w-none">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-8 top-10 h-48 rounded-full bg-[var(--accent)]/12 blur-3xl"
-      />
-
-      <div className="hero-float relative mx-auto aspect-[5/4] w-full max-w-[380px]">
-        {heroShowcase.map((item, index) => {
-          const offset = (index - active + heroShowcase.length) % heroShowcase.length;
-          const isActive = offset === 0;
-          const isLeft = offset === heroShowcase.length - 1;
-          const isRight = offset === 1;
-
-          let transform = "translate(-50%, -46%) scale(0.78) rotate(0deg)";
-          let opacity = 0;
-          let zIndex = 1;
-
-          if (isActive) {
-            transform = "translate(-50%, -50%) scale(1) rotate(0deg)";
-            opacity = 1;
-            zIndex = 30;
-          } else if (isLeft) {
-            transform = "translate(-78%, -48%) scale(0.84) rotate(-10deg)";
-            opacity = 0.72;
-            zIndex = 20;
-          } else if (isRight) {
-            transform = "translate(-22%, -48%) scale(0.84) rotate(10deg)";
-            opacity = 0.72;
-            zIndex = 10;
-          }
-
-          return (
+    <div
+      className="relative mt-8 w-full sm:mt-10"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="relative w-full overflow-hidden bg-[#0b1220]">
+        <div className="relative aspect-[16/7] w-full min-h-[200px] sm:aspect-[21/8] sm:min-h-[260px] lg:aspect-[21/7] lg:min-h-[320px]">
+          {heroShowcase.map((item, index) => (
             <div
               key={item.game}
-              className="absolute left-1/2 top-1/2 w-[46%] max-w-[168px] overflow-hidden border border-black/10 bg-slate-200 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] hero-card-shell sm:max-w-[180px]"
-              style={{
-                aspectRatio: "5 / 7",
-                transform,
-                opacity,
-                zIndex
-              }}
+              className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+                index === active ? "opacity-100" : "opacity-0"
+              }`}
+              aria-hidden={index !== active}
             >
               <Image
                 src={item.imageUrl}
-                alt={`${item.name} — ${item.game}`}
+                alt={item.label}
                 fill
-                unoptimized
                 priority={index === 0}
-                sizes="180px"
-                className="object-cover"
+                sizes="100vw"
+                className="object-contain object-center"
               />
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      <div className="relative mt-2 text-center">
-        <p className="text-sm font-semibold tracking-tight text-[var(--ink)] transition-opacity duration-500">
-          {current.game}
-        </p>
-        <p className="mt-0.5 text-xs text-[var(--muted)]">{current.name}</p>
-        <div className="mt-3 flex items-center justify-center gap-2">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <p className="text-sm font-semibold tracking-tight text-[var(--ink)]">{current.label}</p>
+        <div className="flex items-center gap-2">
           {heroShowcase.map((item, index) => (
             <button
               key={item.game}
@@ -933,7 +901,7 @@ function HeroGameShowcase() {
               onClick={() => setActive(index)}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 index === active
-                  ? "w-6 bg-[var(--accent)]"
+                  ? "w-7 bg-[var(--accent)]"
                   : "w-1.5 bg-[var(--line)] hover:bg-[var(--muted)]"
               }`}
             />
