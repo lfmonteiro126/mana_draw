@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { createOrderAction, logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { BuylistForm } from "@/components/buylist-form";
@@ -848,15 +848,30 @@ function CardFlip({
   priority?: boolean;
   sizes: string;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [zoomSide, setZoomSide] = useState<"left" | "right">("right");
   const back = getCardBack(card.game);
   const backImageUrl = card.backImageUrl ?? back.imageUrl;
   const backAlt = card.backImageUrl ? `${card.name} segunda face` : `Verso de carta ${card.game}`;
+  const zoomUrls = [card.imageUrl, card.backImageUrl].filter((url): url is string => Boolean(url));
+
+  function placeZoom() {
+    const el = rootRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const zoomWidth = (card.backImageUrl ? 2 : 1) * 248 + 24;
+    const spaceRight = window.innerWidth - rect.right;
+    setZoomSide(spaceRight < zoomWidth + 16 ? "left" : "right");
+  }
 
   return (
     <div
-      className="group relative aspect-[5/7] w-full shrink-0 [perspective:1200px]"
+      ref={rootRef}
+      className="group relative z-0 aspect-[5/7] w-full shrink-0 overflow-visible [perspective:1200px] hover:z-40 focus-within:z-40"
       tabIndex={0}
       aria-label={`${card.name}. Passe o mouse para ampliar e ver o verso.`}
+      onMouseEnter={placeZoom}
+      onFocus={placeZoom}
     >
       <div className="absolute inset-0 rounded-md shadow-[0_18px_42px_rgba(0,0,0,0.32)] transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)_rotateZ(-1deg)] group-focus:[transform:rotateY(180deg)_rotateZ(-1deg)]">
         <div className="absolute inset-0 overflow-hidden rounded-md border border-[var(--line)] bg-stone-800 [backface-visibility:hidden]">
@@ -915,9 +930,17 @@ function CardFlip({
           )}
         </div>
       </div>
-      <div className={`pointer-events-none absolute left-1/2 top-1/2 z-50 hidden -translate-x-1/2 -translate-y-1/2 scale-95 gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover:scale-100 group-hover:opacity-100 group-focus:scale-100 group-focus:opacity-100 md:grid ${card.backImageUrl ? "grid-cols-2" : "grid-cols-1"}`}>
-        {[card.imageUrl, card.backImageUrl].filter((url): url is string => Boolean(url)).map((url, index) => (
-          <div key={`${card.id}-zoom-${index}`} className="relative aspect-[5/7] w-[min(240px,34vw)] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
+
+      <div
+        className={`pointer-events-none absolute top-1/2 z-50 hidden -translate-y-1/2 scale-95 gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/20 transition duration-200 delay-150 group-hover:scale-100 group-hover:opacity-100 group-focus:scale-100 group-focus:opacity-100 md:grid ${
+          card.backImageUrl ? "grid-cols-2" : "grid-cols-1"
+        } ${zoomSide === "right" ? "left-full ml-3" : "right-full mr-3"}`}
+      >
+        {zoomUrls.map((url, index) => (
+          <div
+            key={`${card.id}-zoom-${index}`}
+            className="relative aspect-[5/7] w-[min(240px,34vw)] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]"
+          >
             <Image
               src={url}
               alt={index === 0 ? `${card.name} frente ampliada` : `${card.name} segunda face ampliada`}
