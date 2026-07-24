@@ -403,12 +403,12 @@ function InventoryTab({
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.85fr)]">
       <Panel>
-        <PanelHeader title="Inventario" text="Cards consolidados por print, condicao, idioma e acabamento." badge={`${cards.length} itens unicos`} />
-        <form className="mb-5 grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-2">
+        <PanelHeader title="Inventário" text="Cards consolidados por print, condição, idioma e acabamento." badge={`${cards.length} itens únicos`} />
+        <form className="mb-5 grid gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-2">
           <input type="hidden" name="tab" value="inventory" />
           <label className="relative block md:col-span-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
-            <input className={inputClassWithIcon} name="query" placeholder="Buscar carta, colecao ou tag" defaultValue={query} />
+            <input className={inputClassWithIcon} name="query" placeholder="Buscar carta, coleção ou tag" defaultValue={query} />
           </label>
           <select className={inputClass} name="game" defaultValue={game}>
             <option value="Todos">Todos os jogos</option>
@@ -419,7 +419,7 @@ function InventoryTab({
             <option value="low">Baixo estoque</option>
             <option value="out">Sem estoque</option>
           </select>
-          <button className="h-11 rounded-lg bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] md:col-span-2" type="submit">
+          <button className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] md:col-span-2" type="submit">
             Filtrar
           </button>
         </form>
