@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
+import { deriveScryfallBackUrl, isDoubleSidedLayout } from "@/lib/card-images";
 import {
   getCachedCardSuggestions,
   setCachedCardSuggestions
@@ -76,7 +77,7 @@ type YgoCard = {
 };
 
 const validGames: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
-const CACHE_PREFIX = "prints:v3:";
+const CACHE_PREFIX = "prints:v4:";
 
 export async function GET(request: Request) {
   const user = await currentUser();
@@ -167,9 +168,13 @@ async function lookupMagic(query: string): Promise<CardSuggestion[]> {
         card.card_faces?.[0]?.image_uris?.normal ??
         card.card_faces?.[0]?.image_uris?.large ??
         "";
-      const backImageUrl =
+      const faceBackUrl =
         card.card_faces?.[1]?.image_uris?.normal ??
         card.card_faces?.[1]?.image_uris?.large ??
+        "";
+      const backImageUrl =
+        faceBackUrl ||
+        (isDoubleSidedLayout(card.layout) ? deriveScryfallBackUrl(frontImageUrl) : "") ||
         "";
       const printLabel = compact([
         card.set?.toUpperCase(),
@@ -187,8 +192,8 @@ async function lookupMagic(query: string): Promise<CardSuggestion[]> {
         language: mapLanguage(card.lang),
         marketPriceCents: cents(price),
         imageUrl: frontImageUrl,
-        backImageUrl,
-        isDoubleSided: Boolean(backImageUrl),
+        backImageUrl: backImageUrl || undefined,
+        isDoubleSided: Boolean(backImageUrl) || isDoubleSidedLayout(card.layout),
         layout: card.layout,
         tags: compact(["Magic", card.set, card.collector_number, card.type_line, card.rarity, card.layout]),
         finish: preferFoil || card.finishes?.includes("foil") ? "Foil" : "Normal",

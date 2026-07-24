@@ -18,6 +18,26 @@ export const cards: TcgCard[] = [
     finish: "Normal"
   },
   {
+    id: "mtg-dfc-001",
+    name: "Delver of Secrets // Insectile Aberration",
+    game: "Magic",
+    setName: "Innistrad",
+    rarity: "Common",
+    condition: "NM",
+    language: "EN",
+    priceCents: 890,
+    marketPriceCents: 990,
+    stock: 4,
+    imageUrl:
+      "https://cards.scryfall.io/normal/front/6/9/6904ea20-e504-47da-95a0-08739fdde260.jpg?1783908173",
+    backImageUrl:
+      "https://cards.scryfall.io/normal/back/6/9/6904ea20-e504-47da-95a0-08739fdde260.jpg?1783908173",
+    isDoubleSided: true,
+    layout: "transform",
+    tags: ["Magic", "isd", "transform", "Blue"],
+    finish: "Normal"
+  },
+  {
     id: "mtg-002",
     name: "Lightning Bolt",
     game: "Magic",

@@ -42,6 +42,7 @@ import {
   hasDatabase
 } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
+import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import type { AdminCustomer, BuylistSubmission, CardCondition, FilterGame, Game, OrderSummary, TcgCard } from "@/lib/types";
 
 const games: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
@@ -846,6 +847,10 @@ function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
 }
 
 function InventoryRow({ card }: { card: TcgCard }) {
+  const secondFaceUrl = resolveCardBackImageUrl(card);
+  const hasSecondFace = cardHasSecondFace(card);
+  const zoomUrls = [card.imageUrl, secondFaceUrl].filter((url): url is string => Boolean(url));
+
   return (
     <form action={updateCardAction} className="group grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/45 hover:bg-[var(--surface-elevated)]">
       <input type="hidden" name="id" value={card.id} />
@@ -860,8 +865,8 @@ function InventoryRow({ card }: { card: TcgCard }) {
           <div className="absolute inset-0 overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
             <Image src={card.imageUrl} alt={card.name} fill unoptimized sizes="88px" className="object-cover" />
           </div>
-          <div className={`pointer-events-none absolute left-full top-1/2 z-50 ml-4 hidden -translate-y-1/2 scale-95 gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover/preview:scale-100 group-hover/preview:opacity-100 group-focus/preview:scale-100 group-focus/preview:opacity-100 md:grid ${card.backImageUrl ? "grid-cols-2" : "grid-cols-1"}`}>
-            {[card.imageUrl, card.backImageUrl].filter((url): url is string => Boolean(url)).map((url, index) => (
+          <div className={`pointer-events-none absolute left-full top-1/2 z-50 ml-4 hidden -translate-y-1/2 scale-95 gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover/preview:scale-100 group-hover/preview:opacity-100 group-focus/preview:scale-100 group-focus/preview:opacity-100 md:grid ${hasSecondFace ? "grid-cols-2" : "grid-cols-1"}`}>
+            {zoomUrls.map((url, index) => (
               <div key={`${card.id}-${index}`} className="relative aspect-[5/7] w-[min(240px,34vw)] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
                 <Image
                   src={url}

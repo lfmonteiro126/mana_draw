@@ -30,6 +30,7 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { createOrderAction, logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { BuylistForm } from "@/components/buylist-form";
+import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import { buylist } from "@/lib/mock-data";
 import { formatCurrency, formatStock } from "@/lib/format";
 import type { FilterGame, SortMode, StoreUser, TcgCard } from "@/lib/types";
@@ -851,15 +852,17 @@ function CardFlip({
   const rootRef = useRef<HTMLDivElement>(null);
   const [zoomSide, setZoomSide] = useState<"left" | "right">("right");
   const back = getCardBack(card.game);
-  const backImageUrl = card.backImageUrl ?? back.imageUrl;
-  const backAlt = card.backImageUrl ? `${card.name} segunda face` : `Verso de carta ${card.game}`;
-  const zoomUrls = [card.imageUrl, card.backImageUrl].filter((url): url is string => Boolean(url));
+  const secondFaceUrl = resolveCardBackImageUrl(card);
+  const hasSecondFace = cardHasSecondFace(card);
+  const flipBackUrl = secondFaceUrl ?? back.imageUrl;
+  const backAlt = hasSecondFace ? `${card.name} segunda face` : `Verso de carta ${card.game}`;
+  const zoomUrls = [card.imageUrl, secondFaceUrl].filter((url): url is string => Boolean(url));
 
   function placeZoom() {
     const el = rootRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const zoomWidth = (card.backImageUrl ? 2 : 1) * 248 + 24;
+    const zoomWidth = (hasSecondFace ? 2 : 1) * 248 + 24;
     const spaceRight = window.innerWidth - rect.right;
     setZoomSide(spaceRight < zoomWidth + 16 ? "left" : "right");
   }
@@ -869,12 +872,16 @@ function CardFlip({
       ref={rootRef}
       className="group relative z-0 aspect-[5/7] w-full shrink-0 overflow-visible [perspective:1200px] hover:z-40 focus-within:z-40"
       tabIndex={0}
-      aria-label={`${card.name}. Passe o mouse para ampliar e ver o verso.`}
+      aria-label={
+        hasSecondFace
+          ? `${card.name}. Passe o mouse para ver a segunda face e ampliar.`
+          : `${card.name}. Passe o mouse para ampliar e ver o verso.`
+      }
       onMouseEnter={placeZoom}
       onFocus={placeZoom}
     >
-      <div className="absolute inset-0 rounded-md shadow-[0_18px_42px_rgba(0,0,0,0.32)] transition-transform duration-500 [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)_rotateZ(-1deg)] group-focus:[transform:rotateY(180deg)_rotateZ(-1deg)]">
-        <div className="absolute inset-0 overflow-hidden rounded-md border border-[var(--line)] bg-stone-800 [backface-visibility:hidden]">
+      <div className="absolute inset-0 rounded-md shadow-[0_18px_42px_rgba(15,23,42,0.2)] transition-transform duration-500 ease-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus:[transform:rotateY(180deg)]">
+        <div className="absolute inset-0 overflow-hidden rounded-md border border-[var(--line)] bg-stone-800 [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
           <Image
             src={card.imageUrl}
             alt={card.name}
@@ -885,24 +892,32 @@ function CardFlip({
             priority={priority}
           />
         </div>
-        <div className={`absolute inset-0 overflow-hidden rounded-md border [backface-visibility:hidden] [transform:rotateY(180deg)] ${back.frame}`}>
-          {backImageUrl ? (
+
+        <div
+          className={`absolute inset-0 overflow-hidden rounded-md border [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] ${
+            hasSecondFace ? "border-[var(--line)] bg-stone-900" : back.frame
+          }`}
+        >
+          {flipBackUrl ? (
             <>
               <Image
-                src={backImageUrl}
+                src={flipBackUrl}
                 alt={backAlt}
                 fill
                 unoptimized
                 sizes={sizes}
                 className="object-cover"
               />
-              {card.backImageUrl ? (
+              {hasSecondFace ? (
                 <span className="absolute left-2 top-2 rounded-md bg-violet-500/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
                   Face 2
                 </span>
-              ) : null}
-              <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.24)_43%,transparent_57%)] opacity-0 transition-opacity duration-500 group-hover:opacity-45 group-focus:opacity-45" />
-              <div className="absolute inset-0 rounded-md shadow-[inset_0_0_28px_rgba(0,0,0,0.55)]" />
+              ) : (
+                <>
+                  <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.24)_43%,transparent_57%)] opacity-0 transition-opacity duration-500 group-hover:opacity-35 group-focus:opacity-35" />
+                  <div className="absolute inset-0 rounded-md shadow-[inset_0_0_28px_rgba(0,0,0,0.45)]" />
+                </>
+              )}
             </>
           ) : (
             <>
@@ -933,7 +948,7 @@ function CardFlip({
 
       <div
         className={`pointer-events-none absolute top-1/2 z-50 hidden -translate-y-1/2 scale-95 gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/20 transition duration-200 delay-150 group-hover:scale-100 group-hover:opacity-100 group-focus:scale-100 group-focus:opacity-100 md:grid ${
-          card.backImageUrl ? "grid-cols-2" : "grid-cols-1"
+          hasSecondFace ? "grid-cols-2" : "grid-cols-1"
         } ${zoomSide === "right" ? "left-full ml-3" : "right-full mr-3"}`}
       >
         {zoomUrls.map((url, index) => (
