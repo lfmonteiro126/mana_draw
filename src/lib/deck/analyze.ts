@@ -1,6 +1,7 @@
 import { ARCHETYPE_RULES, GAME_CHANGERS, detectRoles } from "./lists";
 import { collapseDeckLines, parseDeckList } from "./parse";
 import {
+  cardArtCropUrl,
   cardImageUrl,
   cardOracleText,
   cardTypeLine,
@@ -201,6 +202,7 @@ function toAnalyzedCard(
     oracleText,
     colorIdentity: card.color_identity ?? [],
     imageUrl: cardImageUrl(card),
+    artCropUrl: cardArtCropUrl(card),
     legal: (card.legalities?.commander ?? "legal") === "legal",
     roles,
     isGameChanger: GAME_CHANGERS.has(card.name.toLowerCase()),

@@ -142,7 +142,7 @@ export function DeckAnalyzer() {
         analysis ? "pb-[calc(7.5rem+var(--safe-bottom))] md:pb-16" : "pb-10"
       }`}
     >
-      <header className="sticky top-0 z-40 border-b border-[var(--deck-stroke)] bg-[#070a10]/80 backdrop-blur-2xl">
+      <header className="sticky top-0 z-40 border-b border-[var(--deck-stroke)] bg-white/85 backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6">
           <Link href="/" className="group flex items-center gap-3" aria-label="Mana Draw">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--accent)] text-xs font-bold tracking-wide text-white transition group-hover:bg-[var(--accent-strong)]">
@@ -159,7 +159,7 @@ export function DeckAnalyzer() {
           </Link>
 
           {analysis ? (
-            <div className="hidden items-center rounded-full border border-[var(--deck-stroke)] bg-[var(--deck-panel)]/90 p-1 md:flex">
+            <div className="hidden items-center rounded-full border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-1 shadow-sm md:flex">
               <ViewTab active={view === "visual"} onClick={() => setView("visual")}>
                 <Layers size={13} />
                 Visual stacks
@@ -180,7 +180,7 @@ export function DeckAnalyzer() {
               <button
                 type="button"
                 onClick={() => setEditorOpen((open) => !open)}
-                className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3 text-xs font-semibold text-[var(--ink)] transition hover:border-white/20 hover:bg-[var(--deck-panel-2)] md:px-3.5"
+                className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)] md:px-3.5"
                 aria-label={editorOpen ? "Fechar lista" : "Editar lista"}
               >
                 <ScrollText size={14} />
@@ -189,7 +189,7 @@ export function DeckAnalyzer() {
             )}
             <Link
               href="/"
-              className="hidden h-9 items-center gap-2 rounded-full border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3.5 text-xs font-semibold text-[var(--ink)] transition hover:border-white/20 hover:bg-[var(--deck-panel-2)] md:inline-flex"
+              className="hidden h-9 items-center gap-2 rounded-full border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3.5 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)] md:inline-flex"
             >
               <ArrowLeft size={14} />
               Loja
@@ -221,7 +221,7 @@ export function DeckAnalyzer() {
                   Decklist
                 </span>
                 <textarea
-                  className="min-h-[160px] w-full resize-y rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a] px-4 py-3.5 font-mono text-[12px] leading-5 text-[var(--ink)] outline-none transition placeholder:text-white/25 focus:border-[var(--accent)]/60 focus:ring-4 focus:ring-teal-500/10 sm:min-h-[200px]"
+                  className="min-h-[160px] w-full resize-y rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-input)] px-4 py-3.5 font-mono text-[12px] leading-5 text-[var(--ink)] shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[var(--accent)]/60 focus:ring-4 focus:ring-teal-500/15 sm:min-h-[200px]"
                   placeholder={"// Commander\n1 Seu Comandante\n\n// Mainboard\n1 Sol Ring"}
                   value={list}
                   onChange={(event) => setList(event.target.value)}
@@ -235,7 +235,7 @@ export function DeckAnalyzer() {
                   Comandante opcional
                 </span>
                 <input
-                  className="h-11 w-full rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a] px-4 text-sm text-[var(--ink)] outline-none transition placeholder:text-white/25 focus:border-[var(--accent)]/60 focus:ring-4 focus:ring-teal-500/10"
+                  className="h-11 w-full rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-input)] px-4 text-sm text-[var(--ink)] shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[var(--accent)]/60 focus:ring-4 focus:ring-teal-500/15"
                   placeholder="Ex.: Atraxa, Praetors' Voice"
                   value={commanderName}
                   onChange={(event) => setCommanderName(event.target.value)}
@@ -254,13 +254,13 @@ export function DeckAnalyzer() {
                 <button
                   type="button"
                   onClick={() => setList(SAMPLE)}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-4 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--deck-panel-2)]"
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-4 text-sm font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)]"
                 >
                   Exemplo
                 </button>
               </div>
               {error && (
-                <p className="flex items-start gap-2 text-sm text-rose-300">
+                <p className="flex items-start gap-2 text-sm text-rose-600">
                   <TriangleAlert size={15} className="mt-0.5 shrink-0" />
                   {error}
                 </p>
@@ -401,8 +401,8 @@ function CardPreviewPanel({
   ].filter(Boolean);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-[var(--deck-stroke)] bg-[var(--deck-panel)] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
-      <div className="relative aspect-[5/7] w-full bg-[#05080e]">
+    <div className="overflow-hidden rounded-3xl border border-[var(--deck-stroke)] bg-[var(--deck-panel)] shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+      <div className="relative aspect-[5/7] w-full bg-slate-200">
         {card.imageUrl ? (
           <Image
             src={card.imageUrl}
@@ -429,11 +429,11 @@ function CardPreviewPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-[var(--ink)]">
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-[var(--ink)]">
             CMC {card.cmc}
           </span>
           {card.manaCost ? (
-            <span className="rounded-full bg-white/5 px-2.5 py-1 font-mono text-[11px] text-[var(--muted)]">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-[11px] text-[var(--muted)]">
               {card.manaCost}
             </span>
           ) : null}
@@ -445,7 +445,7 @@ function CardPreviewPanel({
             {flags.map((flag) => (
               <span
                 key={String(flag)}
-                className="rounded-full border border-teal-400/20 bg-teal-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-200"
+                className="rounded-full border border-teal-600/20 bg-teal-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-700"
               >
                 {flag}
               </span>
@@ -453,7 +453,7 @@ function CardPreviewPanel({
           </div>
         )}
 
-        <div className="rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a] p-3.5">
+        <div className="rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] p-3.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
             No deck
           </p>
@@ -490,7 +490,7 @@ function VisualStack({
 
   return (
     <div
-      className="deck-rise deck-stack-pane w-[min(78vw,220px)] shrink-0 sm:w-[168px] xl:w-auto"
+      className="deck-rise deck-stack-pane w-[min(82vw,240px)] shrink-0 sm:w-[196px] xl:w-auto"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="mb-2.5 flex items-center gap-1.5 px-0.5">
@@ -507,54 +507,152 @@ function VisualStack({
         <button
           type="button"
           onClick={() => onSelect(featured.name)}
-          className="relative mb-2 aspect-[5/3.2] w-full overflow-hidden rounded-xl border border-white/10 bg-black/40 outline-none transition hover:border-teal-300/40"
+          className="relative mb-2.5 aspect-[5/3.2] w-full overflow-hidden rounded-xl border border-slate-900/80 bg-slate-900 outline-none shadow-[0_1px_0_rgba(255,255,255,0.14)_inset,0_4px_12px_rgba(15,23,42,0.18)] transition hover:brightness-105"
+          style={{ ["--frame" as string]: frameColor(featured.colorIdentity) }}
         >
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-[2px] z-10 rounded-[10px] border-[1.5px]"
+            style={{ borderColor: frameColor(featured.colorIdentity) }}
+          />
           <Image
-            src={featured.imageUrl}
+            src={featured.artCropUrl || featured.imageUrl}
             alt=""
             fill
             unoptimized
-            className="object-cover object-[center_18%]"
-            sizes="180px"
+            className="object-cover object-[center_22%]"
+            sizes="200px"
           />
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-2.5 pb-2 pt-8">
-            <p className="truncate text-[11px] font-semibold text-white">{featured.name}</p>
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-2.5 pb-2 pt-10">
+            <p className="truncate text-[11px] font-semibold text-white drop-shadow">{featured.name}</p>
           </div>
         </button>
       )}
 
-      <div className="max-h-[min(52vh,420px)] space-y-px overflow-y-auto overscroll-contain rounded-xl border border-[var(--deck-stroke)] bg-[#0b111a]/80 p-1 scrollbar-none">
-        {group.cards.map((card) => {
-          const selected = card.name === selectedName;
-          return (
-            <button
-              key={`${group.id}-${card.name}`}
-              type="button"
-              onClick={() => onSelect(card.name)}
-              className={`deck-stack-row flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left outline-none ${
-                selected
-                  ? "border-teal-400/35 bg-teal-400/10"
-                  : "border-transparent hover:border-white/10 hover:bg-white/[0.04]"
-              }`}
-            >
-              <span
-                className={`min-w-0 flex-1 truncate text-[11px] font-medium ${
-                  selected ? "text-teal-100" : "text-white/85"
-                }`}
-              >
-                {card.quantity > 1 ? `${card.quantity} ` : ""}
-                {card.name}
-              </span>
-              <span className="shrink-0 font-mono text-[10px] text-white/40">
-                {card.manaCost || (card.cmc > 0 ? String(card.cmc) : "—")}
-              </span>
-            </button>
-          );
-        })}
+      <div className="max-h-[min(52vh,440px)] space-y-1.5 overflow-y-auto overscroll-contain pr-0.5 scrollbar-none">
+        {group.cards.map((card) => (
+          <StackCardBar
+            key={`${group.id}-${card.name}`}
+            card={card}
+            selected={card.name === selectedName}
+            onSelect={() => onSelect(card.name)}
+          />
+        ))}
       </div>
     </div>
   );
 }
+
+function StackCardBar({
+  card,
+  selected,
+  onSelect
+}: {
+  card: AnalyzedCard;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const art = card.artCropUrl || card.imageUrl;
+  const frame = frameColor(card.colorIdentity);
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      data-selected={selected ? "true" : "false"}
+      className="deck-stack-row flex h-[30px] w-full items-center gap-1.5 px-2 text-left outline-none"
+      style={{ ["--frame" as string]: frame }}
+      title={card.name}
+    >
+      <span
+        className="deck-stack-row__art"
+        style={art ? { backgroundImage: `url(${art})` } : undefined}
+        aria-hidden
+      />
+      <span className="deck-stack-row__shade" />
+      <span className="deck-stack-row__content min-w-0 flex-1 truncate text-[11px] font-semibold tracking-wide text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.85)]">
+        {card.quantity > 1 ? `${card.quantity} ` : ""}
+        {card.name}
+      </span>
+      <span className="deck-stack-row__content shrink-0">
+        <ManaCostPips cost={card.manaCost} cmc={card.cmc} />
+      </span>
+    </button>
+  );
+}
+
+function ManaCostPips({ cost, cmc }: { cost: string; cmc: number }) {
+  const symbols = [...cost.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
+  if (!symbols.length) {
+    if (cmc <= 0) return <span className="text-[10px] text-white/55">—</span>;
+    return <ManaPip symbol={String(cmc)} />;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {symbols.map((symbol, index) => (
+        <ManaPip key={`${symbol}-${index}`} symbol={symbol} />
+      ))}
+    </span>
+  );
+}
+
+function ManaPip({ symbol }: { symbol: string }) {
+  const key = symbol.toUpperCase();
+  const hybrid = key.includes("/");
+  const bg = hybrid
+    ? `linear-gradient(135deg, ${PIP_FILL[key.split("/")[0]] ?? "#94a3b8"} 50%, ${
+        PIP_FILL[key.split("/")[1]] ?? "#94a3b8"
+      } 50%)`
+    : PIP_FILL[key] ?? "#cbd5e1";
+  const label = hybrid ? key.replace("/", "") : GENERIC_PIP_LABEL[key] ?? key;
+  const darkText = !hybrid && (key === "W" || /^\d+$/.test(key) || key === "X" || key === "Y" || key === "Z");
+
+  return (
+    <span
+      className={`inline-grid h-[14px] min-w-[14px] place-items-center rounded-full border border-black/50 text-[8px] font-bold leading-none shadow-[0_1px_1px_rgba(0,0,0,0.45)] ${
+        darkText ? "text-slate-900" : "text-white"
+      }`}
+      style={{ background: bg }}
+      title={symbol}
+    >
+      {label.length > 2 ? label.slice(0, 2) : label}
+    </span>
+  );
+}
+
+function frameColor(colors: string[]) {
+  if (colors.length === 0) return "#a8b0bb";
+  if (colors.length > 1) return "#e0b43a";
+  return FRAME_BY_COLOR[colors[0]] ?? "#a8b0bb";
+}
+
+const FRAME_BY_COLOR: Record<string, string> = {
+  W: "#f0e6c4",
+  U: "#2f7fbf",
+  B: "#c5c8ce",
+  R: "#d6452f",
+  G: "#2f9b57"
+};
+
+const PIP_FILL: Record<string, string> = {
+  W: "#f8f1d4",
+  U: "#0e68ab",
+  B: "#3b3b3b",
+  R: "#d3202a",
+  G: "#00733e",
+  C: "#cbc5bb",
+  S: "#9e8f72"
+};
+
+const GENERIC_PIP_LABEL: Record<string, string> = {
+  W: "W",
+  U: "U",
+  B: "B",
+  R: "R",
+  G: "G",
+  C: "C"
+};
 
 function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
   return (
@@ -590,7 +688,7 @@ function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
             analysis.archetypes.map((archetype, index) => (
               <div
                 key={archetype.id}
-                className="rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a]/70 px-3.5 py-3"
+                className="rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] px-3.5 py-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[var(--ink)]">
@@ -646,7 +744,7 @@ function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
             analysis.suggestions.map((item) => (
               <div
                 key={item.title}
-                className="rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a]/70 px-3.5 py-3"
+                className="rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] px-3.5 py-3"
               >
                 <p className={`text-sm font-semibold ${severityTone(item.severity)}`}>{item.title}</p>
                 <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{item.detail}</p>
@@ -665,7 +763,7 @@ function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
             {analysis.roles.map((role) => (
               <div
                 key={role.role}
-                className="rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a]/50 px-3.5 py-3"
+                className="rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] px-3.5 py-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[var(--ink)]">{role.label}</p>
@@ -730,7 +828,7 @@ function MobileDeckDock({
       style={{ paddingBottom: "max(0.45rem, env(safe-area-inset-bottom))" }}
       aria-label="Navegacao do analisador"
     >
-      <div className="deck-mobile-dock mx-auto grid h-[3.55rem] max-w-md grid-cols-4 items-center rounded-2xl border border-white/[0.08] bg-[var(--deck-panel)]/95 px-1 backdrop-blur-2xl">
+      <div className="deck-mobile-dock mx-auto grid h-[3.55rem] max-w-md grid-cols-4 items-center rounded-2xl border border-[var(--deck-stroke)] bg-white/95 px-1 backdrop-blur-2xl">
         <DockItem
           active={view === "visual" && !editorOpen}
           label="Visual"
@@ -800,9 +898,9 @@ function MobileCardPeek({
   analysis: DeckAnalysis;
 }) {
   return (
-    <div className="deck-rise sticky top-14 z-30 -mx-4 border-y border-[var(--deck-stroke)] bg-[#070a10]/92 px-4 py-2.5 backdrop-blur-xl lg:hidden">
+    <div className="deck-rise sticky top-14 z-30 -mx-4 border-y border-[var(--deck-stroke)] bg-white/92 px-4 py-2.5 backdrop-blur-xl lg:hidden">
       <div className="flex items-center gap-3">
-        <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-white/10 bg-black/40">
+        <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-slate-900/70 bg-slate-200 shadow-sm">
           {card.imageUrl ? (
             <Image src={card.imageUrl} alt="" fill unoptimized className="object-cover" sizes="40px" />
           ) : null}
@@ -983,20 +1081,20 @@ function ManaCurveChart({
 
   return (
     <div>
-      <div className="relative overflow-hidden rounded-2xl border border-[var(--deck-stroke)] bg-[radial-gradient(120%_80%_at_10%_0%,rgba(20,184,166,0.16),transparent_55%),linear-gradient(180deg,#0b121c_0%,#0a1018_100%)] px-2 pb-1 pt-2">
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--deck-stroke)] bg-[radial-gradient(120%_80%_at_10%_0%,rgba(20,184,166,0.12),transparent_55%),linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)] px-2 pb-1 pt-2">
         <svg viewBox={`0 0 ${width} ${height}`} className="h-48 w-full" role="img" aria-label="Curva de mana">
           <defs>
             <linearGradient id="manaBar" x1="0" y1="1" x2="0" y2="0">
               <stop offset="0%" stopColor="#0f766e" />
               <stop offset="55%" stopColor="#14b8a6" />
-              <stop offset="100%" stopColor="#5eead4" />
+              <stop offset="100%" stopColor="#2dd4bf" />
             </linearGradient>
             <linearGradient id="manaArea" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(94,234,212,0.28)" />
-              <stop offset="100%" stopColor="rgba(94,234,212,0)" />
+              <stop offset="0%" stopColor="rgba(20,184,166,0.22)" />
+              <stop offset="100%" stopColor="rgba(20,184,166,0)" />
             </linearGradient>
             <filter id="barGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="1.4" result="blur" />
+              <feGaussianBlur stdDeviation="1.2" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
@@ -1013,10 +1111,10 @@ function ManaCurveChart({
                   x2={width - padR}
                   y1={y}
                   y2={y}
-                  stroke="rgba(148,163,184,0.12)"
+                  stroke="rgba(15,23,42,0.08)"
                   strokeDasharray={tick === 0 ? undefined : "3 4"}
                 />
-                <text x={padL - 8} y={y + 3} textAnchor="end" fill="rgba(148,163,184,0.55)" fontSize="9">
+                <text x={padL - 8} y={y + 3} textAnchor="end" fill="rgba(91,103,122,0.9)" fontSize="9">
                   {tick}
                 </text>
               </g>
@@ -1031,7 +1129,7 @@ function ManaCurveChart({
           <polyline
             points={points}
             fill="none"
-            stroke="rgba(94,234,212,0.45)"
+            stroke="rgba(13,148,136,0.4)"
             strokeWidth="1.5"
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -1058,7 +1156,7 @@ function ManaCurveChart({
                     x={x + barW / 2}
                     y={y - 6}
                     textAnchor="middle"
-                    fill="#e2e8f0"
+                    fill="#0f172a"
                     fontSize="10"
                     fontWeight="600"
                   >
@@ -1069,7 +1167,7 @@ function ManaCurveChart({
                   x={x + barW / 2}
                   y={height - 8}
                   textAnchor="middle"
-                  fill="rgba(148,163,184,0.75)"
+                  fill="rgba(91,103,122,0.95)"
                   fontSize="11"
                   fontWeight="500"
                 >
@@ -1098,7 +1196,7 @@ function ManaCurveChart({
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-3xl border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-5">
+    <section className="rounded-3xl border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
       <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
         {title}
       </h3>
@@ -1108,7 +1206,7 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function severityTone(severity: "info" | "warn" | "critical") {
-  if (severity === "critical") return "text-rose-300";
-  if (severity === "warn") return "text-amber-300";
+  if (severity === "critical") return "text-rose-600";
+  if (severity === "warn") return "text-amber-600";
   return "text-[var(--ink)]";
 }

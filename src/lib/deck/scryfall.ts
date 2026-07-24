@@ -100,6 +100,21 @@ export function cardImageUrl(card: ScryfallCardData) {
   );
 }
 
+export function cardArtCropUrl(card: ScryfallCardData) {
+  const direct =
+    card.image_uris?.art_crop ??
+    card.card_faces?.[0]?.image_uris?.art_crop ??
+    "";
+  if (direct) return direct;
+
+  const fallback = cardImageUrl(card);
+  if (!fallback) return "";
+  return fallback
+    .replace("/normal/", "/art_crop/")
+    .replace("/large/", "/art_crop/")
+    .replace("/small/", "/art_crop/");
+}
+
 export function cardTypeLine(card: ScryfallCardData) {
   if (card.type_line) return card.type_line;
   return (card.card_faces ?? []).map((face) => face.type_line ?? "").filter(Boolean).join(" // ");

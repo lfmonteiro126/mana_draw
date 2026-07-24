@@ -60,13 +60,13 @@ export type ScryfallCardData = {
   color_identity: string[];
   colors?: string[];
   legalities?: { commander?: string };
-  image_uris?: { small?: string; normal?: string };
+  image_uris?: { small?: string; normal?: string; art_crop?: string };
   card_faces?: Array<{
     name?: string;
     mana_cost?: string;
     type_line?: string;
     oracle_text?: string;
-    image_uris?: { small?: string; normal?: string };
+    image_uris?: { small?: string; normal?: string; art_crop?: string };
   }>;
   keywords?: string[];
 };
@@ -81,6 +81,7 @@ export type AnalyzedCard = {
   oracleText: string;
   colorIdentity: string[];
   imageUrl: string;
+  artCropUrl: string;
   legal: boolean;
   roles: DeckRole[];
   isGameChanger: boolean;
