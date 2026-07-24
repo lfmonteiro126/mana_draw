@@ -153,7 +153,7 @@ export function DeckAnalyzer() {
           </Link>
 
           {analysis ? (
-            <div className="hidden items-center rounded-full border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-1 shadow-sm md:flex">
+            <div className="hidden items-center rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-1 shadow-sm md:flex">
               <ViewTab active={view === "visual"} onClick={() => setView("visual")}>
                 <Layers size={13} />
                 Visual stacks
@@ -174,7 +174,7 @@ export function DeckAnalyzer() {
               <button
                 type="button"
                 onClick={() => setEditorOpen((open) => !open)}
-                className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)] md:px-3.5"
+                className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)] md:px-3.5"
                 aria-label={editorOpen ? "Fechar lista" : "Editar lista"}
               >
                 <ScrollText size={14} />
@@ -183,7 +183,7 @@ export function DeckAnalyzer() {
             )}
             <Link
               href="/"
-              className="hidden h-9 items-center gap-2 rounded-full border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3.5 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)] md:inline-flex"
+              className="hidden h-9 items-center gap-2 rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3.5 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)] md:inline-flex"
             >
               <ArrowLeft size={14} />
               Loja
@@ -198,15 +198,14 @@ export function DeckAnalyzer() {
             <div className="deck-rise">
               {!analysis && (
                 <div className="mb-5 max-w-2xl">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-                    Commander analyzer
+                  <p className="text-[2rem] font-semibold leading-none tracking-tight text-[var(--ink)] sm:text-[2.75rem]">
+                    Mana Draw
                   </p>
-                  <h1 className="text-balance text-[2rem] font-semibold leading-[1.1] tracking-tight text-[var(--ink)] sm:text-[2.5rem]">
-                    Leia o deck como um builder profissional.
+                  <h1 className="mt-3 text-balance text-xl font-medium leading-snug text-[var(--ink)] sm:text-2xl">
+                    Analise decks Commander com clareza de builder.
                   </h1>
                   <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">
-                    Cole a lista e abra visual stacks, preview da carta, bracket e um painel de insights —
-                    pensado para mesa, não para planilha.
+                    Cole a lista e veja stacks, preview, bracket e insights — pensado para mesa, não para planilha.
                   </p>
                 </div>
               )}
@@ -215,7 +214,7 @@ export function DeckAnalyzer() {
                   Decklist
                 </span>
                 <textarea
-                  className="min-h-[160px] w-full resize-y rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-input)] px-4 py-3.5 font-mono text-[12px] leading-5 text-[var(--ink)] shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[var(--accent)]/60 focus:ring-4 focus:ring-teal-500/15 sm:min-h-[200px]"
+                  className="field-input min-h-[160px] w-full resize-y rounded-[var(--radius-card)] px-4 py-3.5 font-mono text-[12px] leading-5 placeholder:text-slate-400 sm:min-h-[200px]"
                   placeholder={"// Commander\n1 Seu Comandante\n\n// Mainboard\n1 Sol Ring"}
                   value={list}
                   onChange={(event) => setList(event.target.value)}
@@ -229,7 +228,7 @@ export function DeckAnalyzer() {
                   Comandante opcional
                 </span>
                 <input
-                  className="h-11 w-full rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-input)] px-4 text-sm text-[var(--ink)] shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[var(--accent)]/60 focus:ring-4 focus:ring-teal-500/15"
+                  className="field-input h-11 w-full rounded-[var(--radius-control)] px-4 text-sm placeholder:text-slate-400"
                   placeholder="Ex.: Atraxa, Praetors' Voice"
                   value={commanderName}
                   onChange={(event) => setCommanderName(event.target.value)}
@@ -240,7 +239,7 @@ export function DeckAnalyzer() {
                   type="button"
                   disabled={loading || list.trim().length < 20}
                   onClick={runAnalysis}
-                  className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+                  className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
                 >
                   {loading ? <Loader2 size={16} className="animate-spin" /> : <WandSparkles size={16} />}
                   {loading ? "Analisando…" : "Analisar"}
@@ -248,7 +247,7 @@ export function DeckAnalyzer() {
                 <button
                   type="button"
                   onClick={() => setList(SAMPLE)}
-                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-4 text-sm font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)]"
+                  className="inline-flex h-11 items-center justify-center rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-4 text-sm font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)]"
                 >
                   Exemplo
                 </button>
@@ -277,7 +276,7 @@ export function DeckAnalyzer() {
       {!analysis && !loading && (
         <div className="mx-auto grid max-w-[1440px] place-items-center px-4 py-24">
           <div className="deck-rise max-w-lg text-center">
-            <div className="mx-auto mb-5 grid h-[4.5rem] w-[4.5rem] place-items-center rounded-[1.35rem] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] shadow-[0_0_0_6px_var(--deck-glow)]">
+            <div className="mx-auto mb-5 grid h-[4.5rem] w-[4.5rem] place-items-center rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] shadow-[0_0_0_6px_var(--deck-glow)]">
               <Swords className="text-[var(--accent)]" size={26} />
             </div>
             <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
@@ -423,11 +422,11 @@ function CardPreviewPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-[var(--ink)]">
+          <span className="rounded-[var(--radius-control)] bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-[var(--ink)]">
             CMC {card.cmc}
           </span>
           {card.manaCost ? (
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 font-mono text-[11px] text-[var(--muted)]">
+            <span className="rounded-[var(--radius-control)] bg-slate-100 px-2.5 py-1 font-mono text-[11px] text-[var(--muted)]">
               {card.manaCost}
             </span>
           ) : null}
@@ -439,7 +438,7 @@ function CardPreviewPanel({
             {flags.map((flag) => (
               <span
                 key={String(flag)}
-                className="rounded-full border border-teal-600/20 bg-teal-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-700"
+                className="rounded-[var(--radius-control)] border border-teal-600/20 bg-teal-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-teal-700"
               >
                 {flag}
               </span>
@@ -447,7 +446,7 @@ function CardPreviewPanel({
           </div>
         )}
 
-        <div className="rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] p-3.5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] p-3.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
             No deck
           </p>
@@ -459,7 +458,7 @@ function CardPreviewPanel({
 
         <Link
           href="/#catalogo"
-          className="flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+          className="flex h-11 w-full items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
         >
           Buscar no catálogo
         </Link>
@@ -682,7 +681,7 @@ function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
             analysis.archetypes.map((archetype, index) => (
               <div
                 key={archetype.id}
-                className="rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] px-3.5 py-3"
+                className="rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] px-3.5 py-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[var(--ink)]">
@@ -738,7 +737,7 @@ function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
             analysis.suggestions.map((item) => (
               <div
                 key={item.title}
-                className="rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] px-3.5 py-3"
+                className="rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] px-3.5 py-3"
               >
                 <p className={`text-sm font-semibold ${severityTone(item.severity)}`}>{item.title}</p>
                 <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{item.detail}</p>
@@ -757,7 +756,7 @@ function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
             {analysis.roles.map((role) => (
               <div
                 key={role.role}
-                className="rounded-2xl border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] px-3.5 py-3"
+                className="rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel-2)] px-3.5 py-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[var(--ink)]">{role.label}</p>
@@ -822,7 +821,7 @@ function MobileDeckDock({
       style={{ paddingBottom: "max(0.45rem, env(safe-area-inset-bottom))" }}
       aria-label="Navegacao do analisador"
     >
-      <div className="deck-mobile-dock mx-auto grid h-[3.55rem] max-w-md grid-cols-4 items-center rounded-2xl border border-[var(--deck-stroke)] bg-white/95 px-1 backdrop-blur-2xl">
+      <div className="deck-mobile-dock mx-auto grid h-[3.55rem] max-w-md grid-cols-4 items-center rounded-[var(--radius-sheet)] border border-[var(--deck-stroke)] bg-white/95 px-1 backdrop-blur-2xl">
         <DockItem
           active={view === "visual" && !editorOpen}
           label="Visual"
@@ -1031,7 +1030,7 @@ function ViewTab({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-[11px] font-semibold tracking-wide transition ${
+      className={`inline-flex h-8 items-center gap-1.5 rounded-[0.5rem] px-3.5 text-[11px] font-semibold tracking-wide transition ${
         active
           ? "bg-[var(--accent)] text-white shadow-[0_0_0_1px_rgba(20,184,166,0.35)]"
           : "text-[var(--muted)] hover:text-[var(--ink)]"
@@ -1075,7 +1074,7 @@ function ManaCurveChart({
 
   return (
     <div>
-      <div className="relative overflow-hidden rounded-2xl border border-[var(--deck-stroke)] bg-[radial-gradient(120%_80%_at_10%_0%,rgba(20,184,166,0.12),transparent_55%),linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)] px-2 pb-1 pt-2">
+      <div className="relative overflow-hidden rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[radial-gradient(120%_80%_at_10%_0%,rgba(20,184,166,0.12),transparent_55%),linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)] px-2 pb-1 pt-2">
         <svg viewBox={`0 0 ${width} ${height}`} className="h-48 w-full" role="img" aria-label="Curva de mana">
           <defs>
             <linearGradient id="manaBar" x1="0" y1="1" x2="0" y2="0">
@@ -1190,7 +1189,7 @@ function ManaCurveChart({
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-3xl border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
+    <section className="rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-5 shadow-[var(--shadow-soft)]">
       <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
         {title}
       </h3>

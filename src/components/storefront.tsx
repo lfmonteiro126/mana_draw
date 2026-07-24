@@ -644,17 +644,20 @@ export function Storefront({
             aria-label="Fechar carrinho"
             onClick={() => setCartOpen(false)}
           />
-          <aside className="fixed bottom-0 right-0 z-50 flex h-[min(86vh,720px)] w-full flex-col rounded-t-2xl bg-[var(--surface)] shadow-2xl transition-all duration-300 md:absolute md:top-0 md:h-full md:max-w-md md:rounded-t-none animate-slide-up md:animate-fade-in border-t md:border-t-0 md:border-l border-[var(--line)]">
-            {/* Handle do bottom sheet no mobile */}
-            <div className="mx-auto my-2.5 h-1 w-12 rounded-full bg-slate-300 md:hidden shrink-0" />
+          <aside className="fixed bottom-0 right-0 z-50 flex h-[min(86vh,720px)] w-full flex-col rounded-t-[var(--radius-sheet)] border-t border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow-lift)] transition-all duration-300 animate-slide-up md:absolute md:top-0 md:h-full md:max-w-md md:rounded-t-none md:border-l md:border-t-0 md:animate-fade-in">
+            <div className="mx-auto my-2.5 h-1 w-12 shrink-0 rounded-full bg-slate-300 md:hidden" />
 
             <div className="flex items-center justify-between border-b border-[var(--line)] px-4 pb-4 pt-1 md:p-4">
               <div>
-                <p className="font-semibold text-[var(--ink)]">Carrinho</p>
-                <p className="text-xs text-[var(--muted)]">{cartCount} itens selecionados</p>
+                <p className="font-semibold tracking-tight text-[var(--ink)]">Carrinho</p>
+                <p className="text-xs text-[var(--muted)]">
+                  {cartCount === 0
+                    ? "Nenhum item ainda"
+                    : `${cartCount} ${cartCount === 1 ? "item" : "itens"} selecionados`}
+                </p>
               </div>
               <button
-                className="grid h-9 w-9 place-items-center rounded-md border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-hover)]"
+                className="grid h-9 w-9 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] text-[var(--ink)] transition hover:bg-[var(--surface-hover)]"
                 type="button"
                 aria-label="Fechar carrinho"
                 onClick={() => setCartOpen(false)}
@@ -667,16 +670,28 @@ export function Storefront({
               {cart.length === 0 ? (
                 <div className="grid h-full place-items-center text-center">
                   <div>
-                    <PackageCheck className="mx-auto mb-3 text-[var(--muted)]" size={34} />
+                    <span className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-[var(--radius-card)] bg-[var(--surface-soft)] text-[var(--muted)]">
+                      <PackageCheck size={28} />
+                    </span>
                     <p className="font-semibold text-[var(--ink)]">Seu carrinho está vazio</p>
                     <p className="mt-1 text-sm text-[var(--muted)]">Adicione singles do catálogo.</p>
+                    <button
+                      type="button"
+                      className="mt-4 inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                      onClick={() => setCartOpen(false)}
+                    >
+                      Continuar comprando
+                    </button>
                   </div>
                 </div>
               ) : (
                 <div className="grid gap-3">
                   {cart.map((line) => (
-                    <div key={line.card.id} className="grid grid-cols-[64px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-hover)]/40 p-3">
-                      <div className="relative aspect-[5/7] overflow-hidden rounded-md bg-slate-100">
+                    <div
+                      key={line.card.id}
+                      className="grid grid-cols-[64px_1fr] gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-soft)] p-3"
+                    >
+                      <div className="relative aspect-[5/7] overflow-hidden rounded-[0.45rem] bg-slate-100">
                         <Image
                           src={line.card.imageUrl}
                           alt={line.card.name}
@@ -690,23 +705,29 @@ export function Storefront({
                         <div className="flex justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-[var(--ink)]">{line.card.name}</p>
-                            <p className="truncate text-xs text-[var(--muted)]">{line.card.game} · {line.card.condition}</p>
+                            <p className="truncate text-xs text-[var(--muted)]">
+                              {line.card.game} · {line.card.condition}
+                            </p>
                           </div>
-                          <p className="text-sm font-semibold text-[var(--ink)]">{formatCurrency(line.card.priceCents * line.quantity)}</p>
+                          <p className="text-sm font-semibold text-[var(--ink)]">
+                            {formatCurrency(line.card.priceCents * line.quantity)}
+                          </p>
                         </div>
                         <div className="mt-3 flex items-center justify-between">
-                          <div className="flex items-center rounded-md border border-[var(--line)] bg-[var(--surface)]">
+                          <div className="flex items-center overflow-hidden rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)]">
                             <button
-                              className="grid h-8 w-8 place-items-center text-[var(--ink)] hover:text-[var(--accent)]"
+                              className="grid h-8 w-8 place-items-center text-[var(--ink)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--accent)]"
                               type="button"
                               aria-label="Diminuir quantidade"
                               onClick={() => updateQuantity(line.card.id, line.quantity - 1)}
                             >
                               <Minus size={14} />
                             </button>
-                            <span className="grid h-8 min-w-8 place-items-center text-sm text-[var(--ink)] font-medium">{line.quantity}</span>
+                            <span className="grid h-8 min-w-8 place-items-center text-sm font-medium text-[var(--ink)]">
+                              {line.quantity}
+                            </span>
                             <button
-                              className="grid h-8 w-8 place-items-center text-[var(--ink)] hover:text-[var(--accent)]"
+                              className="grid h-8 w-8 place-items-center text-[var(--ink)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--accent)]"
                               type="button"
                               aria-label="Aumentar quantidade"
                               onClick={() => updateQuantity(line.card.id, line.quantity + 1)}
@@ -715,7 +736,7 @@ export function Storefront({
                             </button>
                           </div>
                           <button
-                            className="text-xs font-semibold text-[var(--muted)] hover:text-[var(--accent)] transition"
+                            className="text-xs font-semibold text-[var(--muted)] transition hover:text-rose-600"
                             type="button"
                             onClick={() => updateQuantity(line.card.id, 0)}
                           >
@@ -730,15 +751,16 @@ export function Storefront({
             </div>
 
             <div className="border-t border-[var(--line)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-1 flex items-center justify-between">
                 <span className="text-sm text-[var(--muted)]">Subtotal</span>
-                <strong className="text-xl text-[var(--ink)]">{formatCurrency(subtotal)}</strong>
+                <strong className="text-xl tracking-tight text-[var(--ink)]">{formatCurrency(subtotal)}</strong>
               </div>
+              <p className="mb-4 text-xs text-[var(--muted)]">Frete e pagamento na finalização.</p>
               {currentUser ? (
                 <form action={orderFormAction}>
                   <input type="hidden" name="cart" value={cartPayload} />
                   <button
-                    className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                     disabled={cart.length === 0 || orderPending}
                     type="submit"
                   >
@@ -748,7 +770,7 @@ export function Storefront({
                 </form>
               ) : (
                 <button
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                   type="button"
                   disabled={cart.length === 0}
                   onClick={() => setAuthOpen(true)}
@@ -772,21 +794,21 @@ export function Storefront({
           <button
             className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-sm"
             type="button"
-            aria-label="Fechar autenticacao"
+            aria-label="Fechar autenticação"
             onClick={() => setAuthOpen(false)}
           />
           <div className="absolute inset-x-0 bottom-0 w-full animate-slide-up md:left-1/2 md:top-1/2 md:bottom-auto md:w-[min(720px,calc(100vw-32px))] md:-translate-x-1/2 md:-translate-y-1/2 md:animate-fade-in">
-            <div className="rounded-t-2xl border border-[var(--line)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl md:rounded-lg md:pb-4">
+            <div className="rounded-t-[var(--radius-sheet)] border border-[var(--line)] bg-[var(--surface)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-lift)] md:rounded-[var(--radius-card)] md:p-6 md:pb-6">
               <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-slate-300 md:hidden" />
-              <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-lg font-semibold text-[var(--ink)]">Conta Mana Draw</p>
-                  <p className="text-sm text-[var(--muted)]">
-                    Entre para finalizar pedidos e acompanhar seu historico.
+                  <p className="text-lg font-semibold tracking-tight text-[var(--ink)]">Conta Mana Draw</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    Entre para finalizar pedidos e acompanhar seu histórico.
                   </p>
                 </div>
                 <button
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-[var(--line)] bg-[var(--surface)]"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] transition hover:bg-[var(--surface-hover)]"
                   type="button"
                   aria-label="Fechar"
                   onClick={() => setAuthOpen(false)}
@@ -795,8 +817,8 @@ export function Storefront({
                 </button>
               </div>
               <AuthPanel />
-              <p className="mt-3 text-xs text-[var(--muted)]">
-                Sem Neon configurado: use qualquer email para cliente ou admin@manadraw.local com senha admin123.
+              <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
+                Sem Neon: qualquer email como cliente, ou admin@manadraw.local / admin123.
               </p>
             </div>
           </div>
