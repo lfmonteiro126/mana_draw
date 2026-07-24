@@ -18,6 +18,14 @@ export function deriveScryfallBackUrl(frontUrl?: string | null) {
   return frontUrl.replace("/front/", "/back/");
 }
 
+export function extractScryfallIdFromImageUrl(imageUrl?: string | null) {
+  if (!imageUrl) return undefined;
+  const match = imageUrl.match(
+    /cards\.scryfall\.io\/(?:normal|large|small|png|art_crop|border_crop)\/(?:front|back)\/[0-9a-f]\/[0-9a-f]\/([0-9a-f-]{36})/i
+  );
+  return match?.[1];
+}
+
 export function resolveCardBackImageUrl(card: {
   imageUrl: string;
   backImageUrl?: string | null;

@@ -27,10 +27,10 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { createOrderAction, logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { BuylistForm } from "@/components/buylist-form";
+import { CardDetailsModal } from "@/components/card-details-modal";
 import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import { buylist } from "@/lib/mock-data";
 import { formatCurrency, formatStock } from "@/lib/format";
@@ -504,7 +504,11 @@ export function Storefront({
                   key={card.id}
                   className="grid grid-cols-[92px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:shadow-md active:scale-[0.995] sm:grid-cols-[116px_1fr] sm:gap-4"
                 >
-                  <CardThumb card={card} sizes="(min-width: 640px) 116px, 92px" />
+                  <CardThumb
+                    card={card}
+                    sizes="(min-width: 640px) 116px, 92px"
+                    onAddToCart={addToCart}
+                  />
                   <div className="min-w-0 flex flex-col justify-between flex-1">
                     <div>
                       <div className="mb-1.5 flex items-start justify-between gap-2">
@@ -553,7 +557,7 @@ export function Storefront({
             </div>
           </div>
 
-          <WeeklyDropPanel cards={cards.slice(0, 4)} />
+          <WeeklyDropPanel cards={cards.slice(0, 4)} onAddToCart={addToCart} />
         </div>
       </section>
 
@@ -805,7 +809,13 @@ export function Storefront({
   );
 }
 
-function WeeklyDropPanel({ cards }: { cards: TcgCard[] }) {
+function WeeklyDropPanel({
+  cards,
+  onAddToCart
+}: {
+  cards: TcgCard[];
+  onAddToCart?: (card: TcgCard) => void;
+}) {
   if (cards.length === 0) return null;
 
   return (
@@ -826,6 +836,7 @@ function WeeklyDropPanel({ cards }: { cards: TcgCard[] }) {
             card={card}
             priority={index === 0}
             sizes="(min-width: 1024px) 150px, 45vw"
+            onAddToCart={onAddToCart}
           />
         ))}
       </div>
@@ -841,42 +852,23 @@ function WeeklyDropPanel({ cards }: { cards: TcgCard[] }) {
   );
 }
 
+
 function CardThumb({
   card,
   priority = false,
-  sizes
+  sizes,
+  onAddToCart
 }: {
   card: TcgCard;
   priority?: boolean;
   sizes: string;
+  onAddToCart?: (card: TcgCard) => void;
 }) {
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const back = getCardBack(card.game);
   const secondFaceUrl = resolveCardBackImageUrl(card);
   const hasSecondFace = cardHasSecondFace(card);
   const flipBackUrl = secondFaceUrl ?? back.imageUrl;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!lightboxOpen) return;
-
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setLightboxOpen(false);
-    }
-
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [lightboxOpen]);
 
   return (
     <>
@@ -885,10 +877,10 @@ function CardThumb({
         className="group relative z-0 aspect-[5/7] w-full shrink-0 overflow-visible rounded-lg outline-none [perspective:1200px] hover:z-20 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
         aria-label={
           hasSecondFace
-            ? `${card.name}. Passe o mouse para ver a segunda face. Clique para ampliar.`
-            : `${card.name}. Passe o mouse para ver o verso. Clique para ampliar.`
+            ? `${card.name}. Passe o mouse para ver a segunda face. Clique para ver detalhes.`
+            : `${card.name}. Passe o mouse para ver o verso. Clique para ver detalhes.`
         }
-        onClick={() => setLightboxOpen(true)}
+        onClick={() => setDetailsOpen(true)}
       >
         <div className="absolute inset-0 rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition duration-500 ease-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus-visible:[transform:rotateY(180deg)] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.14)]">
           <div className="absolute inset-0 overflow-hidden rounded-lg [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
@@ -932,80 +924,20 @@ function CardThumb({
         </div>
       </button>
 
-      {mounted && lightboxOpen
-        ? createPortal(
-            <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 sm:p-6">
-              <button
-                type="button"
-                className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
-                aria-label="Fechar ampliação"
-                onClick={() => setLightboxOpen(false)}
-              />
-              <div
-                className="relative z-10 w-full max-w-[min(92vw,720px)] animate-fade-in rounded-2xl border border-[var(--line)] bg-white p-3 shadow-[0_30px_80px_rgba(15,23,42,0.28)] sm:p-4"
-                role="dialog"
-                aria-modal="true"
-                aria-label={`${card.name} ampliada`}
-              >
-                <div className="mb-3 flex items-start justify-between gap-3 px-1">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[var(--ink)]">{card.name}</p>
-                    <p className="truncate text-xs text-[var(--muted)]">
-                      {card.setName}
-                      {hasSecondFace ? " · duas faces" : ""}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] text-[var(--ink)] transition hover:bg-[var(--surface-hover)]"
-                    aria-label="Fechar"
-                    onClick={() => setLightboxOpen(false)}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                <div className={`grid justify-center gap-3 ${hasSecondFace ? "sm:grid-cols-2" : "grid-cols-1"}`}>
-                  <LightboxFace
-                    url={card.imageUrl}
-                    alt={`${card.name} frente ampliada`}
-                    label={hasSecondFace ? "Face 1" : undefined}
-                  />
-                  {secondFaceUrl ? (
-                    <LightboxFace
-                      url={secondFaceUrl}
-                      alt={`${card.name} segunda face ampliada`}
-                      label="Face 2"
-                    />
-                  ) : null}
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+      <CardDetailsModal
+        card={card}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        onAddToCart={
+          onAddToCart
+            ? (selected) => {
+                onAddToCart(selected);
+                setDetailsOpen(false);
+              }
+            : undefined
+        }
+      />
     </>
-  );
-}
-
-function LightboxFace({
-  url,
-  label,
-  alt
-}: {
-  url: string;
-  label?: string;
-  alt: string;
-}) {
-  return (
-    <div className="relative mx-auto aspect-[5/7] w-full max-w-[320px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] shadow-sm">
-      <Image src={url} alt={alt} fill unoptimized sizes="320px" className="object-cover" priority />
-      {label ? (
-        <span className="absolute left-2 top-2 rounded-md bg-slate-900/80 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-          {label}
-        </span>
-      ) : null}
-    </div>
   );
 }
 
@@ -1029,4 +961,3 @@ function getCardBack(game: TcgCard["game"]) {
     imageUrl: "/card-backs/yugioh-back.png"
   };
 }
-
