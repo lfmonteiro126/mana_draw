@@ -689,7 +689,7 @@ function averageNonLandCmc(cards: AnalyzedCard[]) {
 }
 
 function isBasicLand(card: ScryfallCardData) {
-  return /^Basic Land/i.test(card.type_line ?? "");
+  return /(?:^| )basic(?: |$)/i.test(card.type_line ?? "") && /land/i.test(card.type_line ?? "");
 }
 
 function uniqueColors(colors: string[]) {

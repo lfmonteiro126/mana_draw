@@ -43,21 +43,24 @@ export function parseDeckList(raw: string): ParsedDeckLine[] {
     if (/^(about|tokens|token)\b/i.test(line)) continue;
 
     const match = line.match(
-      /^(?:(\d+)x?\s+)?(.+?)(?:\s+\(([A-Za-z0-9]+)\)(?:\s+([A-Za-z0-9★☆✦]+))?)?(?:\s+\*\w+\*)?\s*$/
+      /^(?:(\d+)\s*x\s+|(\d+)x\s*|(\d+)\s+)?(.+?)(?:\s+\(([A-Za-z0-9]+)\)(?:\s+([A-Za-z0-9★☆✦]+))?)?(?:\s+\*\w+\*)?\s*$/i
     );
 
-    if (!match?.[2]) continue;
+    if (!match?.[4]) continue;
 
-    const name = cleanCardName(match[2]);
-    if (!name || name.length < 2) continue;
+    const name = cleanCardName(match[4]);
+    if (!name || name.length < 2 || /^\d/.test(name)) continue;
 
-    const quantity = Math.max(1, Number(match[1] ?? "1") || 1);
+    const quantity = Math.max(
+      1,
+      Number(match[1] || match[2] || match[3] || "1") || 1
+    );
 
     parsed.push({
       quantity,
       name,
-      setCode: match[3]?.toUpperCase(),
-      collectorNumber: match[4],
+      setCode: match[5]?.toUpperCase(),
+      collectorNumber: match[6],
       section: section === "ignore" ? "ignore" : section
     });
   }

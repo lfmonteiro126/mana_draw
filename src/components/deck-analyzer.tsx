@@ -497,7 +497,9 @@ function VisualStack({
         <span className="text-[var(--accent)]">{group.icon}</span>
         <h3 className="text-[12px] font-semibold tracking-wide text-[var(--ink)]">
           {group.label}
-          <span className="ml-1 font-medium text-[var(--muted)]">{group.cards.length}</span>
+          <span className="ml-1 font-medium text-[var(--muted)]">
+            {group.cards.reduce((sum, card) => sum + card.quantity, 0)}
+          </span>
         </h3>
       </div>
 
@@ -540,6 +542,7 @@ function VisualStack({
                   selected ? "text-teal-100" : "text-white/85"
                 }`}
               >
+                {card.quantity > 1 ? `${card.quantity} ` : ""}
                 {card.name}
               </span>
               <span className="shrink-0 font-mono text-[10px] text-white/40">
