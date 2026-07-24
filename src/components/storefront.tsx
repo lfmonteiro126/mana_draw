@@ -804,7 +804,7 @@ const heroShowcase = [
   {
     game: "Yu-Gi-Oh!",
     label: "Yu-Gi-Oh!",
-    imageUrl: "/hero/yugioh.png"
+    imageUrl: "/hero/yugioh.jpg"
   }
 ] as const;
 
