@@ -104,7 +104,7 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
       />
 
       <div
-        className="relative z-10 flex max-h-[min(94vh,920px)] w-full max-w-[1180px] flex-col overflow-hidden rounded-t-2xl border border-[var(--line)] bg-[#f3f5f8] shadow-[0_30px_80px_rgba(15,23,42,0.28)] animate-slide-up sm:rounded-2xl sm:animate-fade-in"
+        className="relative z-10 flex max-h-[min(94vh,920px)] w-full max-w-[1180px] flex-col overflow-hidden rounded-t-2xl border border-[var(--line)] bg-[var(--surface-soft)] shadow-[var(--shadow-lift)] animate-slide-up sm:rounded-2xl sm:animate-fade-in"
         role="dialog"
         aria-modal="true"
         aria-label={`Detalhes de ${card.name}`}
@@ -238,13 +238,13 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
               </section>
 
               <section className="overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-sm">
-                <div className="bg-[#4c1d95] px-4 py-3 text-white">
+                <div className="bg-[var(--accent)] px-4 py-3 text-white">
                   <p className="inline-flex items-center gap-2 text-sm font-semibold">
                     <Sparkles size={15} />
                     {details.setName}
                     {details.setCode ? ` (${details.setCode})` : ""}
                   </p>
-                  <p className="mt-1 text-xs text-violet-100">
+                  <p className="mt-1 text-xs text-teal-50/90">
                     {[
                       details.collectorNumber ? `#${details.collectorNumber}` : null,
                       details.rarity,
@@ -265,8 +265,8 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
                         key={lang}
                         className={`grid h-8 min-w-8 place-items-center rounded-md px-2 text-xs font-bold ${
                           lang === details.language
-                            ? "bg-[#4c1d95] text-white"
-                            : "bg-violet-100 text-violet-900"
+                            ? "bg-[var(--accent)] text-white"
+                            : "bg-teal-50 text-teal-900"
                         }`}
                       >
                         {lang}
@@ -305,7 +305,7 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
 
                 {details.prints.length > 0 ? (
                   <div>
-                    <div className="grid grid-cols-[minmax(0,1fr)_52px_52px_44px] gap-2 bg-slate-700 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white">
+                    <div className="grid grid-cols-[minmax(0,1fr)_52px_52px_44px] gap-2 bg-[var(--ink)] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white">
                       <span>Prints</span>
                       <span className="text-right">USD</span>
                       <span className="text-right">EUR</span>
@@ -316,7 +316,7 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
                         <li
                           key={print.id}
                           className={`grid grid-cols-[minmax(0,1fr)_52px_52px_44px] gap-2 border-b border-[var(--line)] px-3 py-2.5 text-xs ${
-                            print.selected ? "bg-violet-50" : "bg-white"
+                            print.selected ? "bg-teal-50" : "bg-white"
                           }`}
                         >
                           <span className="min-w-0">

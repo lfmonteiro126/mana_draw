@@ -362,7 +362,7 @@ export function CardAutocomplete() {
                       <span className="mt-2 flex flex-wrap gap-1">
                         <span className="inline-flex rounded-md bg-[var(--surface-hover)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">{suggestion.printLabel}</span>
                         {suggestion.isDoubleSided ? (
-                          <span className="inline-flex rounded-md bg-violet-400/15 px-2 py-1 text-[11px] font-semibold text-violet-300">
+                          <span className="inline-flex rounded-md bg-[var(--accent)]/12 px-2 py-1 text-[11px] font-semibold text-[var(--accent-strong)]">
                             Dupla face
                           </span>
                         ) : null}
@@ -406,7 +406,7 @@ export function CardAutocomplete() {
                     className="object-cover"
                   />
                   {item.label === "Face 2" ? (
-                    <span className="absolute left-2 top-2 rounded-md bg-violet-500/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
+                    <span className="absolute left-2 top-2 rounded-md bg-[var(--accent)]/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
                       Face 2
                     </span>
                   ) : null}
@@ -421,7 +421,7 @@ export function CardAutocomplete() {
           <p className="mt-3 truncate text-sm font-semibold text-[var(--ink)]">{name || "Nenhuma carta"}</p>
           <p className="truncate text-xs text-[var(--muted)]">{collectionName || "Colecao ainda nao definida"}</p>
           {backImageUrl ? (
-            <p className="mt-2 rounded-md bg-violet-400/15 px-2 py-1 text-[11px] font-bold text-violet-300">Possui segunda face</p>
+            <p className="mt-2 rounded-md bg-[var(--accent)]/12 px-2 py-1 text-[11px] font-bold text-[var(--accent-strong)]">Possui segunda face</p>
           ) : null}
         </div>
 

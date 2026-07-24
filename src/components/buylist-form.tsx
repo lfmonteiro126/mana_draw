@@ -50,9 +50,9 @@ export function BuylistForm() {
       </div>
 
       <div className={step === 0 ? "grid gap-3 sm:grid-cols-2" : "hidden sm:grid sm:grid-cols-2 sm:gap-3"}>
-        <input className="h-11 rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/40 px-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" name="customerName" placeholder="Seu nome" />
-        <input className="h-11 rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/40 px-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" name="email" placeholder="Email para retorno" type="email" />
-        <select className="h-11 rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/40 px-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" name="game" defaultValue="Magic">
+        <input className="field-input h-11 rounded-[var(--radius-control)] px-3 text-sm" name="customerName" placeholder="Seu nome" />
+        <input className="field-input h-11 rounded-[var(--radius-control)] px-3 text-sm" name="email" placeholder="Email para retorno" type="email" />
+        <select className="field-input h-11 rounded-[var(--radius-control)] px-3 text-sm" name="game" defaultValue="Magic">
           {games.map((game) => (
             <option key={game} value={game}>
               {game}
@@ -77,7 +77,7 @@ export function BuylistForm() {
       </div>
 
       <textarea
-        className={`${step === 2 ? "mt-0" : "hidden sm:block sm:mt-3"} min-h-32 w-full rounded-md border border-[var(--line)] bg-[var(--surface-hover)]/40 p-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]`}
+        className={`${step === 2 ? "mt-0" : "hidden sm:block sm:mt-3"} field-input min-h-32 w-full rounded-[var(--radius-control)] p-3 text-sm`}
         name="notes"
         placeholder="Liste cartas principais, condicoes, idiomas e qualquer observacao importante."
       />
@@ -85,7 +85,7 @@ export function BuylistForm() {
       {previews.length > 0 && (
         <div className="mt-3 grid grid-cols-4 gap-2">
           {previews.map((preview) => (
-            <div key={preview.url} className="relative aspect-square overflow-hidden rounded-md border border-[var(--line)] bg-stone-800">
+            <div key={preview.url} className="relative aspect-square overflow-hidden rounded-md border border-[var(--line)] bg-slate-100">
               <Image src={preview.url} alt={preview.name} fill unoptimized className="object-cover" />
             </div>
           ))}

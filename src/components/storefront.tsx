@@ -18,7 +18,6 @@ import {
   Search,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
   Swords,
   Truck,
   UserRound,
@@ -365,76 +364,44 @@ export function Storefront({
         </div>
       </nav>
 
-      <section className="mx-auto grid max-w-7xl items-start gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:px-8 lg:py-8">
-        <div className="flex flex-col justify-center">
-          <div className="mb-3 flex w-fit items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--surface)]/80 px-3 py-1.5 text-xs font-medium text-[var(--muted)]">
-            <Sparkles size={14} className="text-[var(--gold)]" />
-            Loja TCG para comprar e vender cartas
-          </div>
-          <h1 className="max-w-3xl text-balance text-[1.7rem] font-semibold leading-tight tracking-tight text-[var(--ink)] sm:text-4xl">
-            Compre singles. Venda sua colecao TCG.
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-            Compre cartas para jogar agora ou envie fotos da sua colecao para cotacao.
+      <section className="relative mx-auto max-w-7xl overflow-hidden px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 top-0 h-56 w-56 rounded-full bg-[var(--accent)]/10 blur-3xl sm:h-72 sm:w-72"
+        />
+        <div className="relative max-w-2xl">
+          <p className="text-[2.35rem] font-semibold leading-none tracking-tight text-[var(--ink)] sm:text-6xl">
+            Mana Draw
           </p>
-          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
+          <h1 className="mt-4 max-w-xl text-balance text-xl font-medium leading-snug text-[var(--ink)] sm:text-2xl">
+            Compre singles. Venda sua coleção.
+          </h1>
+          <p className="mt-3 max-w-lg text-sm leading-6 text-[var(--muted)] sm:text-base">
+            Marketplace TCG para Magic, Yu-Gi-Oh! e Pokémon — estoque pronto e cotação por foto.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2.5 sm:gap-3">
             <a
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-[0.98]"
               href="#catalogo"
             >
-              Ver catalogo
+              Ver catálogo
               <ChevronRight size={17} />
             </a>
             <a
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)] active:scale-[0.98]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-5 text-sm font-semibold text-[var(--ink)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--surface-hover)] active:scale-[0.98]"
               href="#venda"
             >
-              Cotar colecao
+              Cotar coleção
             </a>
           </div>
           <Link
             href="/analisar-deck"
-            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]"
+            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
           >
             <Swords size={15} />
             Analisar deck Commander
           </Link>
-          <a className="mt-2 text-sm font-semibold text-[var(--accent)] sm:hidden" href="#venda">
-            Tambem compramos cartas de player, bulk e colecoes
-          </a>
-          <div className="mt-5 hidden grid-cols-3 gap-2 sm:grid sm:gap-3">
-            {[
-              ["2.4k", "cartas em estoque"],
-              ["3", "jogos curados"],
-              ["24h", "para cotacoes"]
-            ].map(([value, label]) => (
-              <div key={label} className="border-l border-[var(--line)] pl-3 sm:pl-4">
-                <strong className="block text-lg text-[var(--ink)] sm:text-2xl">{value}</strong>
-                <span className="text-[11px] leading-4 text-[var(--muted)] sm:text-sm">{label}</span>
-              </div>
-            ))}
-          </div>
         </div>
-
-        <aside className="hidden self-start rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 sm:grid">
-          <div className="flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[var(--accent)]/15 text-[var(--accent)]">
-              <Camera size={18} />
-            </span>
-            <div>
-              <p className="font-semibold text-[var(--ink)]">Vendemos e compramos cartas</p>
-              <p className="mt-1 hidden text-sm leading-5 text-[var(--muted)] sm:block">
-                Tem cartas de player, bulk ou colecao parada? Envie fotos para avaliacao.
-              </p>
-            </div>
-          </div>
-          <a
-            className="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 text-sm font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/15"
-            href="#venda"
-          >
-            Quero vender cartas
-          </a>
-        </aside>
       </section>
 
       <section id="catalogo" className="border-y border-[var(--line)] bg-[var(--surface)]/30 backdrop-blur-md">
@@ -629,20 +596,23 @@ export function Storefront({
         </div>
       </section>
 
-      <footer className="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-4 py-8 pb-4 text-sm text-[var(--muted)] sm:px-6 md:flex-row md:pb-8 lg:px-8">
-        <p>Mana Draw TCG Market</p>
+      <footer className="mx-auto flex max-w-7xl flex-col justify-between gap-4 border-t border-[var(--line)] px-4 py-10 pb-6 text-sm text-[var(--muted)] sm:px-6 md:flex-row md:pb-10 lg:px-8">
+        <div>
+          <p className="text-base font-semibold text-[var(--ink)]">Mana Draw</p>
+          <p className="mt-1">Marketplace TCG · comprar e vender singles</p>
+        </div>
         <div className="flex flex-wrap gap-4">
-          <a className="transition hover:text-[var(--ink)]" href="#catalogo">Catalogo</a>
+          <a className="transition hover:text-[var(--ink)]" href="#catalogo">Catálogo</a>
           <Link className="transition hover:text-[var(--ink)]" href="/analisar-deck">Analisar deck</Link>
           <a className="transition hover:text-[var(--ink)]" href="#venda">Buylist</a>
-          <a className="transition hover:text-[var(--ink)]" href="#operacao">Operacao</a>
+          <a className="transition hover:text-[var(--ink)]" href="#operacao">Operação</a>
         </div>
       </footer>
 
       {cartOpen && (
         <div className="fixed inset-0 z-50 animate-fade-in">
           <button
-            className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-xs"
+            className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-sm"
             type="button"
             aria-label="Fechar carrinho"
             onClick={() => setCartOpen(false)}
@@ -679,7 +649,7 @@ export function Storefront({
                 <div className="grid gap-3">
                   {cart.map((line) => (
                     <div key={line.card.id} className="grid grid-cols-[64px_1fr] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-hover)]/40 p-3">
-                      <div className="relative aspect-[5/7] overflow-hidden rounded-md bg-stone-800">
+                      <div className="relative aspect-[5/7] overflow-hidden rounded-md bg-slate-100">
                         <Image
                           src={line.card.imageUrl}
                           alt={line.card.name}
@@ -773,7 +743,7 @@ export function Storefront({
       {authOpen && (
         <div className="fixed inset-0 z-[60] animate-fade-in">
           <button
-            className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-xs"
+            className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-sm"
             type="button"
             aria-label="Fechar autenticacao"
             onClick={() => setAuthOpen(false)}
@@ -894,7 +864,7 @@ function CardThumb({
               priority={priority}
             />
             {hasSecondFace ? (
-              <span className="absolute left-1.5 top-1.5 rounded bg-violet-600/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+              <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
                 2 faces
               </span>
             ) : null}
@@ -902,7 +872,7 @@ function CardThumb({
 
           <div
             className={`absolute inset-0 overflow-hidden rounded-lg border [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] ${
-              hasSecondFace ? "border-[var(--line)] bg-stone-900" : back.frame
+              hasSecondFace ? "border-[var(--line)] bg-slate-100" : back.frame
             }`}
           >
             <Image
@@ -914,7 +884,7 @@ function CardThumb({
               className="object-cover"
             />
             {hasSecondFace ? (
-              <span className="absolute left-1.5 top-1.5 rounded bg-violet-600/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+              <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
                 Face 2
               </span>
             ) : (

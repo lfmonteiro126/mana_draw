@@ -15,16 +15,10 @@ import {
   WandSparkles,
   Zap
 } from "lucide-react";
-import { Outfit } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { AnalyzedCard, DeckAnalysis, DeckAnalyzeResponse, ManaCurveBin } from "@/lib/deck";
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  display: "swap"
-});
 
 const SAMPLE = `// Commander
 1 Atraxa, Praetors' Voice
@@ -138,7 +132,7 @@ export function DeckAnalyzer() {
 
   return (
     <main
-      className={`deck-app min-h-screen ${outfit.className} ${
+      className={`deck-app min-h-screen ${
         analysis ? "pb-[calc(7.5rem+var(--safe-bottom))] md:pb-16" : "pb-10"
       }`}
     >

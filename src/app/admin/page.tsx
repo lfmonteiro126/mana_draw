@@ -877,7 +877,7 @@ function InventoryRow({ card }: { card: TcgCard }) {
                   className="object-cover"
                 />
                 {index === 1 ? (
-                  <span className="absolute left-2 top-2 rounded-md bg-violet-500/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
+                  <span className="absolute left-2 top-2 rounded-md bg-[var(--accent)]/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
                     Face 2
                   </span>
                 ) : null}
