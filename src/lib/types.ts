@@ -72,6 +72,10 @@ export type CardSuggestion = {
   rarity: string;
   language: TcgCard["language"];
   marketPriceCents: number;
+  /** Moeda do marketPriceCents (Scryfall = USD). */
+  marketCurrency?: "USD" | "EUR" | "BRL";
+  marketUsd?: number | null;
+  marketUsdFoil?: number | null;
   imageUrl: string;
   backImageUrl?: string;
   isDoubleSided?: boolean;

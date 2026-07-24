@@ -41,7 +41,7 @@ import {
   getBuylistSubmissions,
   hasDatabase
 } from "@/lib/db";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatUsd } from "@/lib/format";
 import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import type { AdminCustomer, BuylistSubmission, CardCondition, FilterGame, Game, OrderSummary, TcgCard } from "@/lib/types";
 
@@ -900,7 +900,14 @@ function InventoryRow({ card }: { card: TcgCard }) {
           </div>
 
           <div className="grid grid-cols-1 gap-2 text-xs min-[520px]:grid-cols-3">
-            <InventoryStat label="Mercado" value={formatCurrency(card.marketPriceCents)} />
+            <InventoryStat
+              label="Mercado"
+              value={
+                card.game === "Magic" && card.marketPriceCents > 0
+                  ? formatUsd(card.marketPriceCents)
+                  : formatCurrency(card.marketPriceCents)
+              }
+            />
             <InventoryStat label="Total" value={formatCurrency(card.stock * card.priceCents)} />
             <InventoryStat label="Estoque" value={`${card.stock} un.`} />
           </div>

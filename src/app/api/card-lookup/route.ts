@@ -5,6 +5,12 @@ import {
   getCachedCardSuggestions,
   setCachedCardSuggestions
 } from "@/lib/db";
+import {
+  scryfallFinishFromCard,
+  scryfallUsdPrice,
+  storeFinishFromScryfall,
+  usdToCents
+} from "@/lib/scryfall-price";
 import type { CardSuggestion, Game, TcgCard } from "@/lib/types";
 
 type ScryfallCard = {
@@ -77,7 +83,7 @@ type YgoCard = {
 };
 
 const validGames: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
-const CACHE_PREFIX = "prints:v4:";
+const CACHE_PREFIX = "prints:v5:";
 
 export async function GET(request: Request) {
   const user = await currentUser();
@@ -133,31 +139,36 @@ async function lookupMagic(query: string): Promise<CardSuggestion[]> {
   const fallbackByOracle = buildScryfallOracleFallback(prints);
   const topPrints = prints.slice(0, 12);
 
-  const missingOracleIds = [
-    ...new Set(
-      topPrints
-        .filter((card) => {
-          const preferFoil = isFoilOnly(card);
-          const local = scryfallMarketPrice(card, preferFoil);
-          return local <= 0 && Boolean(card.oracle_id) && !fallbackByOracle.has(card.oracle_id!);
-        })
-        .map((card) => card.oracle_id!)
-    )
-  ].slice(0, 5);
+  const missingPrints = topPrints.filter((card) => {
+    const finishKind = scryfallFinishFromCard(card.finishes);
+    const local = scryfallUsdPrice(card.prices, finishKind);
+    return local <= 0 && Boolean(card.oracle_id) && !fallbackByOracle.has(card.oracle_id!);
+  });
 
-  if (missingOracleIds.length > 0) {
+  const missingOracleKeys = missingPrints
+    .map((card) => ({
+      oracleId: card.oracle_id!,
+      set: card.set,
+      number: card.collector_number
+    }))
+    .slice(0, 5);
+
+  if (missingOracleKeys.length > 0) {
     const englishPrices = await Promise.all(
-      missingOracleIds.map((oracleId) => fetchScryfallEnglishPrice(oracleId))
+      missingOracleKeys.map((entry) =>
+        fetchScryfallEnglishPrice(entry.oracleId, entry.set, entry.number)
+      )
     );
     englishPrices.forEach((price, index) => {
-      if (price > 0) fallbackByOracle.set(missingOracleIds[index], price);
+      if (price > 0) fallbackByOracle.set(missingOracleKeys[index].oracleId, price);
     });
   }
 
   return topPrints
     .map((card) => {
-      const preferFoil = isFoilOnly(card);
-      let price = scryfallMarketPrice(card, preferFoil);
+      const finishKind = scryfallFinishFromCard(card.finishes);
+      let price = scryfallUsdPrice(card.prices, finishKind);
+      // Fallback só quando ESTE print não tem USD — busca mesmo set/número em EN, senão mínimo EN.
       if (price <= 0 && card.oracle_id) {
         price = fallbackByOracle.get(card.oracle_id) ?? 0;
       }
@@ -181,6 +192,8 @@ async function lookupMagic(query: string): Promise<CardSuggestion[]> {
         card.collector_number,
         card.released_at
       ]).join(" · ");
+      const marketUsd = scryfallUsdPrice(card.prices, "nonfoil") || null;
+      const marketUsdFoil = scryfallUsdPrice(card.prices, "foil") || null;
 
       return {
         externalId: card.id,
@@ -190,13 +203,16 @@ async function lookupMagic(query: string): Promise<CardSuggestion[]> {
         printLabel,
         rarity: titleCase(card.rarity ?? "Unknown"),
         language: mapLanguage(card.lang),
-        marketPriceCents: cents(price),
+        marketPriceCents: usdToCents(price),
+        marketCurrency: "USD" as const,
+        marketUsd,
+        marketUsdFoil,
         imageUrl: frontImageUrl,
         backImageUrl: backImageUrl || undefined,
         isDoubleSided: Boolean(backImageUrl) || isDoubleSidedLayout(card.layout),
         layout: card.layout,
         tags: compact(["Magic", card.set, card.collector_number, card.type_line, card.rarity, card.layout]),
-        finish: preferFoil || card.finishes?.includes("foil") ? "Foil" : "Normal",
+        finish: storeFinishFromScryfall(card.finishes),
         source: "Scryfall"
       } satisfies CardSuggestion;
     })
@@ -231,6 +247,7 @@ async function lookupPokemon(query: string): Promise<CardSuggestion[]> {
       rarity,
       language: "EN",
       marketPriceCents: cents(price),
+      marketCurrency: "USD",
       imageUrl: card.images?.large ?? card.images?.small ?? "",
       tags: compact(["Pokemon", card.number, card.supertype, ...(card.types ?? []), ...(card.subtypes ?? [])]),
       finish: rarity.toLowerCase().includes("holo") ? "Holo" : "Normal",
@@ -271,6 +288,7 @@ async function lookupYugioh(query: string): Promise<CardSuggestion[]> {
         rarity,
         language: "EN",
         marketPriceCents: cents(price),
+        marketCurrency: "USD",
         imageUrl: card.card_images?.[0]?.image_url ?? card.card_images?.[0]?.image_url_small ?? "",
         tags: compact(["Yu-Gi-Oh!", set.set_code, card.type, card.race, card.archetype]),
         finish: rarity.toLowerCase().includes("secret") ? "Secret" : "Normal",
@@ -280,30 +298,13 @@ async function lookupYugioh(query: string): Promise<CardSuggestion[]> {
   }).filter((card) => card.imageUrl).slice(0, 12);
 }
 
-function isFoilOnly(card: ScryfallCard) {
-  return Boolean(card.finishes?.includes("foil") && !card.finishes?.includes("nonfoil"));
-}
-
-function scryfallMarketPrice(card: ScryfallCard, preferFoil: boolean) {
-  const prices = card.prices ?? {};
-  const ordered = preferFoil
-    ? [prices.usd_foil, prices.usd, prices.usd_etched, prices.eur_foil, prices.eur]
-    : [prices.usd, prices.usd_foil, prices.usd_etched, prices.eur, prices.eur_foil];
-
-  for (const value of ordered) {
-    const price = Number(value);
-    if (Number.isFinite(price) && price > 0) return price;
-  }
-
-  return 0;
-}
-
 function buildScryfallOracleFallback(prints: ScryfallCard[]) {
   const fallback = new Map<string, number>();
 
   for (const card of prints) {
     if (!card.oracle_id) continue;
-    const price = scryfallMarketPrice(card, false);
+    // Só nonfoil do próprio print — não inventa foil/EUR.
+    const price = scryfallUsdPrice(card.prices, "nonfoil") || scryfallUsdPrice(card.prices, "auto");
     if (price <= 0) continue;
 
     const current = fallback.get(card.oracle_id);
@@ -315,9 +316,14 @@ function buildScryfallOracleFallback(prints: ScryfallCard[]) {
   return fallback;
 }
 
-async function fetchScryfallEnglishPrice(oracleId: string) {
+async function fetchScryfallEnglishPrice(oracleId: string, setCode?: string, collectorNumber?: string) {
+  const exact =
+    setCode && collectorNumber
+      ? `oracleid:${oracleId} set:${setCode} number:${collectorNumber} lang:en`
+      : `oracleid:${oracleId} lang:en`;
+
   const params = new URLSearchParams({
-    q: `oracleid:${oracleId} lang:en`,
+    q: exact,
     unique: "prints",
     order: "usd",
     dir: "asc"
@@ -335,7 +341,8 @@ async function fetchScryfallEnglishPrice(oracleId: string) {
 
     const payload = (await response.json()) as { data?: ScryfallCard[] };
     for (const card of payload.data ?? []) {
-      const price = scryfallMarketPrice(card, false);
+      const finish = scryfallFinishFromCard(card.finishes);
+      const price = scryfallUsdPrice(card.prices, finish);
       if (price > 0) return price;
     }
   } catch {

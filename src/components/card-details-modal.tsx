@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CardDetailsPayload, CardLegality } from "@/lib/card-details";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatUsd } from "@/lib/format";
 import type { TcgCard } from "@/lib/types";
 
 type Props = {
@@ -275,20 +275,31 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
                   </div>
                 ) : null}
 
-                {details.store ? (
+                {details.store || details.marketUsdCents ? (
                   <div className="border-b border-[var(--line)] px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                      Na Mana Draw
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-[var(--ink)]">
-                      {formatCurrency(details.store.priceCents)}
-                    </p>
-                    <p className="text-xs text-[var(--muted)]">
-                      {details.store.condition} · {details.store.stock} em estoque
-                      {details.store.marketPriceCents > 0
-                        ? ` · mercado ${formatCurrency(details.store.marketPriceCents)}`
-                        : ""}
-                    </p>
+                    {details.marketUsdCents ? (
+                      <>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                          Mercado Scryfall (este print)
+                        </p>
+                        <p className="mt-1 text-lg font-semibold text-sky-700">
+                          {formatUsd(details.marketUsdCents)}
+                        </p>
+                      </>
+                    ) : null}
+                    {details.store ? (
+                      <>
+                        <p className={`text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)] ${details.marketUsdCents ? "mt-3" : ""}`}>
+                          Na Mana Draw
+                        </p>
+                        <p className="mt-1 text-lg font-semibold text-[var(--ink)]">
+                          {formatCurrency(details.store.priceCents)}
+                        </p>
+                        <p className="text-xs text-[var(--muted)]">
+                          {details.store.condition} · {details.store.stock} em estoque
+                        </p>
+                      </>
+                    ) : null}
                   </div>
                 ) : null}
 

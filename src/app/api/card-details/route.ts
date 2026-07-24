@@ -5,6 +5,11 @@ import {
   isDoubleSidedLayout
 } from "@/lib/card-images";
 import type { CardDetailsPayload, CardLegality, CardPrintRow } from "@/lib/card-details";
+import {
+  scryfallFinishFromCard,
+  scryfallUsdPrice,
+  usdToCents
+} from "@/lib/scryfall-price";
 import type { Game } from "@/lib/types";
 
 type ScryfallCard = {
@@ -186,9 +191,9 @@ async function fetchMagicDetails(input: {
     face1?.image_uris?.normal ??
     (isDoubleSidedLayout(card.layout) ? deriveScryfallBackUrl(frontImage) : undefined);
 
-  const languageCodes = [...new Set(prints.map(() => (card.lang ?? "en").toUpperCase()))];
-  // Prefer languages collected from prints endpoint when available
   const languages = await collectLanguages(card);
+  const finishKind = scryfallFinishFromCard(card.finishes);
+  const marketUsd = scryfallUsdPrice(card.prices, finishKind);
 
   return {
     game: "Magic",
@@ -208,7 +213,8 @@ async function fetchMagicDetails(input: {
     finishes: card.finishes ?? [],
     legalities: mapLegalities(card.legalities ?? {}),
     prints,
-    languages: languages.length ? languages : languageCodes,
+    languages: languages.length ? languages : [(card.lang ?? "en").toUpperCase()],
+    marketUsdCents: usdToCents(marketUsd),
     store: undefined
   };
 }

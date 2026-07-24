@@ -37,6 +37,8 @@ export type CardDetailsPayload = {
   legalities: CardLegality[];
   prints: CardPrintRow[];
   languages: string[];
+  /** Preço Scryfall do print atual em centavos de USD. */
+  marketUsdCents?: number;
   store?: {
     priceCents: number;
     marketPriceCents: number;

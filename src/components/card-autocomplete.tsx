@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { formatCurrency, formatUsd } from "@/lib/format";
+import { scryfallFinishFromStoreFinish } from "@/lib/scryfall-price";
 import type { CardCondition, CardSuggestion, Game, TcgCard } from "@/lib/types";
 
 const games: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
@@ -169,9 +171,9 @@ export function CardAutocomplete() {
   }
 
   function applySuggestion(suggestion: CardSuggestion) {
-    const nextMarketPrice = suggestion.marketPriceCents > 0
-      ? (suggestion.marketPriceCents / 100).toFixed(2)
-      : "";
+    const finish = suggestion.finish;
+    const marketUsd = marketUsdForFinish(suggestion, finish);
+    const nextMarketPrice = marketUsd > 0 ? marketUsd.toFixed(2) : "";
 
     setSelectedSuggestion(suggestion);
     setSelectedCardName(suggestion.name);
@@ -180,9 +182,10 @@ export function CardAutocomplete() {
     setCollectionName(suggestion.setName);
     setRarity(suggestion.rarity);
     setLanguage(suggestion.language);
-    setFinish(suggestion.finish);
+    setFinish(finish);
     setMarketPrice(nextMarketPrice);
-    setPrice(applyPriceMode(nextMarketPrice, priceMode));
+    // Preço de venda é BRL — não copiar USD do Scryfall como se fosse real.
+    setPrice(suggestion.game === "Magic" ? "" : applyPriceMode(nextMarketPrice, priceMode));
     setStock("1");
     setImageUrl(suggestion.imageUrl);
     setBackImageUrl(suggestion.backImageUrl ?? "");
@@ -364,7 +367,11 @@ export function CardAutocomplete() {
                           </span>
                         ) : null}
                         <span className="inline-flex rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-semibold text-[var(--accent)]">
-                          {suggestion.marketPriceCents > 0 ? `R$ ${(suggestion.marketPriceCents / 100).toFixed(2)}` : "Sem preco"}
+                          {suggestion.marketPriceCents > 0
+                            ? suggestion.marketCurrency === "USD" || suggestion.game === "Magic"
+                              ? formatUsd(suggestion.marketPriceCents)
+                              : formatCurrency(suggestion.marketPriceCents)
+                            : "Sem preco"}
                         </span>
                       </span>
                     </span>
@@ -422,22 +429,39 @@ export function CardAutocomplete() {
           <div className="grid gap-3 sm:grid-cols-3">
             <QuickSelect label="Condicao" value={condition} values={conditions} onChange={(value) => setCondition(value as CardCondition)} />
             <QuickSelect label="Idioma" value={language} values={languages} onChange={(value) => setLanguage(value as TcgCard["language"])} />
-            <QuickSelect label="Acabamento" value={finish} values={finishes} onChange={(value) => setFinish(value as TcgCard["finish"])} />
+            <QuickSelect
+              label="Acabamento"
+              value={finish}
+              values={finishes}
+              onChange={(value) => {
+                const nextFinish = value as TcgCard["finish"];
+                setFinish(nextFinish);
+                if (!selectedSuggestion) return;
+                const marketUsd = marketUsdForFinish(selectedSuggestion, nextFinish);
+                const nextMarket = marketUsd > 0 ? marketUsd.toFixed(2) : "";
+                setMarketPrice(nextMarket);
+                if (selectedSuggestion.game !== "Magic" && priceMode !== "manual") {
+                  setPrice(applyPriceMode(nextMarket, priceMode));
+                }
+              }}
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-[1fr_1fr_150px]">
             <label className={labelClass}>
-              Preco de venda
-              <input className={inputClass} name="price" type="number" min="0" step="0.01" placeholder="Preco" value={price} onChange={(event) => {
+              Preco de venda (R$)
+              <input className={inputClass} name="price" type="number" min="0" step="0.01" placeholder="Preco BRL" value={price} onChange={(event) => {
                 setPrice(event.target.value);
                 setPriceMode("manual");
               }} required />
             </label>
             <label className={labelClass}>
-              Preco mercado
-              <input className={inputClass} name="marketPrice" type="number" min="0" step="0.01" placeholder="Mercado" value={marketPrice} onChange={(event) => {
+              {game === "Magic" ? "Mercado Scryfall (USD)" : "Preco mercado"}
+              <input className={inputClass} name="marketPrice" type="number" min="0" step="0.01" placeholder={game === "Magic" ? "USD" : "Mercado"} value={marketPrice} onChange={(event) => {
                 setMarketPrice(event.target.value);
-                if (priceMode !== "manual") setPrice(applyPriceMode(event.target.value, priceMode));
+                if (game !== "Magic" && priceMode !== "manual") {
+                  setPrice(applyPriceMode(event.target.value, priceMode));
+                }
               }} required />
             </label>
             <label className={labelClass}>
@@ -561,4 +585,12 @@ function applyPriceMode(marketValue: string, mode: PriceMode) {
   if (mode === "under") return (market * 0.9).toFixed(2);
   if (mode === "over") return (market * 1.1).toFixed(2);
   return market.toFixed(2);
+}
+
+function marketUsdForFinish(suggestion: CardSuggestion, finish: TcgCard["finish"]) {
+  const kind = scryfallFinishFromStoreFinish(finish);
+  if (kind === "foil") {
+    return suggestion.marketUsdFoil || suggestion.marketUsd || suggestion.marketPriceCents / 100 || 0;
+  }
+  return suggestion.marketUsd || suggestion.marketPriceCents / 100 || 0;
 }
