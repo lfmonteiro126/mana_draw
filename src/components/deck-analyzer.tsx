@@ -140,7 +140,7 @@ export function DeckAnalyzer() {
         <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6">
           <Link href="/" className="group flex items-center gap-3" aria-label="Mana Draw">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--accent)] text-xs font-bold tracking-wide text-white transition group-hover:bg-[var(--accent-strong)]">
-              NM
+              MD
             </span>
             <span className="leading-tight">
               <span className="block text-[13px] font-semibold tracking-wide text-[var(--ink)]">
