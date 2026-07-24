@@ -19,7 +19,7 @@ import { Outfit } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type { AnalyzedCard, DeckAnalysis, DeckAnalyzeResponse } from "@/lib/deck";
+import type { AnalyzedCard, DeckAnalysis, DeckAnalyzeResponse, ManaCurveBin } from "@/lib/deck";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -557,8 +557,6 @@ function VisualStack({
 }
 
 function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
-  const maxCurve = Math.max(...analysis.manaCurve.map((bin) => bin.count), 1);
-
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Panel title="Bracket estimado">
@@ -577,81 +575,87 @@ function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
       </Panel>
 
       <Panel title="Curva de mana">
-        <div className="flex h-44 items-end gap-2">
-          {analysis.manaCurve.map((bin) => (
-            <div key={bin.label} className="flex flex-1 flex-col items-center gap-1.5">
-              <span className="text-[10px] tabular-nums text-[var(--muted)]">{bin.count || ""}</span>
-              <div
-                className="w-full rounded-t-md bg-gradient-to-t from-teal-700 to-teal-400"
-                style={{ height: `${Math.max(8, (bin.count / maxCurve) * 100)}%` }}
-              />
-              <span className="text-[11px] font-medium text-[var(--muted)]">{bin.label}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-[var(--muted)]">
-          CMC médio {analysis.averageCmc} · {analysis.landCount} terrenos
-        </p>
+        <ManaCurveChart
+          bins={analysis.manaCurve}
+          averageCmc={analysis.averageCmc}
+          landCount={analysis.landCount}
+        />
       </Panel>
 
       <Panel title="Arquétipos">
         <div className="grid gap-2">
-          {analysis.archetypes.map((archetype, index) => (
-            <div
-              key={archetype.id}
-              className="rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a]/70 px-3.5 py-3"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-[var(--ink)]">
-                  {index === 0 ? "Principal · " : ""}
-                  {archetype.label}
-                </p>
-                <span className="text-xs tabular-nums text-[var(--muted)]">{archetype.score}</span>
+          {analysis.archetypes.length === 0 ? (
+            <p className="text-sm text-[var(--muted)]">Nenhum arquétipo claro ainda.</p>
+          ) : (
+            analysis.archetypes.map((archetype, index) => (
+              <div
+                key={archetype.id}
+                className="rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a]/70 px-3.5 py-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[var(--ink)]">
+                    {index === 0 ? "Principal · " : ""}
+                    {archetype.label}
+                  </p>
+                  <span className="text-xs tabular-nums text-[var(--muted)]">{archetype.score}</span>
+                </div>
+                {archetype.evidence.length > 0 && (
+                  <p className="mt-1 text-xs text-[var(--muted)]">{archetype.evidence.join(" · ")}</p>
+                )}
               </div>
-              {archetype.evidence.length > 0 && (
-                <p className="mt-1 text-xs text-[var(--muted)]">{archetype.evidence.join(" · ")}</p>
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </Panel>
 
       <Panel title="Sinergia">
         <ul className="grid gap-2.5 text-sm leading-6 text-[var(--muted)]">
-          {analysis.synergyNotes.map((note) => (
-            <li key={note}>· {note}</li>
-          ))}
+          {analysis.synergyNotes.length === 0 ? (
+            <li>Sem notas de sinergia para esta lista.</li>
+          ) : (
+            analysis.synergyNotes.map((note) => <li key={note}>· {note}</li>)
+          )}
         </ul>
       </Panel>
 
       <Panel title="Pontos fortes">
         <div className="grid gap-3.5">
-          {analysis.strengths.map((item) => (
-            <div key={item.title}>
-              <p className="flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
-                <Sparkles size={14} className="text-[var(--gold)]" />
-                {item.title}
-              </p>
-              <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{item.detail}</p>
-            </div>
-          ))}
+          {analysis.strengths.length === 0 ? (
+            <p className="text-sm text-[var(--muted)]">Ainda sem pontos fortes destacados.</p>
+          ) : (
+            analysis.strengths.map((item) => (
+              <div key={item.title}>
+                <p className="flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
+                  <Sparkles size={14} className="text-[var(--gold)]" />
+                  {item.title}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{item.detail}</p>
+              </div>
+            ))
+          )}
         </div>
       </Panel>
 
       <Panel title="Sugestões">
         <div className="grid gap-2">
-          {analysis.suggestions.map((item) => (
-            <div
-              key={item.title}
-              className="rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a]/70 px-3.5 py-3"
-            >
-              <p className={`text-sm font-semibold ${severityTone(item.severity)}`}>{item.title}</p>
-              <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{item.detail}</p>
-              {item.relatedCards && item.relatedCards.length > 0 && (
-                <p className="mt-1 text-xs text-[var(--muted)]">{item.relatedCards.join(" · ")}</p>
-              )}
-            </div>
-          ))}
+          {analysis.suggestions.length === 0 ? (
+            <p className="text-sm text-[var(--muted)]">
+              Nenhuma sugestão automática — a lista parece equilibrada nos pilares básicos.
+            </p>
+          ) : (
+            analysis.suggestions.map((item) => (
+              <div
+                key={item.title}
+                className="rounded-2xl border border-[var(--deck-stroke)] bg-[#0b111a]/70 px-3.5 py-3"
+              >
+                <p className={`text-sm font-semibold ${severityTone(item.severity)}`}>{item.title}</p>
+                <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{item.detail}</p>
+                {item.relatedCards && item.relatedCards.length > 0 && (
+                  <p className="mt-1 text-xs text-[var(--muted)]">{item.relatedCards.join(" · ")}</p>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </Panel>
 
@@ -943,6 +947,152 @@ function ViewTab({
     >
       {children}
     </button>
+  );
+}
+
+function ManaCurveChart({
+  bins,
+  averageCmc,
+  landCount
+}: {
+  bins: ManaCurveBin[];
+  averageCmc: number;
+  landCount: number;
+}) {
+  const maxCount = Math.max(...bins.map((bin) => bin.count), 1);
+  const totalSpells = bins.reduce((sum, bin) => sum + bin.count, 0);
+  const width = 360;
+  const height = 188;
+  const padL = 28;
+  const padR = 12;
+  const padT = 22;
+  const padB = 28;
+  const chartW = width - padL - padR;
+  const chartH = height - padT - padB;
+  const gap = 8;
+  const barW = (chartW - gap * (bins.length - 1)) / bins.length;
+  const ticks = [0, 0.5, 1].map((t) => Math.round(maxCount * t));
+
+  const points = bins
+    .map((bin, index) => {
+      const x = padL + index * (barW + gap) + barW / 2;
+      const y = padT + chartH - (bin.count / maxCount) * chartH;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <div>
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--deck-stroke)] bg-[radial-gradient(120%_80%_at_10%_0%,rgba(20,184,166,0.16),transparent_55%),linear-gradient(180deg,#0b121c_0%,#0a1018_100%)] px-2 pb-1 pt-2">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-48 w-full" role="img" aria-label="Curva de mana">
+          <defs>
+            <linearGradient id="manaBar" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stopColor="#0f766e" />
+              <stop offset="55%" stopColor="#14b8a6" />
+              <stop offset="100%" stopColor="#5eead4" />
+            </linearGradient>
+            <linearGradient id="manaArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(94,234,212,0.28)" />
+              <stop offset="100%" stopColor="rgba(94,234,212,0)" />
+            </linearGradient>
+            <filter id="barGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="1.4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {ticks.map((tick) => {
+            const y = padT + chartH - (tick / maxCount) * chartH;
+            return (
+              <g key={`tick-${tick}`}>
+                <line
+                  x1={padL}
+                  x2={width - padR}
+                  y1={y}
+                  y2={y}
+                  stroke="rgba(148,163,184,0.12)"
+                  strokeDasharray={tick === 0 ? undefined : "3 4"}
+                />
+                <text x={padL - 8} y={y + 3} textAnchor="end" fill="rgba(148,163,184,0.55)" fontSize="9">
+                  {tick}
+                </text>
+              </g>
+            );
+          })}
+
+          <polyline
+            points={`${padL},${padT + chartH} ${points} ${padL + chartW},${padT + chartH}`}
+            fill="url(#manaArea)"
+            stroke="none"
+          />
+          <polyline
+            points={points}
+            fill="none"
+            stroke="rgba(94,234,212,0.45)"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+
+          {bins.map((bin, index) => {
+            const x = padL + index * (barW + gap);
+            const h = Math.max(bin.count === 0 ? 0 : 4, (bin.count / maxCount) * chartH);
+            const y = padT + chartH - h;
+            return (
+              <g key={bin.label}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={barW}
+                  height={h}
+                  rx={6}
+                  fill="url(#manaBar)"
+                  filter={bin.count > 0 ? "url(#barGlow)" : undefined}
+                  opacity={bin.count === 0 ? 0.25 : 1}
+                />
+                {bin.count > 0 && (
+                  <text
+                    x={x + barW / 2}
+                    y={y - 6}
+                    textAnchor="middle"
+                    fill="#e2e8f0"
+                    fontSize="10"
+                    fontWeight="600"
+                  >
+                    {bin.count}
+                  </text>
+                )}
+                <text
+                  x={x + barW / 2}
+                  y={height - 8}
+                  textAnchor="middle"
+                  fill="rgba(148,163,184,0.75)"
+                  fontSize="11"
+                  fontWeight="500"
+                >
+                  {bin.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--muted)]">
+        <span>
+          CMC médio <span className="font-semibold text-[var(--ink)]">{averageCmc}</span>
+        </span>
+        <span>
+          Spells <span className="font-semibold text-[var(--ink)]">{totalSpells}</span>
+        </span>
+        <span>
+          Terrenos <span className="font-semibold text-[var(--ink)]">{landCount}</span>
+        </span>
+      </div>
+    </div>
   );
 }
 

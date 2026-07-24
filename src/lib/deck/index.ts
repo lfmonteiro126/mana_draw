@@ -5,5 +5,6 @@ export type {
   DeckAnalysis,
   DeckAnalyzeRequest,
   DeckAnalyzeResponse,
-  CommanderBracket
+  CommanderBracket,
+  ManaCurveBin
 } from "./types";

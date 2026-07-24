@@ -145,6 +145,8 @@ export async function analyzeCommanderDeck(input: {
     expectedMaindeck,
     landCount,
     averageCmc,
+    manaCurve,
+    archetypes,
     roles,
     bracket,
     colorIdentityViolations,
@@ -520,6 +522,14 @@ function findStrengths(input: {
     });
   }
 
+  if (strengths.length === 0) {
+    strengths.push({
+      title: "Base para iterar",
+      detail:
+        "Ainda há poucos sinais fortes de consistência. Foque primeiro em ramp, draw e sinergia do arquétipo principal."
+    });
+  }
+
   return strengths.slice(0, 5);
 }
 
@@ -529,6 +539,8 @@ function buildSuggestions(input: {
   expectedMaindeck: number;
   landCount: number;
   averageCmc: number;
+  manaCurve: ManaCurveBin[];
+  archetypes: ArchetypeScore[];
   roles: RoleBreakdown[];
   bracket: BracketAssessment;
   colorIdentityViolations: string[];
@@ -543,6 +555,20 @@ function buildSuggestions(input: {
   const removal = countRole(input.maindeck, "removal");
   const wipes = countRole(input.maindeck, "boardWipe");
   const protection = countRole(input.maindeck, "protection");
+  const tutors = countRole(input.maindeck, "tutor");
+  const creatures = countRole(input.maindeck, "creature");
+  const nonLandCount = input.maindeck.reduce(
+    (sum, card) => sum + (card.roles.includes("land") ? 0 : card.quantity),
+    0
+  );
+
+  const curve = input.manaCurve;
+  const early = sumBins(curve, [0, 1, 2]);
+  const mid = sumBins(curve, [3, 4]);
+  const top = sumBins(curve, [5, 6, 7]);
+  const twoDrops = curve.find((bin) => bin.cmc === 2)?.count ?? 0;
+  const threeDrops = curve.find((bin) => bin.cmc === 3)?.count ?? 0;
+  const topArchetype = input.archetypes[0];
 
   if (!input.commander) {
     suggestions.push({
@@ -608,7 +634,7 @@ function buildSuggestions(input: {
     suggestions.push({
       severity: "info",
       title: "Muitos terrenos",
-      detail: `${input.landCount} lands podem deixar o deck lento se não houver payoff de landfall/maneuver de topdeck.`
+      detail: `${input.landCount} lands podem deixar o deck lento se não houver payoff de landfall.`
     });
   }
 
@@ -616,7 +642,13 @@ function buildSuggestions(input: {
     suggestions.push({
       severity: "warn",
       title: "Ramp abaixo do ideal",
-      detail: `Só ${ramp} fontes de ramp. Considere rocks baratas (Signets, Talismans) ou ramp verde se a identidade permitir.`
+      detail: `Só ${ramp} aceleradores reais (rocks/dorks/land ramp). Meta típica: 8–12. Prefira Signets, Talismans ou Cultivate/Farseek se tiver verde.`
+    });
+  } else if (ramp < 10 && input.averageCmc >= 3.4) {
+    suggestions.push({
+      severity: "info",
+      title: "Ramp ok, mas a curva pede mais",
+      detail: `Com CMC médio ${input.averageCmc} e ${ramp} ramp, +2 rocks na curva 1–2 suavizam o começo do jogo.`
     });
   }
 
@@ -624,7 +656,13 @@ function buildSuggestions(input: {
     suggestions.push({
       severity: "warn",
       title: "Pouco card draw",
-      detail: `Com ${draw} efeitos de draw, o deck pode “engasgar” após os primeiros turnos. Busque draw recorrente alinhado ao arquétipo.`
+      detail: `Com ${draw} efeitos de draw, o deck pode engasgar após os primeiros turnos. Busque draw recorrente alinhado ao arquétipo.`
+    });
+  } else if (draw < 8) {
+    suggestions.push({
+      severity: "info",
+      title: "Card advantage pode melhorar",
+      detail: `${draw} fontes de draw — ainda dá espaço para 1–2 engines recorrentes (Study, Arena, cantrips do tema).`
     });
   }
 
@@ -632,7 +670,13 @@ function buildSuggestions(input: {
     suggestions.push({
       severity: "warn",
       title: "Pouca remoção pontual",
-      detail: "Adicione respostas baratas a ameaças (exile/destroy/bounce) para não depender só do plano ofensivo."
+      detail: `Só ${removal} remoções. Meta casual: 6–10 respostas baratas (exile/destroy/bounce).`
+    });
+  } else if (removal < 7 && input.bracket.bracket >= 3) {
+    suggestions.push({
+      severity: "info",
+      title: "Interação um pouco baixa para o bracket",
+      detail: `Com ${removal} remoções em Bracket ${input.bracket.bracket}, mesas mais rápidas podem te passar. Considere +2 respostas versáteis.`
     });
   }
 
@@ -644,11 +688,25 @@ function buildSuggestions(input: {
     });
   }
 
-  if (input.averageCmc >= 3.8) {
+  if (input.averageCmc >= 3.6) {
     suggestions.push({
       severity: "info",
       title: "Curva alta",
-      detail: `CMC médio ${input.averageCmc}. Corte top-end fraco ou aumente ramp/fast mana coerente com o bracket desejado.`
+      detail: `CMC médio ${input.averageCmc}. Corte top-end fraco ou aumente ramp na curva 1–3.`
+    });
+  }
+
+  if (top > early && nonLandCount >= 40) {
+    suggestions.push({
+      severity: "warn",
+      title: "Top-end pesado demais",
+      detail: `${top} cartas CMC 5+ vs ${early} na curva 0–2. Troque bombas fracas por peças de 2–3 mana que avancem o plano.`
+    });
+  } else if (twoDrops + threeDrops < 12 && nonLandCount >= 40) {
+    suggestions.push({
+      severity: "info",
+      title: "Buraco na curva 2–3",
+      detail: `Só ${twoDrops + threeDrops} spells em CMC 2–3. Essa faixa costuma decidir o ritmo do midgame — reforce com sinergia do arquétipo.`
     });
   }
 
@@ -656,7 +714,24 @@ function buildSuggestions(input: {
     suggestions.push({
       severity: "info",
       title: "Proteja o comandante",
-      detail: `Pouca proteção detectada. Itens/hexproof/indestructible ou counters defensivos ajudam ${input.commander.name} a ficar na mesa.`
+      detail: `Pouca proteção detectada. Greaves/Boots, hexproof ou counters defensivos ajudam ${input.commander.name} a ficar na mesa.`
+    });
+  }
+
+  if (creatures < 20 && topArchetype && /aggro|tokens|tribal|voltron/i.test(topArchetype.label)) {
+    suggestions.push({
+      severity: "info",
+      title: "Poucas criaturas para o plano",
+      detail: `${creatures} criaturas com viés ${topArchetype.label}. O arquétipo geralmente quer mais corpos ou geradores de tokens.`
+    });
+  }
+
+  if (topArchetype && topArchetype.score >= 4 && topArchetype.evidence.length < 4) {
+    suggestions.push({
+      severity: "info",
+      title: `Aprofunde o pacote ${topArchetype.label}`,
+      detail: `Há sinal de ${topArchetype.label}, mas o núcleo ainda é fino. Complete enablers + payoffs antes de goodstuff genérico.`,
+      relatedCards: topArchetype.evidence.slice(0, 4)
     });
   }
 
@@ -667,7 +742,7 @@ function buildSuggestions(input: {
       detail:
         "Sinais de Optimized/cEDH. Avise a mesa o bracket — ou remova Game Changers/fast mana se quiser descer para Bracket 2–3."
     });
-  } else if (input.bracket.bracket <= 2 && countRole(input.maindeck, "tutor") === 0) {
+  } else if (input.bracket.bracket <= 2 && tutors === 0) {
     suggestions.push({
       severity: "info",
       title: "Espaço para upgrades temáticos",
@@ -676,7 +751,57 @@ function buildSuggestions(input: {
     });
   }
 
+  // Sempre deixe pelo menos 3 dicas acionáveis ranqueando os pilares mais fracos.
+  if (suggestions.length < 3) {
+    const pillars = (
+      [
+        {
+          score: ramp,
+          item: {
+            severity: "info" as const,
+            title: "Refine a base de mana",
+            detail: `${ramp} ramp e ${input.landCount} lands. Teste se o deck acerta as primeiras jogadas — ajuste rocks/terrenos conforme a curva.`
+          }
+        },
+        {
+          score: draw,
+          item: {
+            severity: "info" as const,
+            title: "Priorize draw alinhado ao tema",
+            detail: `${draw} fontes de draw. Prefira engines que paguem o arquétipo ${topArchetype?.label ?? "principal"} em vez de cantrips genéricos.`
+          }
+        },
+        {
+          score: removal + wipes,
+          item: {
+            severity: "info" as const,
+            title: "Calibre a interação da mesa",
+            detail: `${removal} remoções e ${wipes} wipes. Em Bracket ${input.bracket.bracket}, mantenha respostas para ameaças que quebram o seu plano.`
+          }
+        },
+        {
+          score: mid,
+          item: {
+            severity: "info" as const,
+            title: "Olhe a curva de mana",
+            detail: `CMC médio ${input.averageCmc} · early ${early} · mid ${mid} · top ${top}. Corte overlap e fortaleça a faixa onde o deck realmente quer jogar.`
+          }
+        }
+      ] satisfies Array<{ score: number; item: DeckSuggestion }>
+    ).sort((a, b) => a.score - b.score);
+
+    for (const pillar of pillars) {
+      if (suggestions.some((s) => s.title === pillar.item.title)) continue;
+      suggestions.push(pillar.item);
+      if (suggestions.length >= 4) break;
+    }
+  }
+
   return suggestions.slice(0, 10);
+}
+
+function sumBins(curve: ManaCurveBin[], cmcs: number[]) {
+  return curve.reduce((sum, bin) => (cmcs.includes(bin.cmc) ? sum + bin.count : sum), 0);
 }
 
 function buildSynergyNotes(
@@ -703,6 +828,7 @@ function buildSynergyNotes(
 
   const ramp = countRole(maindeck, "ramp");
   const draw = countRole(maindeck, "draw");
+  const removal = countRole(maindeck, "removal");
   if (ramp >= 10 && draw < 6) {
     notes.push(
       "Você acelera bem, mas compra pouco: o gargalo tende a ser card advantage, não mana."
@@ -711,6 +837,19 @@ function buildSynergyNotes(
   if (draw >= 10 && ramp < 8) {
     notes.push(
       "Há draw suficiente, porém a mana pode atrasar o plano. Balanceie com ramp na curva 1–3."
+    );
+  }
+  if (draw >= 6 && ramp >= 8 && removal < 5) {
+    notes.push(
+      "Mana e draw estão ok — o próximo gargalo provavelmente é interação na mesa adversária."
+    );
+  }
+
+  if (notes.length === 0) {
+    notes.push(
+      commanders[0]
+        ? `Monte o deck em torno do que ${commanders[0].name} faz melhor: cada carta deve acelerar, proteger ou pagar esse plano.`
+        : "Defina o comandante e um eixo claro (tokens, spellslinger, aristocrats…) antes de encher de staples genéricos."
     );
   }
 

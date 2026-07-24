@@ -217,8 +217,9 @@ export function detectRoles(oracle: string, typeLine: string, name: string): Dec
   const o = oracle.toLowerCase();
   const t = typeLine.toLowerCase();
   const n = name.toLowerCase();
+  const isLand = /\bland\b/i.test(typeLine);
 
-  if (/^basic land$/i.test(typeLine) || t.includes("land")) roles.add("land");
+  if (isLand) roles.add("land");
   if (t.includes("creature")) roles.add("creature");
   if (t.includes("artifact") && !t.includes("creature")) roles.add("artifact");
   if (t.includes("enchantment") && !t.includes("creature")) roles.add("enchantment");
@@ -227,52 +228,70 @@ export function detectRoles(oracle: string, typeLine: string, name: string): Dec
   if (t.includes("sorcery")) roles.add("sorcery");
   if (t.includes("battle")) roles.add("battle");
 
-  if (
-    /add \{|search your library for a (basic )?land|rampant growth|cultivate|kodama|nature's lore|three visits|sol ring|arcane signet|talisman|fellwar|mana rock|mana dork/i.test(
-      o + " " + n
-    ) ||
-    FAST_MANA.has(n)
-  ) {
-    roles.add("ramp");
+  // Terrenos com "Add {B}" NÃO contam como ramp — só aceleradores reais.
+  if (!isLand) {
+    const manaRockOrDork =
+      (/add \{[wubrgc0-9/]+\}|add one mana|add \{.\}/i.test(o) ||
+        /sol ring|arcane signet|talisman|fellwar|mind stone|thought vessel|commander['’]?s plate|everflowing chalice/i.test(
+          n
+        )) &&
+      (t.includes("artifact") || t.includes("creature"));
+
+    const landRamp =
+      /search your library for .{0,60}land|put (a|up to .*) land .* onto the battlefield|rampant growth|cultivate|kodama's reach|nature's lore|three visits|farseek|sakura-tribe elder|wood elves|into the north/i.test(
+        `${o} ${n}`
+      );
+
+    if (manaRockOrDork || landRamp || FAST_MANA.has(n)) {
+      roles.add("ramp");
+    }
   }
 
   if (
-    /draw .* card|investigate|cantrip|rhystic study|mystic remora|brainstorm|ponder|preordain|night's whisper|sign in blood|read the bones/i.test(
-      o
+    !isLand &&
+    /draw (a|one|two|three|x|\d+)? ?cards?|investigate|cantrip|rhystic study|mystic remora|brainstorm|ponder|preordain|night's whisper|sign in blood|read the bones|phyrexian arena|sylvan library|esper sentinel/i.test(
+      `${o} ${n}`
     )
   ) {
     roles.add("draw");
   }
 
   if (
-    /destroy target|exile target|deal \d+ damage to|fight target|goad|remove|path to exile|swords to plowshares|assassin's trophy|beast within/i.test(
-      o
+    !isLand &&
+    /destroy target|exile target|deal \d+ damage to|fight target|goad|path to exile|swords to plowshares|assassin's trophy|beast within|generous gift|chaos warp/i.test(
+      `${o} ${n}`
     ) &&
     !/destroy all|each creature|all creatures/i.test(o)
   ) {
     roles.add("removal");
   }
 
-  if (/destroy all|each creature|all creatures|wrath|damnation|blasphemous|cyclonic rift/i.test(o)) {
+  if (
+    !isLand &&
+    /destroy all|each creature|all creatures|wrath|damnation|blasphemous|cyclonic rift|toxic deluge|farewell/i.test(
+      `${o} ${n}`
+    )
+  ) {
     roles.add("boardWipe");
   }
 
-  if (/counter target/i.test(o)) roles.add("counterspell");
+  if (!isLand && /counter target/i.test(o)) roles.add("counterspell");
 
   if (
-    /search your library for (a|an|up to).*(card|creature|instant|sorcery|enchantment|artifact|permanent)/i.test(
+    !isLand &&
+    (/search your library for (a|an|up to).*(card|creature|instant|sorcery|enchantment|artifact|permanent)/i.test(
       o
     ) ||
-    /tutor|vampiric tutor|demonic tutor|enlightened tutor|worldly tutor|imperial seal|mystical tutor/i.test(
-      o + " " + n
-    )
+      /tutor|vampiric tutor|demonic tutor|enlightened tutor|worldly tutor|imperial seal|mystical tutor/i.test(
+        `${o} ${n}`
+      ))
   ) {
     roles.add("tutor");
   }
 
   if (GAME_CHANGERS.has(n)) roles.add("gameChanger");
-  if (FAST_MANA.has(n)) roles.add("fastMana");
-  if (EXTRA_TURN_HINTS.some((hint) => o.includes(hint))) roles.add("extraTurn");
+  if (!isLand && FAST_MANA.has(n)) roles.add("fastMana");
+  if (!isLand && EXTRA_TURN_HINTS.some((hint) => o.includes(hint))) roles.add("extraTurn");
   if (
     MASS_LAND_DENIAL_HINTS.some((hint) => o.includes(hint) || n.includes(hint)) ||
     /armageddon|ravages of war|sundering titan|strip mine|wasteland/i.test(n)
@@ -280,12 +299,17 @@ export function detectRoles(oracle: string, typeLine: string, name: string): Dec
     roles.add("landDenial");
   }
 
-  if (/protection from|hexproof|indestructible|teferi's protection|silence|grand abolisher/i.test(o)) {
+  if (
+    !isLand &&
+    /protection from|hexproof|indestructible|teferi's protection|silence|grand abolisher|lightning greaves|swiftfoot boots|darksteel plate/i.test(
+      `${o} ${n}`
+    )
+  ) {
     roles.add("protection");
   }
 
-  if (/create .* token/i.test(o)) roles.add("tokenMaker");
-  if (/whenever .* dies|sacrifice a creature/i.test(o)) roles.add("sacrifice");
+  if (!isLand && /create .* token/i.test(o)) roles.add("tokenMaker");
+  if (!isLand && /whenever .* dies|sacrifice a creature/i.test(o)) roles.add("sacrifice");
 
   return [...roles];
 }
