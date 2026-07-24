@@ -83,7 +83,7 @@ type YgoCard = {
 };
 
 const validGames: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
-const CACHE_PREFIX = "prints:v5:";
+const CACHE_PREFIX = "prints:v6:";
 
 export async function GET(request: Request) {
   const user = await currentUser();
@@ -107,8 +107,9 @@ export async function GET(request: Request) {
     const suggestions = await lookupCards(game, query);
     await setCachedCardSuggestions({ game, query: cacheKey, suggestions });
     return NextResponse.json({ suggestions });
-  } catch {
-    return NextResponse.json({ suggestions: [] }, { status: 200 });
+  } catch (error) {
+    console.error("card-lookup failed", game, query, error);
+    return NextResponse.json({ suggestions: [], message: "Falha ao buscar cartas." }, { status: 200 });
   }
 }
 

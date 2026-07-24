@@ -13,6 +13,7 @@ import {
 import type { Game } from "@/lib/types";
 
 type ScryfallCard = {
+  object?: string;
   id: string;
   name: string;
   mana_cost?: string;
@@ -154,30 +155,19 @@ async function fetchMagicDetails(input: {
   setName: string;
   imageUrl: string;
 }): Promise<CardDetailsPayload | null> {
-  const scryfallId = extractScryfallIdFromImageUrl(input.imageUrl);
-  let card: ScryfallCard | null = null;
-
-  if (scryfallId) {
-    const response = await fetch(`https://api.scryfall.com/cards/${scryfallId}`, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 60 * 60 * 12 }
-    });
-    if (response.ok) card = (await response.json()) as ScryfallCard;
-  }
-
-  if (!card && input.name) {
-    const params = new URLSearchParams({ fuzzy: input.name });
-    if (input.setName) params.set("set", input.setName);
-    const response = await fetch(`https://api.scryfall.com/cards/named?${params}`, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 60 * 60 * 12 }
-    });
-    if (response.ok) card = (await response.json()) as ScryfallCard;
-  }
-
+  const card = await resolveScryfallCard(input);
   if (!card) return null;
 
-  const prints = await fetchPrints(card);
+  let prints: CardPrintRow[] = [];
+  let languages: string[] = [(card.lang ?? "en").toUpperCase()];
+
+  try {
+    prints = await fetchPrints(card);
+    languages = await collectLanguages(card);
+  } catch {
+    // Detalhes principais não dependem de prints/idiomas.
+  }
+
   const face0 = card.card_faces?.[0];
   const face1 = card.card_faces?.[1];
   const frontImage =
@@ -191,7 +181,6 @@ async function fetchMagicDetails(input: {
     face1?.image_uris?.normal ??
     (isDoubleSidedLayout(card.layout) ? deriveScryfallBackUrl(frontImage) : undefined);
 
-  const languages = await collectLanguages(card);
   const finishKind = scryfallFinishFromCard(card.finishes);
   const marketUsd = scryfallUsdPrice(card.prices, finishKind);
 
@@ -219,6 +208,83 @@ async function fetchMagicDetails(input: {
   };
 }
 
+const SCRYFALL_HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "ManaDrawTCG/1.0"
+};
+
+async function resolveScryfallCard(input: {
+  name: string;
+  setName: string;
+  imageUrl: string;
+}): Promise<ScryfallCard | null> {
+  const scryfallId = extractScryfallIdFromImageUrl(input.imageUrl);
+
+  if (scryfallId) {
+    const byId = await fetchScryfallJson<ScryfallCard>(`https://api.scryfall.com/cards/${scryfallId}`);
+    if (byId?.object !== "error" && byId?.id) return byId;
+  }
+
+  const namesToTry = uniqueNames([
+    input.name,
+    input.name.includes("//") ? input.name.split("//")[0]?.trim() : "",
+    input.name.includes("//") ? input.name.split("//")[1]?.trim() : ""
+  ]);
+
+  for (const name of namesToTry) {
+    // Nunca passar set_name no parâmetro `set` — Scryfall exige código (ex.: spg), não "Special Guests".
+    const fuzzy = await fetchScryfallJson<ScryfallCard>(
+      `https://api.scryfall.com/cards/named?${new URLSearchParams({ fuzzy: name })}`
+    );
+    if (fuzzy?.object !== "error" && fuzzy?.id) return fuzzy;
+
+    const exact = await fetchScryfallJson<ScryfallCard>(
+      `https://api.scryfall.com/cards/named?${new URLSearchParams({ exact: name })}`
+    );
+    if (exact?.object !== "error" && exact?.id) return exact;
+  }
+
+  if (input.name) {
+    const search = await fetchScryfallJson<{ data?: ScryfallCard[] }>(
+      `https://api.scryfall.com/cards/search?${new URLSearchParams({
+        q: `!"${input.name}"`,
+        unique: "prints"
+      })}`
+    );
+    if (search?.data?.[0]) return search.data[0];
+
+    const loose = await fetchScryfallJson<{ data?: ScryfallCard[] }>(
+      `https://api.scryfall.com/cards/search?${new URLSearchParams({
+        q: input.name,
+        unique: "prints"
+      })}`
+    );
+    if (loose?.data?.[0]) return loose.data[0];
+  }
+
+  return null;
+}
+
+async function fetchScryfallJson<T extends { object?: string; id?: string; data?: unknown }>(
+  url: string
+): Promise<(T & { object?: string }) | null> {
+  try {
+    const response = await fetch(url, {
+      headers: SCRYFALL_HEADERS,
+      next: { revalidate: 60 * 60 * 6 }
+    });
+    const payload = (await response.json()) as T & { object?: string };
+    if (!response.ok || payload.object === "error") return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function uniqueNames(values: Array<string | undefined | null>) {
+  return [...new Set(values.map((value) => value?.trim() ?? "").filter((value) => value.length >= 2))];
+}
+
 async function fetchPrints(card: ScryfallCard): Promise<CardPrintRow[]> {
   const uri =
     card.prints_search_uri ||
@@ -229,8 +295,8 @@ async function fetchPrints(card: ScryfallCard): Promise<CardPrintRow[]> {
   if (!uri) return [];
 
   const response = await fetch(uri, {
-    headers: { Accept: "application/json" },
-    next: { revalidate: 60 * 60 * 12 }
+    headers: SCRYFALL_HEADERS,
+    next: { revalidate: 60 * 60 * 6 }
   });
 
   if (!response.ok) return [];
@@ -262,8 +328,8 @@ async function collectLanguages(card: ScryfallCard) {
   if (!uri) return [(card.lang ?? "en").toUpperCase()];
   try {
     const response = await fetch(uri, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 60 * 60 * 12 }
+      headers: SCRYFALL_HEADERS,
+      next: { revalidate: 60 * 60 * 6 }
     });
     if (!response.ok) return [(card.lang ?? "en").toUpperCase()];
     const payload = (await response.json()) as { data?: Array<{ lang?: string }> };

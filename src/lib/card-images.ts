@@ -23,7 +23,13 @@ export function extractScryfallIdFromImageUrl(imageUrl?: string | null) {
   const match = imageUrl.match(
     /cards\.scryfall\.io\/(?:normal|large|small|png|art_crop|border_crop)\/(?:front|back)\/[0-9a-f]\/[0-9a-f]\/([0-9a-f-]{36})/i
   );
-  return match?.[1];
+  if (match?.[1]) return match[1];
+
+  // Fallback mais permissivo para URLs Scryfall com querystring/formatos extras.
+  const loose = imageUrl.match(
+    /scryfall\.io\/[^?\s]*\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
+  );
+  return loose?.[1];
 }
 
 export function resolveCardBackImageUrl(card: {
