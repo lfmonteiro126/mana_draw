@@ -145,7 +145,7 @@ export default async function AdminPage({
   const openSubmissions = submissions.filter((submission) => ["new", "reviewing"].includes(submission.status));
   const paidRevenue = orders
     .filter((order) => !["cancelled"].includes(order.status))
-    .reduce((sum, order) => sum + order.subtotalCents, 0);
+    .reduce((sum, order) => sum + (order.totalCents || order.subtotalCents), 0);
   const topCards = [...allCards].sort((a, b) => b.stock * b.priceCents - a.stock * a.priceCents).slice(0, 4);
   const gameStats = getGameStats(allCards);
   const conditionStats = getConditionStats(allCards);
@@ -548,8 +548,18 @@ function OrdersTab({ orders }: { orders: OrderSummary[] }) {
                 <p className="font-semibold">Pedido {order.id.slice(0, 8)}</p>
                 <p className="truncate text-sm text-[var(--muted)]">
                   {order.customerEmail ?? "Cliente"} · {formatDate(order.createdAt)} · {order.itemCount} itens
+                  {order.shippingServiceName
+                    ? ` · ${order.shippingCompany ?? "Frete"} ${order.shippingServiceName}`
+                    : ""}
                 </p>
-                <p className="mt-1 text-sm font-semibold text-[var(--ink)]">{formatCurrency(order.subtotalCents)}</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                  {formatCurrency(order.totalCents || order.subtotalCents)}
+                  {order.shippingCents > 0 ? (
+                    <span className="ml-2 text-xs font-normal text-[var(--muted)]">
+                      (itens {formatCurrency(order.subtotalCents)} + frete {formatCurrency(order.shippingCents)})
+                    </span>
+                  ) : null}
+                </p>
               </div>
               <select className={inputClass} name="status" defaultValue={order.status}>
                 {orderStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
@@ -838,7 +848,7 @@ function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
                 <p className="truncate text-sm text-[var(--muted)]">{order.customerEmail ?? "Cliente"} · {order.itemCount} itens</p>
               </div>
               <div className="text-right">
-                <p className="font-semibold">{formatCurrency(order.subtotalCents)}</p>
+                <p className="font-semibold">{formatCurrency(order.totalCents || order.subtotalCents)}</p>
                 <p className="text-xs text-[var(--muted)]">{order.status}</p>
               </div>
             </div>

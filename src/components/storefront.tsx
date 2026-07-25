@@ -34,6 +34,7 @@ import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import { buylist } from "@/lib/mock-data";
 import { formatCurrency, formatStock } from "@/lib/format";
 import type { FilterGame, SortMode, StoreUser, TcgCard } from "@/lib/types";
+import type { ShippingQuote } from "@/lib/shipping";
 
 type CartLine = {
   card: TcgCard;
@@ -41,7 +42,7 @@ type CartLine = {
 };
 
 const games: FilterGame[] = ["Todos", "Magic", "Yu-Gi-Oh!", "Pokemon"];
-const orderInitialState = { ok: false, message: "" };
+const orderInitialState = { ok: false, message: "", checkoutUrl: null as string | null };
 const CART_STORAGE_KEY = "mana-draw-cart-v1";
 
 const conditionColors: Record<string, string> = {
@@ -80,6 +81,11 @@ export function Storefront({
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [addedToast, setAddedToast] = useState<string | null>(null);
+  const [postalCode, setPostalCode] = useState("");
+  const [shippingQuotes, setShippingQuotes] = useState<ShippingQuote[]>([]);
+  const [selectedShippingId, setSelectedShippingId] = useState<string>("pickup");
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"catalogo" | "venda" | "conta">(
     "catalogo"
   );
@@ -115,6 +121,12 @@ export function Storefront({
     (sum, line) => sum + line.card.priceCents * line.quantity,
     0
   );
+  const selectedShipping =
+    shippingQuotes.find((quote) => quote.id === selectedShippingId) ??
+    shippingQuotes.find((quote) => quote.id === "pickup") ??
+    null;
+  const shippingCents = selectedShipping?.priceCents ?? 0;
+  const total = subtotal + shippingCents;
   const cartPayload = JSON.stringify(
     cart.map((line) => ({ cardId: line.card.id, quantity: line.quantity }))
   );
@@ -160,11 +172,76 @@ export function Storefront({
   }, [cart, cartHydrated]);
 
   useEffect(() => {
+    if (orderState.ok && orderState.checkoutUrl) {
+      setCart([]);
+      sessionStorage.removeItem(CART_STORAGE_KEY);
+      window.location.href = orderState.checkoutUrl;
+      return;
+    }
     if (orderState.ok) {
       setCart([]);
       sessionStorage.removeItem(CART_STORAGE_KEY);
     }
-  }, [orderState.ok]);
+  }, [orderState.ok, orderState.checkoutUrl]);
+
+  useEffect(() => {
+    setShippingQuotes([
+      {
+        id: "pickup",
+        company: "Mana Draw",
+        service: "Retirada na loja",
+        priceCents: 0,
+        days: 0,
+        currency: "BRL",
+        kind: "pickup"
+      }
+    ]);
+    setSelectedShippingId("pickup");
+  }, []);
+
+  async function fetchShippingQuotes() {
+    const digits = postalCode.replace(/\D/g, "");
+    if (digits.length !== 8) {
+      setShippingError("Informe um CEP com 8 dígitos.");
+      return;
+    }
+    if (cartCount === 0) {
+      setShippingError("Adicione itens ao carrinho.");
+      return;
+    }
+
+    setShippingLoading(true);
+    setShippingError(null);
+    try {
+      const response = await fetch("/api/shipping/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postalCode: digits,
+          itemCount: cartCount,
+          insuranceCents: subtotal
+        })
+      });
+      const payload = (await response.json()) as {
+        ok: boolean;
+        message?: string;
+        quotes?: ShippingQuote[];
+      };
+      if (!response.ok || !payload.ok || !payload.quotes?.length) {
+        throw new Error(payload.message || "Não foi possível cotar o frete.");
+      }
+      setShippingQuotes(payload.quotes);
+      setSelectedShippingId(
+        payload.quotes.some((quote) => quote.id === selectedShippingId)
+          ? selectedShippingId
+          : payload.quotes[0].id
+      );
+    } catch (error) {
+      setShippingError(error instanceof Error ? error.message : "Falha ao cotar frete.");
+    } finally {
+      setShippingLoading(false);
+    }
+  }
 
   useEffect(() => {
     const locked = cartOpen || authOpen;
@@ -844,21 +921,106 @@ export function Storefront({
             </div>
 
             <div className="border-t border-[var(--line)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {cart.length > 0 ? (
+                <div className="mb-4 space-y-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--ink)]" htmlFor="checkout-cep">
+                      CEP de entrega
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="checkout-cep"
+                        className="field-input h-10 flex-1 rounded-[var(--radius-control)] px-3 text-sm"
+                        inputMode="numeric"
+                        autoComplete="postal-code"
+                        placeholder="00000-000"
+                        value={postalCode}
+                        onChange={(event) => setPostalCode(event.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="h-10 shrink-0 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)] disabled:opacity-45"
+                        disabled={shippingLoading}
+                        onClick={() => void fetchShippingQuotes()}
+                      >
+                        {shippingLoading ? "..." : "Calcular"}
+                      </button>
+                    </div>
+                    {shippingError ? <p className="mt-1.5 text-xs text-rose-600">{shippingError}</p> : null}
+                  </div>
+
+                  <fieldset className="space-y-2">
+                    <legend className="text-xs font-semibold text-[var(--ink)]">Frete</legend>
+                    {shippingQuotes.map((quote) => (
+                      <label
+                        key={quote.id}
+                        className={`flex cursor-pointer items-start justify-between gap-3 rounded-[var(--radius-control)] border px-3 py-2.5 text-sm transition ${
+                          selectedShippingId === quote.id
+                            ? "border-[var(--accent)] bg-[var(--accent)]/5"
+                            : "border-[var(--line)] bg-[var(--surface-soft)]"
+                        }`}
+                      >
+                        <span className="flex min-w-0 items-start gap-2">
+                          <input
+                            type="radio"
+                            className="mt-1"
+                            name="shippingQuote"
+                            checked={selectedShippingId === quote.id}
+                            onChange={() => setSelectedShippingId(quote.id)}
+                          />
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-[var(--ink)]">
+                              {quote.company} · {quote.service}
+                            </span>
+                            <span className="block text-xs text-[var(--muted)]">
+                              {quote.kind === "pickup"
+                                ? "Sem frete · retire no local"
+                                : quote.days != null
+                                  ? `Até ${quote.days} dia(s) úteis`
+                                  : "Prazo sob consulta"}
+                            </span>
+                          </span>
+                        </span>
+                        <span className="shrink-0 font-semibold text-[var(--ink)]">
+                          {quote.priceCents === 0 ? "Grátis" : formatCurrency(quote.priceCents)}
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                </div>
+              ) : null}
+
               <div className="mb-1 flex items-center justify-between">
                 <span className="text-sm text-[var(--muted)]">Subtotal</span>
-                <strong className="text-xl tracking-tight text-[var(--ink)]">{formatCurrency(subtotal)}</strong>
+                <span className="text-sm font-medium text-[var(--ink)]">{formatCurrency(subtotal)}</span>
               </div>
-              <p className="mb-4 text-xs text-[var(--muted)]">Frete e pagamento na finalização.</p>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-sm text-[var(--muted)]">Frete</span>
+                <span className="text-sm font-medium text-[var(--ink)]">
+                  {shippingCents === 0 ? "Grátis" : formatCurrency(shippingCents)}
+                </span>
+              </div>
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-sm font-semibold text-[var(--ink)]">Total</span>
+                <strong className="text-xl tracking-tight text-[var(--ink)]">{formatCurrency(total)}</strong>
+              </div>
+              <p className="mb-4 text-xs text-[var(--muted)]">Pix e cartão via Mercado Pago na próxima etapa.</p>
               {currentUser ? (
                 <form action={orderFormAction}>
                   <input type="hidden" name="cart" value={cartPayload} />
+                  <input type="hidden" name="postalCode" value={postalCode} />
+                  <input type="hidden" name="shippingQuoteId" value={selectedShippingId} />
                   <button
                     className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
-                    disabled={cart.length === 0 || orderPending}
+                    disabled={cart.length === 0 || orderPending || !selectedShippingId}
                     type="submit"
                   >
                     <BadgeCheck size={17} />
-                    {orderPending ? "Criando pedido..." : "Finalizar compra"}
+                    {orderPending
+                      ? "Preparando pagamento..."
+                      : orderState.checkoutUrl
+                        ? "Abrindo Mercado Pago..."
+                        : "Pagar com Pix ou cartão"}
                   </button>
                 </form>
               ) : (
@@ -875,7 +1037,7 @@ export function Storefront({
               {orderState.message && (
                 <div className={`mt-3 text-sm ${orderState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}>
                   <p>{orderState.message}</p>
-                  {orderState.ok ? (
+                  {orderState.ok && !orderState.checkoutUrl ? (
                     <Link href="/conta" className="mt-2 inline-flex font-semibold underline-offset-2 hover:underline">
                       Ver pedidos
                     </Link>

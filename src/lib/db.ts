@@ -41,6 +41,11 @@ type DbOrder = {
   id: string;
   status: string;
   subtotal_cents: number;
+  shipping_cents?: number | null;
+  total_cents?: number | null;
+  shipping_service_name?: string | null;
+  shipping_company?: string | null;
+  payment_status?: string | null;
   created_at: string;
   item_count: number;
   customer_email?: string;
@@ -444,6 +449,11 @@ export async function getAdminOrders(): Promise<OrderSummary[]> {
       orders.customer_email,
       orders.status,
       orders.subtotal_cents,
+      coalesce(orders.shipping_cents, 0)::int as shipping_cents,
+      coalesce(orders.total_cents, orders.subtotal_cents)::int as total_cents,
+      orders.shipping_service_name,
+      orders.shipping_company,
+      orders.payment_status,
       orders.created_at::text,
       coalesce(sum(order_items.quantity), 0)::int as item_count
     from orders
@@ -457,6 +467,11 @@ export async function getAdminOrders(): Promise<OrderSummary[]> {
     id: order.id,
     status: order.status,
     subtotalCents: order.subtotal_cents,
+    shippingCents: order.shipping_cents ?? 0,
+    totalCents: order.total_cents ?? order.subtotal_cents,
+    shippingServiceName: order.shipping_service_name,
+    shippingCompany: order.shipping_company,
+    paymentStatus: order.payment_status,
     createdAt: order.created_at,
     itemCount: order.item_count,
     customerEmail: order.customer_email
@@ -473,6 +488,11 @@ export async function getOrdersForUser(userId: string): Promise<OrderSummary[]> 
       orders.id,
       orders.status,
       orders.subtotal_cents,
+      coalesce(orders.shipping_cents, 0)::int as shipping_cents,
+      coalesce(orders.total_cents, orders.subtotal_cents)::int as total_cents,
+      orders.shipping_service_name,
+      orders.shipping_company,
+      orders.payment_status,
       orders.created_at::text,
       coalesce(sum(order_items.quantity), 0)::int as item_count
     from orders
@@ -487,6 +507,11 @@ export async function getOrdersForUser(userId: string): Promise<OrderSummary[]> 
     id: order.id,
     status: order.status,
     subtotalCents: order.subtotal_cents,
+    shippingCents: order.shipping_cents ?? 0,
+    totalCents: order.total_cents ?? order.subtotal_cents,
+    shippingServiceName: order.shipping_service_name,
+    shippingCompany: order.shipping_company,
+    paymentStatus: order.payment_status,
     createdAt: order.created_at,
     itemCount: order.item_count
   }));

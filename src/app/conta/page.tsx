@@ -113,8 +113,13 @@ export default async function AccountPage() {
                 {statusLabels[order.status] ?? order.status}
               </span>
               <div className="text-left sm:text-right">
-                <p className="font-semibold text-[var(--ink)]">{formatCurrency(order.subtotalCents)}</p>
-                <p className="text-sm text-[var(--muted)]">{order.itemCount} itens</p>
+                <p className="font-semibold text-[var(--ink)]">
+                  {formatCurrency(order.totalCents || order.subtotalCents)}
+                </p>
+                <p className="text-sm text-[var(--muted)]">
+                  {order.itemCount} itens
+                  {order.shippingServiceName ? ` · ${order.shippingServiceName}` : ""}
+                </p>
               </div>
             </article>
           ))

@@ -11,11 +11,15 @@ import {
   verifyPassword
 } from "@/lib/auth";
 import { getSql, hasDatabase } from "@/lib/db";
+import { createCheckoutPreference, hasMercadoPago } from "@/lib/payments/mercadopago";
+import { findQuoteById, normalizePostalCode, quoteShipping } from "@/lib/shipping";
+import { storeBuylistPhoto } from "@/lib/storage/blob";
 import type { CardCondition, Game, StoreUser } from "@/lib/types";
 
 type ActionState = {
   ok: boolean;
   message: string;
+  checkoutUrl?: string | null;
 };
 
 const validGames = ["Magic", "Yu-Gi-Oh!", "Pokemon"] as const;
@@ -191,51 +195,113 @@ export async function createOrderAction(
   if (!user) return { ok: false, message: "Entre na sua conta para finalizar o pedido." };
 
   const rawCart = readString(formData, "cart");
+  const shippingQuoteId = readString(formData, "shippingQuoteId");
+  const postalCodeRaw = readString(formData, "postalCode");
   let cart: CartPayload = [];
 
   try {
     cart = JSON.parse(rawCart) as CartPayload;
   } catch {
-    return { ok: false, message: "Carrinho invalido." };
+    return { ok: false, message: "Carrinho inválido." };
   }
 
   const cleanCart = cart.filter((line) => line.cardId && line.quantity > 0);
   if (cleanCart.length === 0) return { ok: false, message: "Adicione cartas ao carrinho." };
+  if (!shippingQuoteId) return { ok: false, message: "Escolha uma opção de frete." };
+
+  const postalCode =
+    shippingQuoteId === "pickup" ? normalizePostalCode(postalCodeRaw) || "00000000" : normalizePostalCode(postalCodeRaw);
+  if (shippingQuoteId !== "pickup" && !postalCode) {
+    return { ok: false, message: "Informe um CEP válido com 8 dígitos." };
+  }
 
   if (!hasDatabase()) {
-    return { ok: true, message: "Pedido demo criado. Configure o Neon para salvar historico." };
+    return {
+      ok: true,
+      message: "Pedido demo criado. Configure Neon, Mercado Pago e Melhor Envio para checkout real."
+    };
   }
 
   const sql = getSql();
-  if (!sql) return { ok: false, message: "Banco indisponivel." };
+  if (!sql) return { ok: false, message: "Banco indisponível." };
 
   const ids = cleanCart.map((line) => line.cardId);
   const rows = await sql`
-    select id, price_cents, stock
+    select id, name, price_cents, stock
     from cards
     where id = any(${ids})
       and active = true
   `;
 
   const inventory = new Map(
-    (rows as Array<{ id: string; price_cents: number; stock: number }>).map((card) => [
+    (rows as Array<{ id: string; name: string; price_cents: number; stock: number }>).map((card) => [
       card.id,
       card
     ])
   );
 
   let subtotal = 0;
+  const itemCount = cleanCart.reduce((sum, line) => sum + line.quantity, 0);
   for (const line of cleanCart) {
     const card = inventory.get(line.cardId);
     if (!card || card.stock < line.quantity) {
-      return { ok: false, message: "Uma carta do carrinho ficou indisponivel." };
+      return { ok: false, message: "Uma carta do carrinho ficou indisponível." };
     }
     subtotal += card.price_cents * line.quantity;
   }
 
+  let shipping;
+  try {
+    const quotes = await quoteShipping({
+      postalCode: postalCode === "00000000" ? process.env.MELHOR_ENVIO_FROM_POSTAL_CODE || "01310100" : postalCode!,
+      itemCount,
+      insuranceCents: subtotal
+    });
+    shipping = findQuoteById(quotes, shippingQuoteId);
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Não foi possível validar o frete."
+    };
+  }
+
+  if (!shipping) {
+    return { ok: false, message: "Opção de frete inválida. Recalcule o CEP." };
+  }
+
+  const shippingCents = shipping.priceCents;
+  const totalCents = subtotal + shippingCents;
+  const shipPostal = shipping.kind === "pickup" ? null : postalCode;
+
   const orderRows = await sql`
-    insert into orders (user_id, customer_email, status, subtotal_cents)
-    values (${user.id}, ${user.email}, 'pending', ${subtotal})
+    insert into orders (
+      user_id,
+      customer_email,
+      status,
+      subtotal_cents,
+      shipping_cents,
+      total_cents,
+      shipping_method,
+      shipping_service_name,
+      shipping_company,
+      shipping_days,
+      shipping_postal_code,
+      payment_provider
+    )
+    values (
+      ${user.id},
+      ${user.email},
+      'pending',
+      ${subtotal},
+      ${shippingCents},
+      ${totalCents},
+      ${shipping.id},
+      ${shipping.service},
+      ${shipping.company},
+      ${shipping.days},
+      ${shipPostal},
+      ${hasMercadoPago() ? "mercadopago" : null}
+    )
     returning id
   `;
   const orderId = String(orderRows[0].id);
@@ -258,7 +324,50 @@ export async function createOrderAction(
   revalidatePath("/");
   revalidatePath("/conta");
   revalidatePath("/admin");
-  return { ok: true, message: `Pedido ${orderId.slice(0, 8)} criado com sucesso.` };
+
+  if (!hasMercadoPago()) {
+    return {
+      ok: true,
+      message: `Pedido ${orderId.slice(0, 8)} criado. Configure MERCADOPAGO_ACCESS_TOKEN para cobrar Pix/cartão.`
+    };
+  }
+
+  try {
+    const preference = await createCheckoutPreference({
+      orderId,
+      email: user.email,
+      name: user.name,
+      lines: cleanCart.map((line) => {
+        const card = inventory.get(line.cardId)!;
+        return {
+          id: card.id,
+          title: card.name,
+          quantity: line.quantity,
+          unitPriceCents: card.price_cents
+        };
+      }),
+      shippingCents,
+      shippingLabel: `${shipping.company} · ${shipping.service}`
+    });
+
+    await sql`
+      update orders
+      set payment_preference_id = ${preference.preferenceId}, updated_at = now()
+      where id = ${orderId}
+    `;
+
+    return {
+      ok: true,
+      message: "Redirecionando para o Mercado Pago...",
+      checkoutUrl: preference.checkoutUrl
+    };
+  } catch (error) {
+    console.error("Mercado Pago preference failed", error);
+    return {
+      ok: true,
+      message: `Pedido ${orderId.slice(0, 8)} criado, mas o checkout Mercado Pago falhou. Tente de novo ou pague com o admin.`
+    };
+  }
 }
 
 export async function updateCardAction(formData: FormData) {
@@ -595,12 +704,12 @@ export async function createBuylistAction(
   if (!hasDatabase()) {
     return {
       ok: true,
-      message: `Cotacao demo recebida com ${photos.length} foto(s). Configure o Neon para salvar.`
+      message: `Cotação demo recebida com ${photos.length} foto(s). Configure o Neon para salvar.`
     };
   }
 
   const sql = getSql();
-  if (!sql) return { ok: false, message: "Banco indisponivel." };
+  if (!sql) return { ok: false, message: "Banco indisponível." };
 
   const rows = await sql`
     insert into buylist_submissions (customer_name, email, game, notes)
@@ -609,18 +718,27 @@ export async function createBuylistAction(
   `;
   const submissionId = String(rows[0].id);
 
+  let stored = 0;
   for (const file of photos) {
-    if (file.size > 3 * 1024 * 1024) continue;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const dataUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
-
-    await sql`
-      insert into buylist_photos (submission_id, file_name, mime_type, size_bytes, data_url)
-      values (${submissionId}, ${file.name}, ${file.type}, ${file.size}, ${dataUrl})
-    `;
+    try {
+      const photo = await storeBuylistPhoto(file, submissionId);
+      await sql`
+        insert into buylist_photos (submission_id, file_name, mime_type, size_bytes, data_url)
+        values (${submissionId}, ${photo.fileName}, ${photo.mimeType}, ${photo.sizeBytes}, ${photo.url})
+      `;
+      stored += 1;
+    } catch (error) {
+      console.error("Buylist photo upload failed", error);
+    }
   }
 
   revalidatePath("/");
   revalidatePath("/admin");
-  return { ok: true, message: "Cotacao enviada. Vamos responder por email em ate 24h." };
+  return {
+    ok: true,
+    message:
+      stored > 0
+        ? `Cotação enviada com ${stored} foto(s). Vamos responder por email em até 24h.`
+        : "Cotação enviada. Vamos responder por email em até 24h."
+  };
 }

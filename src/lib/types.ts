@@ -38,9 +38,14 @@ export type OrderSummary = {
   id: string;
   status: string;
   subtotalCents: number;
+  shippingCents: number;
+  totalCents: number;
+  shippingServiceName?: string | null;
+  shippingCompany?: string | null;
   createdAt: string;
   itemCount: number;
   customerEmail?: string;
+  paymentStatus?: string | null;
 };
 
 export type BuylistItem = {

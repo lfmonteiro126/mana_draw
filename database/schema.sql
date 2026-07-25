@@ -115,14 +115,39 @@ create table if not exists orders (
   customer_email text not null,
   status text not null default 'pending',
   subtotal_cents integer not null default 0,
-  created_at timestamptz not null default now()
+  shipping_cents integer not null default 0,
+  total_cents integer not null default 0,
+  shipping_method text,
+  shipping_service_name text,
+  shipping_company text,
+  shipping_days integer,
+  shipping_postal_code text,
+  payment_provider text,
+  payment_preference_id text,
+  payment_id text,
+  payment_status text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 alter table orders
-  add column if not exists user_id text references users (id) on delete set null;
+  add column if not exists user_id text references users (id) on delete set null,
+  add column if not exists shipping_cents integer not null default 0,
+  add column if not exists total_cents integer not null default 0,
+  add column if not exists shipping_method text,
+  add column if not exists shipping_service_name text,
+  add column if not exists shipping_company text,
+  add column if not exists shipping_days integer,
+  add column if not exists shipping_postal_code text,
+  add column if not exists payment_provider text,
+  add column if not exists payment_preference_id text,
+  add column if not exists payment_id text,
+  add column if not exists payment_status text,
+  add column if not exists updated_at timestamptz not null default now();
 
 create index if not exists orders_status_idx on orders (status, created_at desc);
 create index if not exists orders_customer_email_idx on orders (customer_email, created_at desc);
+create index if not exists orders_payment_preference_idx on orders (payment_preference_id);
 
 create table if not exists order_items (
   id text primary key default gen_random_uuid()::text,

@@ -15,13 +15,14 @@ Rotas principais:
 
 - `/`: vitrine, busca, carrinho, checkout e envio de buylist.
 - `/conta`: login/cadastro e historico de pedidos.
+- `/pedido/retorno`: retorno do Mercado Pago.
 - `/admin`: painel para estoque, preco, condicao e cotações de buylist.
 
 Sem Neon configurado, use `admin@manadraw.local` com senha `admin123` para testar o admin demo.
 
 ## Banco de dados
 
-Execute `database/schema.sql` no SQL Editor do Neon. A tabela `cards` alimenta a vitrine, e `orders`/`order_items` deixam o checkout preparado para a proxima etapa.
+Execute `database/schema.sql` no SQL Editor do Neon (inclui colunas de frete/pagamento em `orders`).
 
 Para criar um admin real, defina `ADMIN_EMAIL` no `.env.local`; o primeiro cadastro com esse email recebera papel `admin`.
 
@@ -30,17 +31,21 @@ Busca full-text:
 - O catalogo usa `websearch_to_tsquery('simple', termo)` quando `DATABASE_URL` existe.
 - O indice `cards_search_idx` usa a coluna `search_vector`, atualizada por trigger, para cobrir nome, colecao, raridade e tags sem erro de imutabilidade no Neon.
 
+## Integrações de produção
+
+Configure no `.env.local` / Vercel (veja `.env.example`):
+
+- **Mercado Pago (Checkout Pro):** `MERCADOPAGO_ACCESS_TOKEN`, `NEXT_PUBLIC_APP_URL`, webhook em `/api/webhooks/mercadopago`
+- **Melhor Envio:** `MELHOR_ENVIO_TOKEN`, `MELHOR_ENVIO_FROM_POSTAL_CODE`, `MELHOR_ENVIO_USER_AGENT`
+- **Vercel Blob:** crie um Blob Store no projeto (injeta `BLOB_READ_WRITE_TOKEN`)
+
 Buylist:
 
-- O fluxo aceita ate 4 fotos por submissao.
-- Para MVP, as imagens sao salvas como `data_url` no banco. Para producao, mova as imagens para S3/R2/Supabase Storage e mantenha apenas URLs no Neon.
+- Com Blob configurado, fotos vão para storage e só a URL fica no Neon.
+- Sem token, o MVP ainda grava `data_url` (ok só para testes locais).
 
-## Melhorias recomendadas
+## Próximos passos opcionais
 
-1. Integrar checkout real com Pix/cartao e criar pedidos via Server Actions.
-2. Criar painel administrativo para estoque, preco, condicao e upload de imagens.
-3. Adicionar busca full-text usando o indice `cards_search_idx`.
-4. Implementar autenticacao para clientes e historico de pedidos.
-5. Adicionar cotacao de buylist com upload de fotos e acompanhamento de status.
-6. Conectar frete com Correios/Melhor Envio e regras de retirada local.
-7. Criar testes para carrinho, filtros, formatacao de preco e fluxo de pedidos.
+1. Comprar etiqueta Melhor Envio a partir do pedido pago (admin).
+2. Testes automatizados para carrinho, frete e pedidos.
+3. Preços BRL via LigaMagic (item adiado em `docs/deferred/`).
