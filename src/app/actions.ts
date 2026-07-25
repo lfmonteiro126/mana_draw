@@ -10,7 +10,7 @@ import {
   signOut,
   verifyPassword
 } from "@/lib/auth";
-import { getSql, hasDatabase } from "@/lib/db";
+import { ensureOrderColumns, getSql, hasDatabase } from "@/lib/db";
 import { createCheckoutPreference, hasMercadoPago } from "@/lib/payments/mercadopago";
 import { findQuoteById, normalizePostalCode, quoteShipping } from "@/lib/shipping";
 import { storeBuylistPhoto } from "@/lib/storage/blob";
@@ -273,7 +273,7 @@ export async function createOrderAction(
   const totalCents = subtotal + shippingCents;
   const shipPostal = shipping.kind === "pickup" ? null : postalCode;
 
-  const orderRows = await sql`
+  const insertOrder = () => sql`
     insert into orders (
       user_id,
       customer_email,
@@ -304,6 +304,16 @@ export async function createOrderAction(
     )
     returning id
   `;
+
+  let orderRows;
+  try {
+    orderRows = await insertOrder();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("orders") || !message.includes("column")) throw error;
+    await ensureOrderColumns(sql);
+    orderRows = await insertOrder();
+  }
   const orderId = String(orderRows[0].id);
 
   for (const line of cleanCart) {

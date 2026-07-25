@@ -438,12 +438,54 @@ function dedupeCards(cards: TcgCard[]) {
   return Array.from(merged.values());
 }
 
+type NeonSql = NonNullable<ReturnType<typeof getSql>>;
+
+function isMissingOrderColumns(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("shipping_cents") ||
+    message.includes("total_cents") ||
+    message.includes("shipping_service_name") ||
+    message.includes("shipping_company") ||
+    message.includes("shipping_method") ||
+    message.includes("shipping_days") ||
+    message.includes("shipping_postal_code") ||
+    message.includes("payment_provider") ||
+    message.includes("payment_preference_id") ||
+    message.includes("payment_id") ||
+    message.includes("payment_status") ||
+    (message.includes("orders") && message.includes("updated_at"))
+  );
+}
+
+let orderColumnsEnsured = false;
+
+export async function ensureOrderColumns(sql: NeonSql) {
+  if (orderColumnsEnsured) return;
+  await sql`
+    alter table orders
+      add column if not exists shipping_cents integer not null default 0,
+      add column if not exists total_cents integer not null default 0,
+      add column if not exists shipping_method text,
+      add column if not exists shipping_service_name text,
+      add column if not exists shipping_company text,
+      add column if not exists shipping_days integer,
+      add column if not exists shipping_postal_code text,
+      add column if not exists payment_provider text,
+      add column if not exists payment_preference_id text,
+      add column if not exists payment_id text,
+      add column if not exists payment_status text,
+      add column if not exists updated_at timestamptz not null default now()
+  `;
+  orderColumnsEnsured = true;
+}
+
 export async function getAdminOrders(): Promise<OrderSummary[]> {
   if (!hasDatabase()) return [];
   const sql = getSql();
   if (!sql) return [];
 
-  const rows = await sql`
+  const run = () => sql`
     select
       orders.id,
       orders.customer_email,
@@ -462,6 +504,15 @@ export async function getAdminOrders(): Promise<OrderSummary[]> {
     order by orders.created_at desc
     limit 30
   `;
+
+  let rows;
+  try {
+    rows = await run();
+  } catch (error) {
+    if (!isMissingOrderColumns(error)) throw error;
+    await ensureOrderColumns(sql);
+    rows = await run();
+  }
 
   return (rows as DbOrder[]).map((order) => ({
     id: order.id,
@@ -483,7 +534,7 @@ export async function getOrdersForUser(userId: string): Promise<OrderSummary[]> 
   const sql = getSql();
   if (!sql) return [];
 
-  const rows = await sql`
+  const run = () => sql`
     select
       orders.id,
       orders.status,
@@ -502,6 +553,15 @@ export async function getOrdersForUser(userId: string): Promise<OrderSummary[]> 
     order by orders.created_at desc
     limit 20
   `;
+
+  let rows;
+  try {
+    rows = await run();
+  } catch (error) {
+    if (!isMissingOrderColumns(error)) throw error;
+    await ensureOrderColumns(sql);
+    rows = await run();
+  }
 
   return (rows as DbOrder[]).map((order) => ({
     id: order.id,
