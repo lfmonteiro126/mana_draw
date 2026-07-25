@@ -5,6 +5,7 @@ import type {
   BuylistSubmission,
   CardSuggestion,
   FilterGame,
+  OrderLineItem,
   OrderSummary,
   SortMode,
   StoreUser,
@@ -43,13 +44,64 @@ type DbOrder = {
   subtotal_cents: number;
   shipping_cents?: number | null;
   total_cents?: number | null;
+  shipping_method?: string | null;
   shipping_service_name?: string | null;
   shipping_company?: string | null;
+  shipping_days?: number | null;
+  shipping_postal_code?: string | null;
+  payment_provider?: string | null;
   payment_status?: string | null;
+  payment_id?: string | null;
   created_at: string;
   item_count: number;
   customer_email?: string;
+  items?: unknown;
 };
+
+function mapOrderItems(raw: unknown): OrderLineItem[] {
+  if (!Array.isArray(raw)) return [];
+  const items: OrderLineItem[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const item = entry as Record<string, unknown>;
+    const name = String(item.name ?? "").trim();
+    const imageUrl = String(item.imageUrl ?? item.image_url ?? "").trim();
+    const quantity = Number(item.quantity ?? 0);
+    const unitPriceCents = Number(item.unitPriceCents ?? item.unit_price_cents ?? 0);
+    if (!name || !Number.isFinite(quantity) || quantity <= 0) continue;
+    items.push({
+      name,
+      imageUrl: imageUrl || "/card-backs/magic-back.png",
+      quantity,
+      unitPriceCents: Number.isFinite(unitPriceCents) ? unitPriceCents : 0,
+      condition: item.condition == null ? null : String(item.condition),
+      game: item.game == null ? null : String(item.game)
+    });
+  }
+  return items;
+}
+
+function mapOrder(order: DbOrder): OrderSummary {
+  return {
+    id: order.id,
+    status: order.status,
+    subtotalCents: order.subtotal_cents,
+    shippingCents: order.shipping_cents ?? 0,
+    totalCents: order.total_cents ?? order.subtotal_cents,
+    shippingMethod: order.shipping_method,
+    shippingServiceName: order.shipping_service_name,
+    shippingCompany: order.shipping_company,
+    shippingDays: order.shipping_days,
+    shippingPostalCode: order.shipping_postal_code,
+    paymentProvider: order.payment_provider,
+    paymentStatus: order.payment_status,
+    paymentId: order.payment_id,
+    createdAt: order.created_at,
+    itemCount: order.item_count,
+    customerEmail: order.customer_email,
+    items: mapOrderItems(order.items)
+  };
+}
 
 type DbBuylistSubmission = {
   id: string;
@@ -493,13 +545,33 @@ export async function getAdminOrders(): Promise<OrderSummary[]> {
       orders.subtotal_cents,
       coalesce(orders.shipping_cents, 0)::int as shipping_cents,
       coalesce(orders.total_cents, orders.subtotal_cents)::int as total_cents,
+      orders.shipping_method,
       orders.shipping_service_name,
       orders.shipping_company,
+      orders.shipping_days,
+      orders.shipping_postal_code,
+      orders.payment_provider,
       orders.payment_status,
+      orders.payment_id,
       orders.created_at::text,
-      coalesce(sum(order_items.quantity), 0)::int as item_count
+      coalesce(sum(order_items.quantity), 0)::int as item_count,
+      coalesce(
+        json_agg(
+          json_build_object(
+            'name', cards.name,
+            'imageUrl', cards.image_url,
+            'quantity', order_items.quantity,
+            'unitPriceCents', order_items.unit_price_cents,
+            'condition', cards.condition,
+            'game', cards.game
+          )
+          order by cards.name
+        ) filter (where order_items.id is not null),
+        '[]'::json
+      ) as items
     from orders
     left join order_items on order_items.order_id = orders.id
+    left join cards on cards.id = order_items.card_id
     group by orders.id
     order by orders.created_at desc
     limit 30
@@ -514,19 +586,7 @@ export async function getAdminOrders(): Promise<OrderSummary[]> {
     rows = await run();
   }
 
-  return (rows as DbOrder[]).map((order) => ({
-    id: order.id,
-    status: order.status,
-    subtotalCents: order.subtotal_cents,
-    shippingCents: order.shipping_cents ?? 0,
-    totalCents: order.total_cents ?? order.subtotal_cents,
-    shippingServiceName: order.shipping_service_name,
-    shippingCompany: order.shipping_company,
-    paymentStatus: order.payment_status,
-    createdAt: order.created_at,
-    itemCount: order.item_count,
-    customerEmail: order.customer_email
-  }));
+  return (rows as DbOrder[]).map(mapOrder);
 }
 
 export async function getOrdersForUser(userId: string): Promise<OrderSummary[]> {
@@ -541,13 +601,33 @@ export async function getOrdersForUser(userId: string): Promise<OrderSummary[]> 
       orders.subtotal_cents,
       coalesce(orders.shipping_cents, 0)::int as shipping_cents,
       coalesce(orders.total_cents, orders.subtotal_cents)::int as total_cents,
+      orders.shipping_method,
       orders.shipping_service_name,
       orders.shipping_company,
+      orders.shipping_days,
+      orders.shipping_postal_code,
+      orders.payment_provider,
       orders.payment_status,
+      orders.payment_id,
       orders.created_at::text,
-      coalesce(sum(order_items.quantity), 0)::int as item_count
+      coalesce(sum(order_items.quantity), 0)::int as item_count,
+      coalesce(
+        json_agg(
+          json_build_object(
+            'name', cards.name,
+            'imageUrl', cards.image_url,
+            'quantity', order_items.quantity,
+            'unitPriceCents', order_items.unit_price_cents,
+            'condition', cards.condition,
+            'game', cards.game
+          )
+          order by cards.name
+        ) filter (where order_items.id is not null),
+        '[]'::json
+      ) as items
     from orders
     left join order_items on order_items.order_id = orders.id
+    left join cards on cards.id = order_items.card_id
     where orders.user_id = ${userId}
     group by orders.id
     order by orders.created_at desc
@@ -563,18 +643,7 @@ export async function getOrdersForUser(userId: string): Promise<OrderSummary[]> 
     rows = await run();
   }
 
-  return (rows as DbOrder[]).map((order) => ({
-    id: order.id,
-    status: order.status,
-    subtotalCents: order.subtotal_cents,
-    shippingCents: order.shipping_cents ?? 0,
-    totalCents: order.total_cents ?? order.subtotal_cents,
-    shippingServiceName: order.shipping_service_name,
-    shippingCompany: order.shipping_company,
-    paymentStatus: order.payment_status,
-    createdAt: order.created_at,
-    itemCount: order.item_count
-  }));
+  return (rows as DbOrder[]).map(mapOrder);
 }
 
 export async function getBuylistSubmissions(): Promise<BuylistSubmission[]> {

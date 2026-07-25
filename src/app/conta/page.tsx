@@ -1,17 +1,10 @@
 import { PackageCheck } from "lucide-react";
 import Link from "next/link";
 import { AuthPanel } from "@/components/auth-panel";
+import { OrderCard } from "@/components/order-card";
 import { currentUser } from "@/lib/auth";
 import { getOrdersForUser } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
-
-const statusLabels: Record<string, string> = {
-  pending: "Pendente",
-  paid: "Pago",
-  shipped: "Enviado",
-  delivered: "Entregue",
-  cancelled: "Cancelado"
-};
 
 function AccountChrome({ children }: { children: React.ReactNode }) {
   return (
@@ -50,9 +43,7 @@ export default async function AccountPage() {
       <AccountChrome>
         <section>
           <h1 className="text-3xl font-semibold tracking-tight text-[var(--ink)]">Sua conta</h1>
-          <p className="mt-2 text-[var(--muted)]">
-            Entre para acompanhar pedidos e cotações.
-          </p>
+          <p className="mt-2 text-[var(--muted)]">Entre para acompanhar pedidos e cotações.</p>
           <div className="mt-6">
             <AuthPanel redirectTo="/conta" />
           </div>
@@ -62,12 +53,17 @@ export default async function AccountPage() {
   }
 
   const orders = await getOrdersForUser(user.id);
+  const openCount = orders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length;
+  const spentCents = orders
+    .filter((order) => !["cancelled", "pending"].includes(order.status))
+    .reduce((sum, order) => sum + (order.totalCents || order.subtotalCents), 0);
 
   return (
     <AccountChrome>
       <div className="flex flex-col justify-between gap-4 border-b border-[var(--line)] pb-6 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-[var(--ink)]">Histórico de pedidos</h1>
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">Conta</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--ink)]">Seus pedidos</h1>
           <p className="mt-2 text-[var(--muted)]">
             {user.name} · {user.email}
           </p>
@@ -75,14 +71,33 @@ export default async function AccountPage() {
         {user.role === "admin" && (
           <Link
             className="inline-flex h-11 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-            href="/admin"
+            href="/admin?tab=orders"
           >
             Abrir admin
           </Link>
         )}
       </div>
 
-      <section className="mt-6 grid gap-3">
+      {orders.length > 0 ? (
+        <section className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Pedidos</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{orders.length}</p>
+          </div>
+          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Em andamento</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{openCount}</p>
+          </div>
+          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Total pago</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+              {formatCurrency(spentCents)}
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="mt-6 grid gap-4">
         {orders.length === 0 ? (
           <div className="rounded-[var(--radius-card)] border border-dashed border-[var(--line)] bg-[var(--surface)] p-8 text-center shadow-[var(--shadow-soft)]">
             <PackageCheck className="mx-auto mb-3 text-[var(--muted)]" size={34} />
@@ -98,31 +113,7 @@ export default async function AccountPage() {
             </Link>
           </div>
         ) : (
-          orders.map((order) => (
-            <article
-              key={order.id}
-              className="grid gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] sm:grid-cols-[1fr_auto_auto] sm:items-center"
-            >
-              <div>
-                <p className="font-semibold text-[var(--ink)]">Pedido {order.id.slice(0, 8)}</p>
-                <p className="text-sm text-[var(--muted)]">
-                  {new Date(order.createdAt).toLocaleString("pt-BR")}
-                </p>
-              </div>
-              <span className="rounded-[var(--radius-control)] bg-[var(--surface-hover)] px-3 py-2 text-sm font-semibold text-[var(--ink)]">
-                {statusLabels[order.status] ?? order.status}
-              </span>
-              <div className="text-left sm:text-right">
-                <p className="font-semibold text-[var(--ink)]">
-                  {formatCurrency(order.totalCents || order.subtotalCents)}
-                </p>
-                <p className="text-sm text-[var(--muted)]">
-                  {order.itemCount} itens
-                  {order.shippingServiceName ? ` · ${order.shippingServiceName}` : ""}
-                </p>
-              </div>
-            </article>
-          ))
+          orders.map((order) => <OrderCard key={order.id} order={order} />)
         )}
       </section>
     </AccountChrome>

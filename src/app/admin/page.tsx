@@ -33,6 +33,7 @@ import {
 } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { CardAutocomplete } from "@/components/card-autocomplete";
+import { OrderCard } from "@/components/order-card";
 import { currentUser } from "@/lib/auth";
 import {
   getAdminCards,
@@ -43,6 +44,7 @@ import {
 } from "@/lib/db";
 import { formatCurrency, formatUsd } from "@/lib/format";
 import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
+import { orderStatusLabels, orderStatusStyles } from "@/lib/orders-ui";
 import type { AdminCustomer, BuylistSubmission, CardCondition, FilterGame, Game, OrderSummary, TcgCard } from "@/lib/types";
 
 const games: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
@@ -533,45 +535,73 @@ function BuylistsTab({ submissions, openCount }: { submissions: BuylistSubmissio
 }
 
 function OrdersTab({ orders }: { orders: OrderSummary[] }) {
+  const pending = orders.filter((order) => order.status === "pending").length;
+  const paid = orders.filter((order) => order.status === "paid").length;
+
   return (
-    <Panel>
-      <PanelHeader title="Pedidos" text="Acompanhe e atualize o status das compras." badge={`${orders.length} recentes`} />
-      {orders.length === 0 ? (
-        <EmptyState icon={<PackageCheck size={30} />} title="Nenhum pedido ainda" text="Os pedidos finalizados aparecem aqui." />
-      ) : (
-        <div className="grid gap-3">
-          {orders.map((order) => (
-            <form key={order.id} action={updateOrderStatusAction} className="grid gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 md:grid-cols-[1fr_150px_92px] md:items-center">
-              <input type="hidden" name="id" value={order.id} />
-              <input type="hidden" name="tab" value="orders" />
-              <div className="min-w-0">
-                <p className="font-semibold">Pedido {order.id.slice(0, 8)}</p>
-                <p className="truncate text-sm text-[var(--muted)]">
-                  {order.customerEmail ?? "Cliente"} · {formatDate(order.createdAt)} · {order.itemCount} itens
-                  {order.shippingServiceName
-                    ? ` · ${order.shippingCompany ?? "Frete"} ${order.shippingServiceName}`
-                    : ""}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                  {formatCurrency(order.totalCents || order.subtotalCents)}
-                  {order.shippingCents > 0 ? (
-                    <span className="ml-2 text-xs font-normal text-[var(--muted)]">
-                      (itens {formatCurrency(order.subtotalCents)} + frete {formatCurrency(order.shippingCents)})
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-              <select className={inputClass} name="status" defaultValue={order.status}>
-                {orderStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
-              <button className="h-11 rounded-lg bg-[var(--accent)] px-3 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]" type="submit">
-                Salvar
-              </button>
-            </form>
-          ))}
+    <div className="grid gap-6">
+      <section className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Recentes</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{orders.length}</p>
         </div>
-      )}
-    </Panel>
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Pendentes</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{pending}</p>
+        </div>
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Pagos</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{paid}</p>
+        </div>
+      </section>
+
+      <Panel>
+        <PanelHeader
+          title="Pedidos"
+          text="Detalhes, frete, pagamento e atualização de status."
+          badge={`${orders.length} recentes`}
+        />
+        {orders.length === 0 ? (
+          <EmptyState
+            icon={<PackageCheck size={30} />}
+            title="Nenhum pedido ainda"
+            text="Os pedidos finalizados aparecem aqui."
+          />
+        ) : (
+          <div className="grid gap-4">
+            {orders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                showCustomer
+                footer={
+                  <form action={updateOrderStatusAction} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                    <input type="hidden" name="id" value={order.id} />
+                    <input type="hidden" name="tab" value="orders" />
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-semibold text-[var(--ink)]">Status do pedido</span>
+                      <select className={inputClass} name="status" defaultValue={order.status}>
+                        {orderStatuses.map((item) => (
+                          <option key={item} value={item}>
+                            {orderStatusLabels[item] ?? item}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                      type="submit"
+                    >
+                      Atualizar status
+                    </button>
+                  </form>
+                }
+              />
+            ))}
+          </div>
+        )}
+      </Panel>
+    </div>
   );
 }
 
@@ -836,20 +866,38 @@ function TopCardsPanel({ topCards }: { topCards: TcgCard[] }) {
 function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
   return (
     <Panel>
-      <PanelHeader title="Pedidos recentes" text="Ultimas compras criadas no site." />
+      <PanelHeader title="Pedidos recentes" text="Últimas compras criadas no site." />
       {orders.length === 0 ? (
         <EmptyState icon={<ShoppingBag size={30} />} title="Nenhum pedido recente" text="Pedidos finalizados aparecem aqui." />
       ) : (
         <div className="space-y-3">
           {orders.map((order) => (
-            <div key={order.id} className="flex items-center justify-between gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
+            <div
+              key={order.id}
+              className="flex items-center justify-between gap-4 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-4"
+            >
               <div className="min-w-0">
-                <p className="font-semibold">Pedido {order.id.slice(0, 8)}</p>
-                <p className="truncate text-sm text-[var(--muted)]">{order.customerEmail ?? "Cliente"} · {order.itemCount} itens</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-semibold text-[var(--ink)]">Pedido {order.id.slice(0, 8).toUpperCase()}</p>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                      orderStatusStyles[order.status] ??
+                      "border-[var(--line)] bg-[var(--surface-soft)] text-[var(--ink)]"
+                    }`}
+                  >
+                    {orderStatusLabels[order.status] ?? order.status}
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-sm text-[var(--muted)]">
+                  {order.customerEmail ?? "Cliente"} · {order.itemCount} itens
+                  {order.items[0] ? ` · ${order.items[0].name}` : ""}
+                </p>
               </div>
               <div className="text-right">
-                <p className="font-semibold">{formatCurrency(order.totalCents || order.subtotalCents)}</p>
-                <p className="text-xs text-[var(--muted)]">{order.status}</p>
+                <p className="font-semibold text-[var(--ink)]">
+                  {formatCurrency(order.totalCents || order.subtotalCents)}
+                </p>
+                <p className="text-xs text-[var(--muted)]">{formatDate(order.createdAt)}</p>
               </div>
             </div>
           ))}

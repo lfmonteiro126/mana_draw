@@ -34,18 +34,33 @@ export type StoreUser = {
   role: UserRole;
 };
 
+export type OrderLineItem = {
+  name: string;
+  imageUrl: string;
+  quantity: number;
+  unitPriceCents: number;
+  condition?: string | null;
+  game?: string | null;
+};
+
 export type OrderSummary = {
   id: string;
   status: string;
   subtotalCents: number;
   shippingCents: number;
   totalCents: number;
+  shippingMethod?: string | null;
   shippingServiceName?: string | null;
   shippingCompany?: string | null;
+  shippingDays?: number | null;
+  shippingPostalCode?: string | null;
+  paymentProvider?: string | null;
+  paymentStatus?: string | null;
+  paymentId?: string | null;
   createdAt: string;
   itemCount: number;
   customerEmail?: string;
-  paymentStatus?: string | null;
+  items: OrderLineItem[];
 };
 
 export type BuylistItem = {
