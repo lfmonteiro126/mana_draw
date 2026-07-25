@@ -24,7 +24,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { createOrderAction, logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { BuylistForm } from "@/components/buylist-form";
@@ -70,6 +71,7 @@ export function Storefront({
   initialGame?: FilterGame;
   initialSort?: SortMode;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const [game, setGame] = useState<FilterGame>(initialGame);
   const [sort, setSort] = useState<SortMode>(initialSort);
@@ -116,6 +118,12 @@ export function Storefront({
   const cartPayload = JSON.stringify(
     cart.map((line) => ({ cardId: line.card.id, quantity: line.quantity }))
   );
+
+  useEffect(() => {
+    setQuery(initialQuery);
+    setGame(initialGame);
+    setSort(initialSort);
+  }, [initialQuery, initialGame, initialSort]);
 
   useEffect(() => {
     try {
@@ -239,10 +247,28 @@ export function Storefront({
     );
   }
 
+  function syncCatalogUrl(next: {
+    query?: string;
+    game?: FilterGame;
+    sort?: SortMode;
+  }) {
+    const nextQuery = next.query ?? query;
+    const nextGame = next.game ?? game;
+    const nextSort = next.sort ?? sort;
+    setQuery(nextQuery);
+    setGame(nextGame);
+    setSort(nextSort);
+
+    const params = new URLSearchParams();
+    if (nextQuery.trim()) params.set("q", nextQuery.trim());
+    if (nextGame !== "Todos") params.set("game", nextGame);
+    if (nextSort !== "relevance") params.set("sort", nextSort);
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : "/", { scroll: false });
+  }
+
   function clearCatalogFilters() {
-    setQuery("");
-    setGame("Todos");
-    setSort("relevance");
+    syncCatalogUrl({ query: "", game: "Todos", sort: "relevance" });
   }
 
   return (
@@ -443,6 +469,7 @@ export function Storefront({
               >
                 <input type="hidden" name="game" value={game} />
                 <label className="relative col-span-2 block sm:col-span-1">
+                  <span className="sr-only">Buscar cartas</span>
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                   <input
                     className="field-input h-11 w-full rounded-[var(--radius-control)] pl-10 pr-3 text-sm"
@@ -453,12 +480,13 @@ export function Storefront({
                   />
                 </label>
                 <label className="relative block">
+                  <span className="sr-only">Ordenar</span>
                   <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                   <select
                     className="field-input h-11 w-full appearance-none rounded-[var(--radius-control)] pl-10 pr-3 text-sm"
                     name="sort"
                     value={sort}
-                    onChange={(event) => setSort(event.target.value as SortMode)}
+                    onChange={(event) => syncCatalogUrl({ sort: event.target.value as SortMode })}
                   >
                     <option value="relevance">Maior desconto</option>
                     <option value="price-asc">Menor preço</option>
@@ -474,7 +502,7 @@ export function Storefront({
               </form>
             </div>
 
-            <div className="sticky top-[65px] z-30 -mx-4 mb-5 flex items-center gap-2 overflow-x-auto border-y border-[var(--line)] bg-[var(--background)]/95 px-4 py-2.5 backdrop-blur-xl scrollbar-none snap-x snap-mandatory sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-1">
+            <div className="sticky top-[var(--nav-height)] z-30 -mx-4 mb-5 flex items-center gap-2 overflow-x-auto border-y border-[var(--line)] bg-[var(--background)]/95 px-4 py-2.5 backdrop-blur-xl scrollbar-none snap-x snap-mandatory sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-1">
               <span className="inline-flex shrink-0 items-center gap-2 pr-1 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                 <Filter size={14} />
                 Jogos
@@ -482,11 +510,11 @@ export function Storefront({
               {games.map((item) => (
                 <button
                   key={item}
-                  className={`chip h-9 shrink-0 snap-start px-3.5 text-sm active:scale-95 ${
+                  className={`chip focus-ring h-9 shrink-0 snap-start px-3.5 text-sm active:scale-95 ${
                     game === item ? "chip-active" : "text-[var(--muted)] hover:border-[var(--accent)]/40 hover:text-[var(--ink)]"
                   }`}
                   type="button"
-                  onClick={() => setGame(item)}
+                  onClick={() => syncCatalogUrl({ game: item })}
                 >
                   {item}
                 </button>
@@ -525,15 +553,16 @@ export function Storefront({
                           {card.condition}
                         </span>
                       </div>
-                      <div className="mb-2 hidden flex-wrap gap-1 sm:flex">
-                        {[card.game, card.finish, card.language].map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface-soft)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                      <div className="mb-2 flex flex-wrap gap-1">
+                        <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface-soft)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+                          {card.game}
+                        </span>
+                        <span className="hidden rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface-soft)] px-1.5 py-0.5 text-[9px] text-[var(--muted)] sm:inline">
+                          {card.finish}
+                        </span>
+                        <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface-soft)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+                          {card.language}
+                        </span>
                       </div>
                     </div>
                     <div>
@@ -1088,10 +1117,29 @@ function CardThumb({
   onAddToCart?: (card: TcgCard) => void;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [flipped, setFlipped] = useState(false);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressTriggered = useRef(false);
   const back = getCardBack(card.game);
   const secondFaceUrl = resolveCardBackImageUrl(card);
   const hasSecondFace = cardHasSecondFace(card);
   const flipBackUrl = secondFaceUrl ?? back.imageUrl;
+
+  function clearLongPress() {
+    if (longPressTimer.current !== null) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  function startLongPress() {
+    longPressTriggered.current = false;
+    clearLongPress();
+    longPressTimer.current = window.setTimeout(() => {
+      longPressTriggered.current = true;
+      setFlipped((current) => !current);
+    }, 420);
+  }
 
   return (
     <>
@@ -1100,12 +1148,31 @@ function CardThumb({
         className="group relative z-0 aspect-[5/7] w-full shrink-0 overflow-visible rounded-lg outline-none [perspective:1200px] hover:z-20 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
         aria-label={
           hasSecondFace
-            ? `${card.name}. Passe o mouse para ver a segunda face. Clique para ver detalhes.`
-            : `${card.name}. Passe o mouse para ver o verso. Clique para ver detalhes.`
+            ? `${card.name}. Toque para detalhes. Segure para ver a segunda face.`
+            : `${card.name}. Toque para detalhes. Segure para ver o verso.`
         }
-        onClick={() => setDetailsOpen(true)}
+        onClick={() => {
+          if (longPressTriggered.current) {
+            longPressTriggered.current = false;
+            return;
+          }
+          setDetailsOpen(true);
+        }}
+        onPointerDown={(event) => {
+          if (event.pointerType === "touch" || event.pointerType === "pen") {
+            startLongPress();
+          }
+        }}
+        onPointerUp={clearLongPress}
+        onPointerCancel={clearLongPress}
+        onPointerLeave={clearLongPress}
+        onContextMenu={(event) => event.preventDefault()}
       >
-        <div className="absolute inset-0 rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition duration-500 ease-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus-visible:[transform:rotateY(180deg)] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.14)]">
+        <div
+          className={`absolute inset-0 rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition duration-500 ease-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus-visible:[transform:rotateY(180deg)] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.14)] ${
+            flipped ? "[transform:rotateY(180deg)] shadow-[0_8px_20px_rgba(15,23,42,0.14)]" : ""
+          }`}
+        >
           <div className="absolute inset-0 overflow-hidden rounded-lg [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
             <Image
               src={card.imageUrl}

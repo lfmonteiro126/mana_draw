@@ -2,7 +2,7 @@
 
 import { Camera, Check, ChevronLeft, ChevronRight, Send, UploadCloud, X } from "lucide-react";
 import Image from "next/image";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { createBuylistAction } from "@/app/actions";
 import type { Game } from "@/lib/types";
 
@@ -13,11 +13,39 @@ export function BuylistForm() {
   const [state, formAction, pending] = useActionState(createBuylistAction, initialState);
   const [files, setFiles] = useState<File[]>([]);
   const [step, setStep] = useState(0);
+  const [customerName, setCustomerName] = useState("");
+  const [email, setEmail] = useState("");
+  const [stepError, setStepError] = useState("");
 
   const previews = useMemo(
     () => files.slice(0, 4).map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
     [files]
   );
+
+  useEffect(() => {
+    return () => {
+      previews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    };
+  }, [previews]);
+
+  function canContinueFromStep0() {
+    const nameOk = customerName.trim().length >= 2;
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    return nameOk && emailOk;
+  }
+
+  function goNext() {
+    if (step === 0 && !canContinueFromStep0()) {
+      setStepError("Informe nome e um email válido para continuar.");
+      return;
+    }
+    setStepError("");
+    setStep((current) => Math.min(2, current + 1));
+  }
+
+  function removeFile(index: number) {
+    setFiles((current) => current.filter((_, i) => i !== index));
+  }
 
   return (
     <form action={formAction} className="surface-card p-5 sm:p-6">
@@ -46,7 +74,15 @@ export function BuylistForm() {
                 : "border-[var(--line)] bg-[var(--surface-soft)] text-[var(--muted)] hover:text-[var(--ink)]"
             }`}
             type="button"
-            onClick={() => setStep(index)}
+            onClick={() => {
+              if (index > 0 && !canContinueFromStep0()) {
+                setStepError("Informe nome e um email válido para continuar.");
+                setStep(0);
+                return;
+              }
+              setStepError("");
+              setStep(index);
+            }}
           >
             {step > index ? <Check size={13} /> : null}
             {label}
@@ -55,15 +91,41 @@ export function BuylistForm() {
       </div>
 
       <div className={step === 0 ? "grid gap-3 sm:grid-cols-2" : "hidden sm:grid sm:grid-cols-2 sm:gap-3"}>
-        <input className="field-input h-11 rounded-[var(--radius-control)] px-3 text-sm" name="customerName" placeholder="Seu nome" />
-        <input className="field-input h-11 rounded-[var(--radius-control)] px-3 text-sm" name="email" placeholder="Email para retorno" type="email" />
-        <select className="field-input h-11 rounded-[var(--radius-control)] px-3 text-sm sm:col-span-2" name="game" defaultValue="Magic">
-          {games.map((game) => (
-            <option key={game} value={game}>
-              {game}
-            </option>
-          ))}
-        </select>
+        <label className="grid gap-1.5 text-sm">
+          <span className="font-medium text-[var(--muted)]">Nome</span>
+          <input
+            className="field-input h-11 rounded-[var(--radius-control)] px-3 text-sm"
+            name="customerName"
+            placeholder="Seu nome"
+            value={customerName}
+            onChange={(event) => setCustomerName(event.target.value)}
+            autoComplete="name"
+            required
+          />
+        </label>
+        <label className="grid gap-1.5 text-sm">
+          <span className="font-medium text-[var(--muted)]">Email</span>
+          <input
+            className="field-input h-11 rounded-[var(--radius-control)] px-3 text-sm"
+            name="email"
+            placeholder="Email para retorno"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            required
+          />
+        </label>
+        <label className="grid gap-1.5 text-sm sm:col-span-2">
+          <span className="font-medium text-[var(--muted)]">Jogo</span>
+          <select className="field-input h-11 rounded-[var(--radius-control)] px-3 text-sm" name="game" defaultValue="Magic">
+            {games.map((game) => (
+              <option key={game} value={game}>
+                {game}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className={step === 1 ? "grid gap-3" : "hidden sm:mt-3 sm:grid sm:gap-3"}>
@@ -81,32 +143,44 @@ export function BuylistForm() {
         </label>
       </div>
 
-      <textarea
-        className={`${step === 2 ? "mt-0" : "hidden sm:mt-3 sm:block"} field-input min-h-32 w-full rounded-[var(--radius-control)] p-3 text-sm`}
-        name="notes"
-        placeholder="Liste cartas principais, condições, idiomas e qualquer observação importante."
-      />
+      <label className={`${step === 2 ? "mt-0 grid gap-1.5" : "hidden sm:mt-3 sm:grid sm:gap-1.5"} text-sm`}>
+        <span className="font-medium text-[var(--muted)]">Observações</span>
+        <textarea
+          className="field-input min-h-32 w-full rounded-[var(--radius-control)] p-3 text-sm"
+          name="notes"
+          placeholder="Liste cartas principais, condições, idiomas e qualquer observação importante."
+        />
+      </label>
 
       {previews.length > 0 && (
         <div className="mt-3 grid grid-cols-4 gap-2">
-          {previews.map((preview) => (
+          {previews.map((preview, index) => (
             <div key={preview.url} className="relative aspect-square overflow-hidden rounded-[var(--radius-control)] border border-[var(--line)] bg-slate-100">
               <Image src={preview.url} alt={preview.name} fill unoptimized className="object-cover" />
+              <button
+                type="button"
+                aria-label={`Remover ${preview.name}`}
+                onClick={() => removeFile(index)}
+                className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-md bg-slate-950/65 text-white"
+              >
+                <X size={12} />
+              </button>
             </div>
           ))}
         </div>
       )}
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs leading-5 text-[var(--muted)]">
-          Até 4 imagens, 3MB cada. Em produção, use armazenamento em S3/R2.
-        </p>
+        <p className="text-xs leading-5 text-[var(--muted)]">Até 4 imagens, 3MB cada.</p>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <button
             className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-4 text-sm font-semibold text-[var(--ink)] transition active:scale-95 disabled:opacity-40 sm:hidden"
             disabled={step === 0}
             type="button"
-            onClick={() => setStep((current) => Math.max(0, current - 1))}
+            onClick={() => {
+              setStepError("");
+              setStep((current) => Math.max(0, current - 1));
+            }}
           >
             <ChevronLeft size={16} />
             Voltar
@@ -115,7 +189,7 @@ export function BuylistForm() {
             <button
               className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 sm:hidden"
               type="button"
-              onClick={() => setStep((current) => Math.min(2, current + 1))}
+              onClick={goNext}
             >
               Continuar
               <ChevronRight size={16} />
@@ -132,7 +206,7 @@ export function BuylistForm() {
           )}
           <button
             className="hidden h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:opacity-50 sm:inline-flex"
-            disabled={pending}
+            disabled={pending || !canContinueFromStep0()}
             type="submit"
           >
             {pending ? "Enviando..." : "Enviar cotação"}
@@ -141,8 +215,16 @@ export function BuylistForm() {
         </div>
       </div>
 
-      {state.message && (
+      {stepError ? (
+        <p role="alert" className="mt-3 text-sm text-rose-600">
+          {stepError}
+        </p>
+      ) : null}
+
+      {state.message ? (
         <div
+          role="status"
+          aria-live="polite"
           className={`mt-4 flex items-start gap-2 rounded-[var(--radius-control)] px-3 py-2 text-sm ${
             state.ok ? "bg-[var(--accent)]/10 text-[var(--accent-strong)]" : "bg-rose-50 text-rose-700"
           }`}
@@ -150,7 +232,7 @@ export function BuylistForm() {
           {!state.ok && <X size={16} />}
           {state.message}
         </div>
-      )}
+      ) : null}
     </form>
   );
 }
