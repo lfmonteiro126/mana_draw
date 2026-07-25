@@ -122,14 +122,14 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
                 type="button"
                 disabled={card.stock <= 0}
                 onClick={() => onAddToCart(card)}
-                className="hidden h-9 items-center rounded-lg bg-[var(--accent)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-40 sm:inline-flex"
+                className="hidden h-9 items-center rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-40 sm:inline-flex"
               >
                 Adicionar
               </button>
             ) : null}
             <button
               type="button"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] text-[var(--ink)]"
+              className="grid h-9 w-9 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] text-[var(--ink)]"
               aria-label="Fechar"
               onClick={onClose}
             >
@@ -138,7 +138,7 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
           </div>
         </div>
 
-        <div className="overflow-y-auto p-4 sm:p-5">
+        <div className="overflow-y-auto p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-5">
           {loading ? (
             <div className="grid min-h-[320px] place-items-center text-[var(--muted)]">
               <p className="inline-flex items-center gap-2 text-sm">
@@ -351,6 +351,23 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
             </div>
           ) : null}
         </div>
+
+        {onAddToCart ? (
+          <div className="absolute inset-x-0 bottom-0 border-t border-[var(--line)] bg-white/95 px-4 py-3 backdrop-blur-md sm:hidden pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="text-sm text-[var(--muted)]">Preço</span>
+              <strong className="text-base text-[var(--ink)]">{formatCurrency(card.priceCents)}</strong>
+            </div>
+            <button
+              type="button"
+              disabled={card.stock <= 0}
+              onClick={() => onAddToCart(card)}
+              className="flex h-11 w-full items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-40"
+            >
+              {card.stock <= 0 ? "Sem estoque" : "Adicionar ao carrinho"}
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>,
     document.body
@@ -368,20 +385,20 @@ function LegalityBadge({ status }: { status: CardLegality["status"] }) {
   if (status === "banned") {
     return (
       <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-        Banned
+        Banido
       </span>
     );
   }
   if (status === "restricted") {
     return (
       <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-        Restricted
+        Restrito
       </span>
     );
   }
   return (
     <span className="rounded-full bg-slate-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-      Not legal
+      Não legal
     </span>
   );
 }

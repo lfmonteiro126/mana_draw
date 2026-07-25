@@ -5,16 +5,29 @@ import { currentUser } from "@/lib/auth";
 import { getOrdersForUser } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 
+const statusLabels: Record<string, string> = {
+  pending: "Pendente",
+  paid: "Pago",
+  shipped: "Enviado",
+  delivered: "Entregue",
+  cancelled: "Cancelado"
+};
+
 function AccountChrome({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-screen">
       <header className="border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="group" aria-label="Mana Draw">
-            <span className="block text-lg font-semibold tracking-tight text-[var(--ink)] transition group-hover:text-[var(--accent)]">
-              Mana Draw
+          <Link href="/" className="group flex items-center gap-3" aria-label="Mana Draw">
+            <span className="grid h-10 w-10 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white">
+              MD
             </span>
-            <span className="text-xs text-[var(--muted)]">Voltar para a loja</span>
+            <span>
+              <span className="block text-lg font-semibold tracking-tight text-[var(--ink)] transition group-hover:text-[var(--accent)]">
+                Mana Draw
+              </span>
+              <span className="text-xs text-[var(--muted)]">Voltar para a loja</span>
+            </span>
           </Link>
           <Link
             href="/#catalogo"
@@ -75,8 +88,14 @@ export default async function AccountPage() {
             <PackageCheck className="mx-auto mb-3 text-[var(--muted)]" size={34} />
             <p className="font-semibold text-[var(--ink)]">Nenhum pedido ainda</p>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Seus pedidos finalizados aparecem aqui quando o Neon estiver conectado.
+              Explore o catálogo e finalize sua primeira compra.
             </p>
+            <Link
+              href="/#catalogo"
+              className="mt-4 inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+            >
+              Ver catálogo
+            </Link>
           </div>
         ) : (
           orders.map((order) => (
@@ -90,8 +109,8 @@ export default async function AccountPage() {
                   {new Date(order.createdAt).toLocaleString("pt-BR")}
                 </p>
               </div>
-              <span className="rounded-md bg-[var(--surface-hover)] px-3 py-2 text-sm font-semibold text-[var(--ink)]">
-                {order.status}
+              <span className="rounded-[var(--radius-control)] bg-[var(--surface-hover)] px-3 py-2 text-sm font-semibold text-[var(--ink)]">
+                {statusLabels[order.status] ?? order.status}
               </span>
               <div className="text-left sm:text-right">
                 <p className="font-semibold text-[var(--ink)]">{formatCurrency(order.subtotalCents)}</p>

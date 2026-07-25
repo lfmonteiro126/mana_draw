@@ -10,7 +10,13 @@ const initialState = { ok: false, message: "" };
 const inputClass =
   "field-input h-11 rounded-[var(--radius-control)] px-3 text-sm";
 
-export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
+export function AuthPanel({
+  redirectTo,
+  checkoutHint = false
+}: {
+  redirectTo?: string;
+  checkoutHint?: boolean;
+}) {
   const [loginState, loginFormAction, loginPending] = useActionState(
     loginAction,
     initialState
@@ -33,22 +39,55 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
+      {checkoutHint ? (
+        <p className="rounded-[var(--radius-control)] bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--accent-strong)] sm:col-span-2">
+          Entre para concluir sua compra. Seu carrinho será mantido nesta sessão.
+        </p>
+      ) : null}
+
       <form action={loginFormAction} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
         <div className="mb-4 flex items-center gap-2">
           <LogIn size={18} className="text-[var(--accent)]" />
           <h3 className="font-semibold text-[var(--ink)]">Entrar</h3>
         </div>
         <div className="grid gap-3">
-          <input className={inputClass} name="email" placeholder="email@exemplo.com" type="email" required />
-          <input className={inputClass} name="password" placeholder="Senha" type="password" required />
-          <button className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:opacity-50" disabled={loginPending} type="submit">
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium text-[var(--muted)]">Email</span>
+            <input
+              className={inputClass}
+              name="email"
+              placeholder="email@exemplo.com"
+              type="email"
+              autoComplete="email"
+              required
+            />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium text-[var(--muted)]">Senha</span>
+            <input
+              className={inputClass}
+              name="password"
+              placeholder="Sua senha"
+              type="password"
+              autoComplete="current-password"
+              required
+            />
+          </label>
+          <button
+            className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:opacity-50"
+            disabled={loginPending}
+            type="submit"
+          >
             {loginPending ? "Entrando..." : "Entrar"}
           </button>
-          {loginState.message && (
-            <p className={`text-sm ${loginState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}>
+          {loginState.message ? (
+            <p
+              role="alert"
+              className={`text-sm ${loginState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}
+            >
               {loginState.message}
             </p>
-          )}
+          ) : null}
         </div>
       </form>
 
@@ -58,17 +97,48 @@ export function AuthPanel({ redirectTo }: { redirectTo?: string }) {
           <h3 className="font-semibold text-[var(--ink)]">Criar conta</h3>
         </div>
         <div className="grid gap-3">
-          <input className={inputClass} name="name" placeholder="Nome" required />
-          <input className={inputClass} name="email" placeholder="email@exemplo.com" type="email" required />
-          <input className={inputClass} name="password" placeholder="Senha com 6+ caracteres" type="password" required />
-          <button className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:opacity-50" disabled={registerPending} type="submit">
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium text-[var(--muted)]">Nome</span>
+            <input className={inputClass} name="name" placeholder="Seu nome" autoComplete="name" required />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium text-[var(--muted)]">Email</span>
+            <input
+              className={inputClass}
+              name="email"
+              placeholder="email@exemplo.com"
+              type="email"
+              autoComplete="email"
+              required
+            />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            <span className="font-medium text-[var(--muted)]">Senha</span>
+            <input
+              className={inputClass}
+              name="password"
+              placeholder="Mínimo 6 caracteres"
+              type="password"
+              autoComplete="new-password"
+              minLength={6}
+              required
+            />
+          </label>
+          <button
+            className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:opacity-50"
+            disabled={registerPending}
+            type="submit"
+          >
             {registerPending ? "Criando..." : "Criar conta"}
           </button>
-          {registerState.message && (
-            <p className={`text-sm ${registerState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}>
+          {registerState.message ? (
+            <p
+              role="alert"
+              className={`text-sm ${registerState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}
+            >
               {registerState.message}
             </p>
-          )}
+          ) : null}
         </div>
       </form>
     </div>

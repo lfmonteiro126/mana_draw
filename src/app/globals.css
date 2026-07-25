@@ -93,6 +93,11 @@ button {
   box-shadow: 0 0 0 4px rgba(15, 159, 144, 0.12);
 }
 
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(15, 159, 144, 0.18);
+}
+
 .surface-card {
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
@@ -332,6 +337,21 @@ body.deck-lab {
 
 .hero-float {
   animation: hero-float 5.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .hero-float,
+  .animate-slide-up,
+  .animate-fade-in,
+  .animate-dock-in,
+  .animate-badge-pop,
+  .deck-rise {
+    animation: none !important;
+  }
 }
 
 .hero-card-shell {

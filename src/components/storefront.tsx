@@ -41,12 +41,20 @@ type CartLine = {
 
 const games: FilterGame[] = ["Todos", "Magic", "Yu-Gi-Oh!", "Pokemon"];
 const orderInitialState = { ok: false, message: "" };
+const CART_STORAGE_KEY = "mana-draw-cart-v1";
 
 const conditionColors: Record<string, string> = {
   NM: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   SP: "bg-amber-50 text-amber-700 border border-amber-200",
   MP: "bg-orange-50 text-orange-700 border border-orange-200",
   HP: "bg-rose-50 text-rose-700 border border-rose-200"
+};
+
+const conditionLabels: Record<string, string> = {
+  NM: "Near Mint",
+  SP: "Slightly Played",
+  MP: "Moderately Played",
+  HP: "Heavily Played"
 };
 
 export function Storefront({
@@ -66,8 +74,10 @@ export function Storefront({
   const [game, setGame] = useState<FilterGame>(initialGame);
   const [sort, setSort] = useState<SortMode>(initialSort);
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [cartHydrated, setCartHydrated] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [addedToast, setAddedToast] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"catalogo" | "venda" | "conta">(
     "catalogo"
   );
@@ -108,7 +118,44 @@ export function Storefront({
   );
 
   useEffect(() => {
-    if (orderState.ok) setCart([]);
+    try {
+      const raw = sessionStorage.getItem(CART_STORAGE_KEY);
+      if (!raw) {
+        setCartHydrated(true);
+        return;
+      }
+      const saved = JSON.parse(raw) as Array<{ cardId: string; quantity: number }>;
+      const restored = saved
+        .map((line) => {
+          const card = cards.find((item) => item.id === line.cardId);
+          if (!card || card.stock <= 0) return null;
+          return {
+            card,
+            quantity: Math.max(1, Math.min(line.quantity, card.stock))
+          };
+        })
+        .filter((line): line is CartLine => Boolean(line));
+      setCart(restored);
+    } catch {
+      // ignore corrupt storage
+    } finally {
+      setCartHydrated(true);
+    }
+  }, [cards]);
+
+  useEffect(() => {
+    if (!cartHydrated) return;
+    sessionStorage.setItem(
+      CART_STORAGE_KEY,
+      JSON.stringify(cart.map((line) => ({ cardId: line.card.id, quantity: line.quantity })))
+    );
+  }, [cart, cartHydrated]);
+
+  useEffect(() => {
+    if (orderState.ok) {
+      setCart([]);
+      sessionStorage.removeItem(CART_STORAGE_KEY);
+    }
   }, [orderState.ok]);
 
   useEffect(() => {
@@ -117,10 +164,25 @@ export function Storefront({
 
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (authOpen) setAuthOpen(false);
+      else setCartOpen(false);
+    }
+
+    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
     };
   }, [cartOpen, authOpen]);
+
+  useEffect(() => {
+    if (!addedToast) return;
+    const timer = window.setTimeout(() => setAddedToast(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [addedToast]);
 
   useEffect(() => {
     const sectionIds = ["catalogo", "venda"] as const;
@@ -162,7 +224,7 @@ export function Storefront({
           : line
       );
     });
-    setCartOpen(true);
+    setAddedToast(card.name);
   }
 
   function updateQuantity(cardId: string, quantity: number) {
@@ -175,6 +237,12 @@ export function Storefront({
         )
         .filter((line) => line.quantity > 0)
     );
+  }
+
+  function clearCatalogFilters() {
+    setQuery("");
+    setGame("Todos");
+    setSort("relevance");
   }
 
   return (
@@ -336,19 +404,10 @@ export function Storefront({
           {currentUser ? (
             <Link
               href="/conta"
-              onClick={() => setActiveSection("conta")}
-              aria-current={activeSection === "conta" ? "page" : undefined}
-              className={`relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold transition-all duration-200 active:scale-95 ${
-                activeSection === "conta"
-                  ? "text-[var(--accent)]"
-                  : "text-[var(--muted)] hover:text-[var(--ink)]"
-              }`}
+              className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
             >
-              <UserRound size={20} strokeWidth={activeSection === "conta" ? 2.25 : 1.75} />
+              <UserRound size={20} strokeWidth={1.75} />
               <span className="max-w-[3.25rem] truncate">{currentUser.name.split(" ")[0]}</span>
-              {activeSection === "conta" && (
-                <span className="absolute bottom-1 h-0.5 w-4 rounded-full bg-[var(--accent)]" />
-              )}
             </Link>
           ) : (
             <button
@@ -457,6 +516,8 @@ export function Storefront({
                           </p>
                         </div>
                         <span
+                          title={conditionLabels[card.condition] || card.condition}
+                          aria-label={conditionLabels[card.condition] || card.condition}
                           className={`shrink-0 rounded-[0.45rem] px-2 py-1 text-[10px] font-bold tracking-wider ${
                             conditionColors[card.condition] || "border border-[var(--line)] bg-[var(--surface-hover)] text-[var(--muted)]"
                           }`}
@@ -494,8 +555,18 @@ export function Storefront({
                 </article>
               ))}
               {filteredCards.length === 0 && (
-                <div className="surface-card border-dashed p-8 text-center text-sm text-[var(--muted)] sm:col-span-2 xl:col-span-3">
-                  Nenhuma carta encontrada. Tente outro nome, coleção ou jogo.
+                <div className="surface-card border-dashed p-8 text-center sm:col-span-2 xl:col-span-3">
+                  <p className="text-sm font-semibold text-[var(--ink)]">Nenhuma carta encontrada</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    Tente outro nome, coleção ou jogo.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={clearCatalogFilters}
+                    className="mt-4 inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                  >
+                    Limpar filtros
+                  </button>
                 </div>
               )}
             </div>
@@ -571,7 +642,7 @@ export function Storefront({
               [ShieldCheck, "Condição auditada", "NM, SP, MP e HP com padrão fotografável."],
               [Truck, "Envio rastreado", "Pronto para frete e retirada local."],
               [CreditCard, "Checkout direto", "Carrinho preparado para Pix e cartão."],
-              [Boxes, "Estoque real", "Neon como fonte única de produtos e pedidos."]
+              [Boxes, "Estoque real", "Catálogo atualizado com o estoque disponível."]
             ].map(([Icon, title, copy]) => (
               <div key={String(title)} className="flex gap-3 md:flex-col md:gap-0">
                 <Icon size={22} className="mt-0.5 shrink-0 text-[var(--accent)] md:mb-3 md:mt-0" />
@@ -595,8 +666,30 @@ export function Storefront({
           <Link className="transition hover:text-[var(--ink)]" href="/analisar-deck">Analisar deck</Link>
           <a className="transition hover:text-[var(--ink)]" href="#venda">Buylist</a>
           <a className="transition hover:text-[var(--ink)]" href="#operacao">Operação</a>
+          <Link className="transition hover:text-[var(--ink)]" href="/conta">Conta</Link>
         </div>
       </footer>
+
+      {addedToast ? (
+        <div
+          role="status"
+          className="fixed bottom-[calc(var(--nav-height)+1rem)] left-1/2 z-[70] flex w-[min(420px,calc(100vw-1.5rem))] -translate-x-1/2 items-center justify-between gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 shadow-[var(--shadow-lift)] animate-fade-in md:bottom-6"
+        >
+          <p className="min-w-0 truncate text-sm text-[var(--ink)]">
+            <span className="font-semibold">Adicionado:</span> {addedToast}
+          </p>
+          <button
+            type="button"
+            className="shrink-0 text-sm font-semibold text-[var(--accent)]"
+            onClick={() => {
+              setAddedToast(null);
+              setCartOpen(true);
+            }}
+          >
+            Ver carrinho
+          </button>
+        </div>
+      ) : null}
 
       {cartOpen && (
         <div className="fixed inset-0 z-50 animate-fade-in">
@@ -606,7 +699,12 @@ export function Storefront({
             aria-label="Fechar carrinho"
             onClick={() => setCartOpen(false)}
           />
-          <aside className="fixed bottom-0 right-0 z-50 flex h-[min(86vh,720px)] w-full flex-col rounded-t-[var(--radius-sheet)] border-t border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow-lift)] transition-all duration-300 animate-slide-up md:absolute md:top-0 md:h-full md:max-w-md md:rounded-t-none md:border-l md:border-t-0 md:animate-fade-in">
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Carrinho"
+            className="fixed bottom-0 right-0 z-50 flex h-[min(86vh,720px)] w-full flex-col rounded-t-[var(--radius-sheet)] border-t border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow-lift)] transition-all duration-300 animate-slide-up md:absolute md:top-0 md:h-full md:max-w-md md:rounded-t-none md:border-l md:border-t-0 md:animate-fade-in"
+          >
             <div className="mx-auto my-2.5 h-1 w-12 shrink-0 rounded-full bg-slate-300 md:hidden" />
 
             <div className="flex items-center justify-between border-b border-[var(--line)] px-4 pb-4 pt-1 md:p-4">
@@ -689,9 +787,10 @@ export function Storefront({
                               {line.quantity}
                             </span>
                             <button
-                              className="grid h-8 w-8 place-items-center text-[var(--ink)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--accent)]"
+                              className="grid h-8 w-8 place-items-center text-[var(--ink)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-35"
                               type="button"
                               aria-label="Aumentar quantidade"
+                              disabled={line.quantity >= line.card.stock}
                               onClick={() => updateQuantity(line.card.id, line.quantity + 1)}
                             >
                               <Plus size={14} />
@@ -705,6 +804,9 @@ export function Storefront({
                             Remover
                           </button>
                         </div>
+                        {line.quantity >= line.card.stock ? (
+                          <p className="mt-2 text-[11px] text-[var(--muted)]">Máx. {line.card.stock} em estoque</p>
+                        ) : null}
                       </div>
                     </div>
                   ))}
@@ -742,9 +844,14 @@ export function Storefront({
                 </button>
               )}
               {orderState.message && (
-                <p className={`mt-3 text-sm ${orderState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}>
-                  {orderState.message}
-                </p>
+                <div className={`mt-3 text-sm ${orderState.ok ? "text-[var(--accent-strong)]" : "text-rose-600"}`}>
+                  <p>{orderState.message}</p>
+                  {orderState.ok ? (
+                    <Link href="/conta" className="mt-2 inline-flex font-semibold underline-offset-2 hover:underline">
+                      Ver pedidos
+                    </Link>
+                  ) : null}
+                </div>
               )}
             </div>
           </aside>
@@ -760,7 +867,12 @@ export function Storefront({
             onClick={() => setAuthOpen(false)}
           />
           <div className="absolute inset-x-0 bottom-0 w-full animate-slide-up md:left-1/2 md:top-1/2 md:bottom-auto md:w-[min(720px,calc(100vw-32px))] md:-translate-x-1/2 md:-translate-y-1/2 md:animate-fade-in">
-            <div className="rounded-t-[var(--radius-sheet)] border border-[var(--line)] bg-[var(--surface)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-lift)] md:rounded-[var(--radius-card)] md:p-6 md:pb-6">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Conta Mana Draw"
+              className="rounded-t-[var(--radius-sheet)] border border-[var(--line)] bg-[var(--surface)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-lift)] md:rounded-[var(--radius-card)] md:p-6 md:pb-6"
+            >
               <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-slate-300 md:hidden" />
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
@@ -778,10 +890,12 @@ export function Storefront({
                   <X size={17} />
                 </button>
               </div>
-              <AuthPanel />
-              <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
-                Sem Neon: qualquer email como cliente, ou admin@manadraw.local / admin123.
-              </p>
+              <AuthPanel checkoutHint={cart.length > 0} />
+              {process.env.NODE_ENV === "development" ? (
+                <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
+                  Demo local: qualquer email como cliente, ou admin@manadraw.local / admin123.
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -813,6 +927,9 @@ function HeroGameShowcase() {
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (media.matches) return;
+
     if (paused) return;
     const timer = window.setInterval(() => {
       setActive((current) => (current + 1) % heroShowcase.length);
@@ -932,7 +1049,7 @@ function WeeklyDropPanel({
           <p className="text-sm text-[var(--muted)]">Seleção rápida para comprar agora.</p>
         </div>
         <span className="rounded-[var(--radius-control)] bg-[var(--accent)]/10 px-3 py-2 text-sm font-semibold text-[var(--accent)]">
-          -12%
+          Destaques
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 bg-[var(--surface-soft)] p-4">
