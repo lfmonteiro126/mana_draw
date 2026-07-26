@@ -1,19 +1,27 @@
 import type { DeckArchetype, DeckRole } from "./types";
 
-/** Subconjunto prático da lista oficial de Game Changers (Commander Brackets). */
+/**
+ * Lista oficial de Game Changers (Commander Brackets / WotC).
+ * Fonte: Scryfall `is:gamechanger` — sincronizada em 2026-07-26 (53 cartas).
+ * Toxic Deluge, Damnation, etc. NÃO estão nesta lista.
+ */
 export const GAME_CHANGERS = new Set(
   [
+    "Ad Nauseam",
     "Ancient Tomb",
+    "Aura Shards",
+    "Biorhythm",
     "Bolas's Citadel",
     "Braids, Cabal Minion",
     "Chrome Mox",
     "Coalition Victory",
+    "Consecrated Sphinx",
+    "Crop Rotation",
     "Cyclonic Rift",
-    "Demonic Consultation",
-    "Dockside Extortionist",
+    "Demonic Tutor",
     "Drannith Magistrate",
     "Enlightened Tutor",
-    "Expropriate",
+    "Farewell",
     "Field of the Dead",
     "Fierce Guardianship",
     "Force of Will",
@@ -26,44 +34,59 @@ export const GAME_CHANGERS = new Set(
     "Humility",
     "Imperial Seal",
     "Intuition",
-    "Jeweled Lotus",
-    "Karakas",
+    "Jeska's Will",
     "Lion's Eye Diamond",
-    "Mana Crypt",
     "Mana Vault",
-    "Metalworker",
     "Mishra's Workshop",
     "Mox Diamond",
+    "Mystical Tutor",
+    "Narset, Parter of Veils",
     "Natural Order",
     "Necropotence",
-    "Neheb, the Eternal",
     "Notion Thief",
-    "Orcish Bowmasters",
     "Opposition Agent",
+    "Orcish Bowmasters",
     "Panoptic Mirror",
     "Rhystic Study",
     "Seedborn Muse",
+    "Serra's Sanctum",
     "Smothering Tithe",
     "Survival of the Fittest",
     "Teferi's Protection",
-    "The One Ring",
+    "Tergrid, God of Fright",
+    "Tergrid, God of Fright // Tergrid's Lantern",
     "Thassa's Oracle",
-    "Toxic Deluge",
+    "The One Ring",
+    "The Tabernacle at Pendrell Vale",
     "Underworld Breach",
     "Vampiric Tutor",
     "Worldly Tutor"
-  ].map((name) => name.toLowerCase())
+  ].map((name) => normalizeCardKey(name))
 );
+
+export function isOfficialGameChanger(name: string) {
+  const key = normalizeCardKey(name);
+  if (GAME_CHANGERS.has(key)) return true;
+  const front = key.split(" // ")[0]?.trim();
+  return Boolean(front && GAME_CHANGERS.has(front));
+}
+
+function normalizeCardKey(name: string) {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
 
 export const FAST_MANA = new Set(
   [
-    "Mana Crypt",
     "Mana Vault",
     "Chrome Mox",
     "Mox Diamond",
     "Mox Opal",
     "Lotus Petal",
-    "Jeweled Lotus",
     "Lion's Eye Diamond",
     "Grim Monolith",
     "Ancient Tomb",
@@ -73,8 +96,11 @@ export const FAST_MANA = new Set(
     "Seething Song",
     "Pyretic Ritual",
     "Simian Spirit Guide",
-    "Elvish Spirit Guide"
-  ].map((name) => name.toLowerCase())
+    "Elvish Spirit Guide",
+    // Legadas / banidas: ainda detectamos se aparecerem na lista
+    "Mana Crypt",
+    "Jeweled Lotus"
+  ].map((name) => normalizeCardKey(name))
 );
 
 export const EXTRA_TURN_HINTS = [
@@ -216,7 +242,7 @@ export function detectRoles(oracle: string, typeLine: string, name: string): Dec
   const roles = new Set<DeckRole>();
   const o = oracle.toLowerCase();
   const t = typeLine.toLowerCase();
-  const n = name.toLowerCase();
+  const n = normalizeCardKey(name);
   const isLand = /\bland\b/i.test(typeLine);
 
   if (isLand) roles.add("land");
@@ -289,7 +315,7 @@ export function detectRoles(oracle: string, typeLine: string, name: string): Dec
     roles.add("tutor");
   }
 
-  if (GAME_CHANGERS.has(n)) roles.add("gameChanger");
+  if (isOfficialGameChanger(name)) roles.add("gameChanger");
   if (!isLand && FAST_MANA.has(n)) roles.add("fastMana");
   if (!isLand && EXTRA_TURN_HINTS.some((hint) => o.includes(hint))) roles.add("extraTurn");
   if (

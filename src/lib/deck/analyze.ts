@@ -1,4 +1,4 @@
-import { ARCHETYPE_RULES, GAME_CHANGERS, detectRoles } from "./lists";
+import { ARCHETYPE_RULES, detectRoles, isOfficialGameChanger } from "./lists";
 import { collapseDeckLines, parseDeckList } from "./parse";
 import {
   cardArtCropUrl,
@@ -211,7 +211,7 @@ function toAnalyzedCard(
     artCropUrl: cardArtCropUrl(card),
     legal: (card.legalities?.commander ?? "legal") === "legal",
     roles,
-    isGameChanger: GAME_CHANGERS.has(card.name.toLowerCase()),
+    isGameChanger: isOfficialGameChanger(card.name),
     isFastMana: roles.includes("fastMana")
   };
 }
@@ -389,73 +389,74 @@ function scoreArchetypes(cards: AnalyzedCard[]): ArchetypeScore[] {
 function assessBracket(maindeck: AnalyzedCard[], commanders: AnalyzedCard[]): BracketAssessment {
   const pool = [...maindeck, ...commanders];
   const gameChangers = pool.filter((card) => card.isGameChanger);
+  const gcCount = gameChangers.reduce((sum, card) => sum + card.quantity, 0);
   const tutors = countRole(pool, "tutor");
   const fastMana = countRole(pool, "fastMana");
   const extraTurns = countRole(pool, "extraTurn");
   const landDenial = countRole(pool, "landDenial");
   const comboSignals = pool.filter((card) =>
-    /thassa's oracle|demonic consultation|underworld breach|ad nauseam|isochron|dramatic reversal|bolas's citadel/i.test(
+    /thassa's oracle|demonic consultation|underworld breach|ad nauseam|isochron|dramatic reversal|bolas's citadel|consultation|tainted pact/i.test(
       card.name + " " + card.oracleText
     )
   ).length;
 
   const signals: string[] = [];
-  if (gameChangers.length) {
-    signals.push(`${gameChangers.length} Game Changer(s): ${gameChangers.map((c) => c.name).slice(0, 5).join(", ")}`);
+  if (gcCount) {
+    signals.push(
+      `${gcCount} Game Changer(s) oficiais: ${gameChangers.map((c) => c.name).slice(0, 5).join(", ")}`
+    );
   } else {
-    signals.push("Nenhum Game Changer detectado na lista atual");
+    signals.push("Nenhum Game Changer da lista oficial (Scryfall is:gamechanger)");
   }
   signals.push(`${tutors} tutor(es)`);
   signals.push(`${fastMana} peça(s) de fast mana`);
   if (extraTurns) signals.push(`${extraTurns} efeito(s) de extra turn`);
-  if (landDenial) signals.push(`${landDenial} efeito(s) de land denial`);
+  if (landDenial) signals.push(`${landDenial} mass land denial`);
   if (comboSignals) signals.push(`${comboSignals} sinal(is) de combo clássico`);
 
+  /**
+   * Heurística alinhada aos Brackets oficiais:
+   * B1/B2 → 0 GC | B3 → até 3 GC | B4/B5 → sem teto
+   * Extra turn / MLD / combo cedo empurram o nível.
+   */
   let bracket: CommanderBracket = 2;
   let confidence: BracketAssessment["confidence"] = "media";
 
-  if (
-    gameChangers.length >= 5 ||
-    (gameChangers.length >= 3 && tutors >= 4 && fastMana >= 3) ||
-    (comboSignals >= 2 && tutors >= 3 && fastMana >= 2)
-  ) {
+  const cedhShape =
+    (gcCount >= 4 && tutors >= 3 && fastMana >= 2) ||
+    (comboSignals >= 2 && tutors >= 3 && fastMana >= 2) ||
+    (gcCount >= 6 && tutors >= 2);
+
+  const optimizedShape =
+    gcCount >= 4 ||
+    (gcCount >= 3 && (tutors >= 3 || fastMana >= 2 || extraTurns >= 1)) ||
+    (landDenial >= 1 && (tutors >= 2 || fastMana >= 2)) ||
+    extraTurns >= 2;
+
+  const upgradedShape =
+    (gcCount >= 1 && gcCount <= 3) ||
+    (gcCount === 0 && (tutors >= 3 || fastMana >= 3 || comboSignals >= 1 || landDenial >= 1));
+
+  if (cedhShape) {
     bracket = 5;
-  } else if (
-    gameChangers.length >= 3 ||
-    (gameChangers.length >= 2 && tutors >= 3) ||
-    (fastMana >= 3 && tutors >= 3) ||
-    extraTurns >= 2
-  ) {
+    confidence = "alta";
+  } else if (optimizedShape) {
     bracket = 4;
-  } else if (
-    gameChangers.length >= 1 ||
-    tutors >= 2 ||
-    fastMana >= 2 ||
-    landDenial >= 1 ||
-    comboSignals >= 1
-  ) {
+  } else if (upgradedShape) {
     bracket = 3;
-  } else if (tutors === 0 && fastMana === 0 && gameChangers.length === 0) {
-    bracket = maindeck.length < 40 ? 1 : 2;
-    if (averageNonLandCmc(maindeck) >= 4.2) bracket = 1;
+  } else if (gcCount === 0 && tutors <= 1 && fastMana <= 1 && landDenial === 0 && comboSignals === 0) {
+    bracket = averageNonLandCmc(maindeck) >= 3.8 || maindeck.length < 50 ? 1 : 2;
   } else {
     bracket = 2;
   }
 
-  // Exhibition: listas bem casuais
-  if (
-    bracket <= 2 &&
-    gameChangers.length === 0 &&
-    tutors === 0 &&
-    fastMana === 0 &&
-    landDenial === 0 &&
-    averageNonLandCmc(maindeck) >= 3.8
-  ) {
-    bracket = 1;
-    confidence = "media";
-  }
+  // Bracket 3 oficialmente tolera até 3 GC — se passou de 3, não fica em 3.
+  if (bracket === 3 && gcCount > 3) bracket = 4;
 
-  if (gameChangers.length + tutors + fastMana >= 8) confidence = "alta";
+  // Bracket 1/2 não devem ter GC.
+  if (bracket <= 2 && gcCount > 0) bracket = 3;
+
+  if (gcCount + tutors + fastMana >= 8) confidence = "alta";
   if (pool.length < 50) confidence = "baixa";
 
   return {
