@@ -64,7 +64,13 @@ export async function analyzeCommanderDeck(input: {
     throw new Error("Cole uma decklist válida (uma carta por linha).");
   }
 
-  const { found, unresolved } = await fetchScryfallCollection(collapsed.map((line) => line.name));
+  const { found, unresolved } = await fetchScryfallCollection(
+    collapsed.map((line) => ({
+      name: line.name,
+      setCode: line.setCode,
+      collectorNumber: line.collectorNumber
+    }))
+  );
 
   const analyzed: AnalyzedCard[] = [];
   const duplicates: string[] = [];

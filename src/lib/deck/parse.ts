@@ -28,14 +28,6 @@ const SECTION_MAP: Record<string, ParsedDeckLine["section"]> = {
 
 /**
  * Aceita formatos comuns: Moxfield, Archidekt, MTGO, Arena-like.
- * Exemplos:
- * 1 Sol Ring
- * 1 Sol Ring (CMM) 698
- * Sol Ring
- * // Commander
- * Commander
- * Comandante (1)
- * 1 Atraxa, Praetors' Voice
  */
 export function parseDeckList(raw: string): ParsedDeckLine[] {
   const lines = raw.replace(/^\uFEFF/, "").split(/\r?\n/);
@@ -52,25 +44,21 @@ export function parseDeckList(raw: string): ParsedDeckLine[] {
       continue;
     }
 
-    const match = line.match(
-      /^(?:(\d+)\s*x\s+|(\d+)x\s*|(\d+)\s+)?(.+?)(?:\s+\(([A-Za-z0-9]+)\)(?:\s+([A-Za-z0-9★☆✦]+))?)?(?:\s+\*\w+\*)?\s*$/i
-    );
+    if (/^(https?:\/\/|\$|total|avg|deck\s*price|owned)/i.test(line)) continue;
 
+    const match = line.match(/^(?:(\d+)\s*x\s+|(\d+)x\s*|(\d+)\s+)?(.+?)\s*$/i);
     if (!match?.[4]) continue;
 
-    const name = cleanCardName(match[4]);
-    if (!name || name.length < 2 || /^\d/.test(name)) continue;
+    const extracted = extractCardIdentity(match[4]);
+    if (!extracted.name || extracted.name.length < 2 || /^\d/.test(extracted.name)) continue;
 
-    const quantity = Math.max(
-      1,
-      Number(match[1] || match[2] || match[3] || "1") || 1
-    );
+    const quantity = Math.max(1, Number(match[1] || match[2] || match[3] || "1") || 1);
 
     parsed.push({
       quantity,
-      name,
-      setCode: match[5]?.toUpperCase(),
-      collectorNumber: match[6],
+      name: extracted.name,
+      setCode: extracted.setCode,
+      collectorNumber: extracted.collectorNumber,
       section: section === "ignore" ? "ignore" : section
     });
   }
@@ -89,12 +77,53 @@ function readSectionHeader(line: string): ParsedDeckLine["section"] | null {
   return SECTION_MAP[cleaned] ?? null;
 }
 
-function cleanCardName(value: string) {
-  return value
+/**
+ * Remove set/collector/foil/preço e devolve nome limpo para o Scryfall.
+ * Cobre Moxfield `(CMM) 698` e Archidekt `(Commander Masters) 698`.
+ */
+export function extractCardIdentity(raw: string) {
+  let value = raw
     .replace(/\s+\/\s+/g, " // ")
     .replace(/\s{2,}/g, " ")
-    .replace(/\s+#\d+$/g, "")
     .trim();
+
+  value = value.replace(/\s+\*[A-Za-z]+\*/g, "").trim();
+  value = value.replace(/\s+(?:R\$\s*)?\d+[.,]\d{2}$/g, "").trim();
+  value = value.replace(/\s+#\d+$/g, "").trim();
+
+  let setCode: string | undefined;
+  let collectorNumber: string | undefined;
+
+  const bracket = value.match(/\s+\[([A-Za-z0-9]+)\](?:\s+([A-Za-z0-9★☆✦\/-]+))?$/);
+  if (bracket) {
+    setCode = bracket[1].toUpperCase();
+    collectorNumber = bracket[2];
+    value = value.slice(0, bracket.index).trim();
+  }
+
+  // Archidekt / exports longos: (Commander Masters) 698
+  const fullSetWithCollector = value.match(/\s+\(([^)]+)\)\s+([A-Za-z0-9★☆✦\/-]{1,12})$/);
+  if (fullSetWithCollector) {
+    const inside = fullSetWithCollector[1].trim();
+    if (/^[A-Za-z0-9]{2,5}$/.test(inside)) {
+      setCode = inside.toUpperCase();
+    }
+    collectorNumber = fullSetWithCollector[2];
+    value = value.slice(0, fullSetWithCollector.index).trim();
+  } else {
+    // Moxfield curto: (CMM) ou (CMM) 698 já coberto; (CMM) sozinho
+    const shortSet = value.match(/\s+\(([A-Za-z0-9]{2,5})\)$/);
+    if (shortSet) {
+      setCode = shortSet[1].toUpperCase();
+      value = value.slice(0, shortSet.index).trim();
+    }
+  }
+
+  return {
+    name: value.trim(),
+    setCode,
+    collectorNumber
+  };
 }
 
 export function collapseDeckLines(lines: ParsedDeckLine[]) {

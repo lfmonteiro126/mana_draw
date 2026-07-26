@@ -6,15 +6,36 @@ const SCRYFALL_HEADERS = {
   "Content-Type": "application/json"
 };
 
-type CollectionNotFound = { name?: string };
+type CollectionNotFound = { name?: string; set?: string };
 
 type CollectionResponse = {
   data?: ScryfallCardData[];
   not_found?: CollectionNotFound[];
 };
 
-export async function fetchScryfallCollection(names: string[]) {
-  const unique = [...new Set(names.map((name) => name.trim()).filter(Boolean))];
+export type ScryfallLookup = {
+  name: string;
+  setCode?: string;
+  collectorNumber?: string;
+};
+
+export async function fetchScryfallCollection(lookups: Array<string | ScryfallLookup>) {
+  const normalizedLookups = lookups
+    .map((entry) => (typeof entry === "string" ? { name: entry } : entry))
+    .map((entry) => ({
+      name: entry.name.trim(),
+      setCode: entry.setCode?.trim().toLowerCase() || undefined,
+      collectorNumber: entry.collectorNumber?.trim() || undefined
+    }))
+    .filter((entry) => entry.name);
+
+  const uniqueKeys = new Map<string, ScryfallLookup>();
+  for (const entry of normalizedLookups) {
+    const key = lookupKey(entry);
+    if (!uniqueKeys.has(key)) uniqueKeys.set(key, entry);
+  }
+  const unique = [...uniqueKeys.values()];
+
   const found = new Map<string, ScryfallCardData>();
   const unresolved: string[] = [];
 
@@ -23,55 +44,91 @@ export async function fetchScryfallCollection(names: string[]) {
       method: "POST",
       headers: SCRYFALL_HEADERS,
       body: JSON.stringify({
-        identifiers: chunk.map((name) => ({ name }))
+        identifiers: chunk.map((entry) => {
+          if (entry.setCode && entry.collectorNumber) {
+            return { set: entry.setCode, collector_number: entry.collectorNumber };
+          }
+          if (entry.setCode) {
+            return { name: entry.name, set: entry.setCode };
+          }
+          return { name: entry.name };
+        })
       }),
-      next: { revalidate: 60 * 60 * 12 }
+      cache: "no-store"
     });
 
     if (!response.ok) {
-      unresolved.push(...chunk);
+      unresolved.push(...chunk.map((entry) => entry.name));
+      await sleep(120);
       continue;
     }
 
     const payload = (await response.json()) as CollectionResponse;
     for (const card of payload.data ?? []) {
-      found.set(normalizeName(card.name), card);
-      // Faces compostas: "A // B" também deve responder a buscas pelo nome frontal.
-      const front = card.name.split(" // ")[0]?.trim();
-      if (front) found.set(normalizeName(front), card);
+      rememberCard(found, card);
     }
     for (const missing of payload.not_found ?? []) {
       if (missing.name) unresolved.push(missing.name);
     }
 
-    // Scryfall pede ~50–100ms entre requests.
     await sleep(80);
   }
 
-  // Retry fuzzy para não encontrados (nomes PT / typos leves via named endpoint é caro;
-  // tentamos exact front-face apenas).
-  const stillMissing = unresolved.filter((name) => !found.has(normalizeName(name)));
-  for (const name of stillMissing.slice(0, 12)) {
+  const stillMissing = [
+    ...new Set(
+      unique
+        .map((entry) => entry.name)
+        .filter((name) => !found.has(normalizeName(name)))
+        .concat(unresolved.filter((name) => !found.has(normalizeName(name))))
+    )
+  ];
+
+  // Fuzzy / PT: sobe o teto para decks ~100 cartas com vários misses.
+  for (const name of stillMissing.slice(0, 40)) {
     const card = await fetchScryfallNamed(name);
     if (card) {
       found.set(normalizeName(name), card);
-      found.set(normalizeName(card.name), card);
+      rememberCard(found, card);
     }
-    await sleep(100);
+    await sleep(90);
   }
 
-  const finalUnresolved = unique.filter((name) => !found.has(normalizeName(name)));
+  const finalUnresolved = [...new Set(normalizedLookups.map((entry) => entry.name))].filter(
+    (name) => !found.has(normalizeName(name))
+  );
   return { found, unresolved: finalUnresolved };
+}
+
+function rememberCard(found: Map<string, ScryfallCardData>, card: ScryfallCardData) {
+  found.set(normalizeName(card.name), card);
+  const front = card.name.split(" // ")[0]?.trim();
+  if (front) found.set(normalizeName(front), card);
+  const printed = (card as ScryfallCardData & { printed_name?: string }).printed_name;
+  if (printed) found.set(normalizeName(printed), card);
 }
 
 async function fetchScryfallNamed(name: string) {
   const params = new URLSearchParams({ fuzzy: name });
   const response = await fetch(`https://api.scryfall.com/cards/named?${params}`, {
     headers: SCRYFALL_HEADERS,
-    next: { revalidate: 60 * 60 * 12 }
+    cache: "no-store"
   });
-  if (!response.ok) return null;
-  return (await response.json()) as ScryfallCardData;
+  if (response.ok) {
+    return (await response.json()) as ScryfallCardData;
+  }
+
+  // Fallback PT: printed_name exato
+  const search = new URLSearchParams({
+    q: `printed_name:"${name.replace(/"/g, "")}"`,
+    unique: "cards"
+  });
+  const printed = await fetch(`https://api.scryfall.com/cards/search?${search}`, {
+    headers: SCRYFALL_HEADERS,
+    cache: "no-store"
+  });
+  if (!printed.ok) return null;
+  const payload = (await printed.json()) as { data?: ScryfallCardData[] };
+  return payload.data?.[0] ?? null;
 }
 
 export async function fetchScryfallCardByName(name: string) {
@@ -79,7 +136,16 @@ export async function fetchScryfallCardByName(name: string) {
 }
 
 export function normalizeName(name: string) {
-  return name.trim().toLowerCase().replace(/\s+/g, " ");
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function lookupKey(entry: ScryfallLookup) {
+  return `${normalizeName(entry.name)}::${entry.setCode ?? ""}::${entry.collectorNumber ?? ""}`;
 }
 
 export function cardOracleText(card: ScryfallCardData) {
@@ -121,11 +187,11 @@ export function cardTypeLine(card: ScryfallCardData) {
 }
 
 function chunkArray<T>(items: T[], size: number) {
-  const chunks: T[][] = [];
+  const out: T[][] = [];
   for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
+    out.push(items.slice(index, index + size));
   }
-  return chunks;
+  return out;
 }
 
 function sleep(ms: number) {

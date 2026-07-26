@@ -381,6 +381,23 @@ function DeckVisualBoard({
 
         <MobileMetrics analysis={analysis} />
 
+        {analysis.unresolvedNames.length > 0 ? (
+          <div className="rounded-[var(--radius-control)] border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            <p className="font-semibold">
+              {analysis.unresolvedNames.length} carta(s) não reconhecida(s) no Scryfall
+            </p>
+            <p className="mt-1 text-xs leading-5 text-amber-800/90">
+              {analysis.unresolvedNames.slice(0, 6).join(" · ")}
+              {analysis.unresolvedNames.length > 6
+                ? ` · +${analysis.unresolvedNames.length - 6}`
+                : ""}
+            </p>
+            <p className="mt-1 text-[11px] text-amber-700">
+              Prefira nomes em inglês (Moxfield/Archidekt). Veja Insights para a lista completa.
+            </p>
+          </div>
+        ) : null}
+
         {selectedCard ? <MobileCardPeek card={selectedCard} analysis={analysis} /> : null}
 
         {/* Mobile: one category at a time */}
@@ -1043,10 +1060,16 @@ function MobileCardPeek({
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-[var(--ink)]">{card.name}</p>
-          <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">
-            CMC {card.cmc}
-            {card.manaCost ? ` · ${card.manaCost}` : ""} · B{analysis.bracket.bracket}
-          </p>
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] text-[var(--muted)]">
+            <span>CMC {card.cmc}</span>
+            {card.manaCost ? (
+              <>
+                <span>·</span>
+                <ManaCostPips cost={card.manaCost} cmc={card.cmc} />
+              </>
+            ) : null}
+            <span>· B{analysis.bracket.bracket}</span>
+          </div>
         </div>
         <ColorIdentity colors={card.colorIdentity} />
       </div>
