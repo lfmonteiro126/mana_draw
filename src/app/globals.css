@@ -213,6 +213,16 @@ button {
     0 2px 8px rgba(15, 23, 42, 0.12);
 }
 
+.deck-stacks-scroll {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.deck-stack-pane {
+  scroll-snap-align: start;
+}
+
 .deck-app {
   --deck-rail: #eef1f5;
   --deck-panel: #ffffff;
@@ -222,6 +232,7 @@ button {
   --deck-input: #ffffff;
   color: var(--ink);
   background: transparent;
+  max-width: 100vw;
 }
 
 body.deck-lab {
@@ -314,15 +325,6 @@ body.deck-lab {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.7) inset,
     0 10px 28px rgba(15, 23, 42, 0.14);
-}
-
-.deck-stacks-scroll {
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-}
-
-.deck-stack-pane {
-  scroll-snap-align: start;
 }
 
 @keyframes hero-float {

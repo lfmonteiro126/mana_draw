@@ -132,18 +132,18 @@ export function DeckAnalyzer() {
 
   return (
     <main
-      className={`deck-app min-h-screen ${
-        analysis ? "pb-[calc(7.5rem+var(--safe-bottom))] md:pb-16" : "pb-10"
+      className={`deck-app min-h-screen overflow-x-hidden ${
+        analysis ? "pb-[calc(5.25rem+var(--safe-bottom))] md:pb-16" : "pb-10"
       }`}
     >
-      <header className="sticky top-0 z-40 border-b border-[var(--deck-stroke)] bg-white/85 backdrop-blur-2xl">
+      <header className="sticky top-0 z-40 border-b border-[var(--deck-stroke)] bg-white/90 backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/" className="group flex items-center gap-3" aria-label="Mana Draw">
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--accent)] text-xs font-bold tracking-wide text-white transition group-hover:bg-[var(--accent-strong)]">
+          <Link href="/" className="group flex min-w-0 items-center gap-2.5" aria-label="Mana Draw">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--accent)] text-xs font-bold tracking-wide text-white transition group-hover:bg-[var(--accent-strong)]">
               MD
             </span>
-            <span className="leading-tight">
-              <span className="block text-[13px] font-semibold tracking-wide text-[var(--ink)]">
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate text-[13px] font-semibold tracking-wide text-[var(--ink)]">
                 {analysis ? "Deck lab" : "Mana Draw"}
               </span>
               <span className="hidden text-[11px] text-[var(--muted)] sm:block">
@@ -169,16 +169,15 @@ export function DeckAnalyzer() {
             </p>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {analysis && (
               <button
                 type="button"
                 onClick={() => setEditorOpen((open) => !open)}
-                className="inline-flex h-9 items-center gap-2 rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)] md:px-3.5"
-                aria-label={editorOpen ? "Fechar lista" : "Editar lista"}
+                className="hidden h-9 items-center gap-2 rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3.5 text-xs font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)] md:inline-flex"
               >
                 <ScrollText size={14} />
-                <span className="hidden sm:inline">{editorOpen ? "Fechar lista" : "Editar lista"}</span>
+                {editorOpen ? "Fechar lista" : "Editar lista"}
               </button>
             )}
             <Link
@@ -193,15 +192,19 @@ export function DeckAnalyzer() {
       </header>
 
       {(editorOpen || !analysis) && (
-        <section className="border-b border-[var(--deck-stroke)] bg-[var(--deck-rail)]/70">
-          <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[1.35fr_0.75fr] lg:items-end">
+        <section
+          className={`border-b border-[var(--deck-stroke)] bg-[var(--deck-rail)]/70 ${
+            analysis ? "md:block" : ""
+          }`}
+        >
+          <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[1.35fr_0.75fr] lg:items-end">
             <div className="deck-rise">
               {!analysis && (
                 <div className="mb-5 max-w-2xl">
-                  <p className="text-[2rem] font-semibold leading-none tracking-tight text-[var(--ink)] sm:text-[2.75rem]">
+                  <p className="text-[1.75rem] font-semibold leading-none tracking-tight text-[var(--ink)] sm:text-[2.75rem]">
                     Mana Draw
                   </p>
-                  <h1 className="mt-3 text-balance text-xl font-medium leading-snug text-[var(--ink)] sm:text-2xl">
+                  <h1 className="mt-3 text-balance text-lg font-medium leading-snug text-[var(--ink)] sm:text-2xl">
                     Analise decks Commander com clareza de builder.
                   </h1>
                   <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">
@@ -209,12 +212,29 @@ export function DeckAnalyzer() {
                   </p>
                 </div>
               )}
+              {analysis ? (
+                <div className="mb-3 flex items-center justify-between gap-3 md:hidden">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      Editar lista
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-[var(--ink)]">Ajuste e reanalise</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditorOpen(false)}
+                    className="inline-flex h-9 items-center rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-3 text-xs font-semibold text-[var(--ink)]"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              ) : null}
               <label className="grid gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                   Decklist
                 </span>
                 <textarea
-                  className="field-input min-h-[160px] w-full resize-y rounded-[var(--radius-card)] px-4 py-3.5 font-mono text-[12px] leading-5 placeholder:text-slate-400 sm:min-h-[200px]"
+                  className="field-input min-h-[min(42vh,280px)] w-full resize-y rounded-[var(--radius-card)] px-3.5 py-3 font-mono text-[12px] leading-5 placeholder:text-slate-400 sm:min-h-[200px] sm:px-4 sm:py-3.5"
                   placeholder={"// Commander\n1 Seu Comandante\n\n// Mainboard\n1 Sol Ring"}
                   value={list}
                   onChange={(event) => setList(event.target.value)}
@@ -234,7 +254,7 @@ export function DeckAnalyzer() {
                   onChange={(event) => setCommanderName(event.target.value)}
                 />
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   disabled={loading || list.trim().length < 20}
@@ -247,7 +267,7 @@ export function DeckAnalyzer() {
                 <button
                   type="button"
                   onClick={() => setList(SAMPLE)}
-                  className="inline-flex h-11 items-center justify-center rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-4 text-sm font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)]"
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-4 text-sm font-semibold text-[var(--ink)] shadow-sm transition hover:bg-[var(--deck-panel-2)]"
                 >
                   Exemplo
                 </button>
@@ -274,7 +294,7 @@ export function DeckAnalyzer() {
       )}
 
       {!analysis && !loading && (
-        <div className="mx-auto grid max-w-[1440px] place-items-center px-4 py-24">
+        <div className="mx-auto grid max-w-[1440px] place-items-center px-4 py-16 sm:py-24">
           <div className="deck-rise max-w-lg text-center">
             <div className="mx-auto mb-5 grid h-[4.5rem] w-[4.5rem] place-items-center rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] shadow-[0_0_0_6px_var(--deck-glow)]">
               <Swords className="text-[var(--accent)]" size={26} />
@@ -283,24 +303,27 @@ export function DeckAnalyzer() {
               Seu próximo brew começa aqui
             </p>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              Cole uma lista Moxfield/Archidekt. O painel abre com stacks por tipo, preview lateral e
-              barra de métricas — no mesmo espírito dos builders sérios.
+              Cole uma lista Moxfield/Archidekt. O painel abre com stacks por tipo, preview e insights.
             </p>
           </div>
         </div>
       )}
 
       {analysis && view === "visual" && (
-        <DeckVisualBoard
-          analysis={analysis}
-          selectedCard={selectedCard}
-          onSelect={setSelectedName}
-        />
+        <div className={editorOpen ? "hidden md:block" : "block"}>
+          <DeckVisualBoard
+            analysis={analysis}
+            selectedCard={selectedCard}
+            onSelect={setSelectedName}
+          />
+        </div>
       )}
 
       {analysis && view === "insights" && (
-        <div className="mx-auto max-w-[1440px] px-4 py-5 pb-6 sm:px-6 sm:py-6">
-          <InsightsBoard analysis={analysis} />
+        <div className={editorOpen ? "hidden md:block" : "block"}>
+          <div className="mx-auto max-w-[1440px] px-4 py-4 pb-6 sm:px-6 sm:py-6">
+            <InsightsBoard analysis={analysis} />
+          </div>
         </div>
       )}
 
@@ -327,6 +350,15 @@ function DeckVisualBoard({
   onSelect: (name: string) => void;
 }) {
   const groups = useMemo(() => buildStackGroups(analysis), [analysis]);
+  const [activeGroupId, setActiveGroupId] = useState(groups[0]?.id ?? "");
+
+  useEffect(() => {
+    if (!groups.some((group) => group.id === activeGroupId)) {
+      setActiveGroupId(groups[0]?.id ?? "");
+    }
+  }, [groups, activeGroupId]);
+
+  const activeGroup = groups.find((group) => group.id === activeGroupId) ?? groups[0] ?? null;
 
   return (
     <div className="mx-auto grid max-w-[1440px] gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-5 lg:grid-cols-[272px_minmax(0,1fr)]">
@@ -334,12 +366,8 @@ function DeckVisualBoard({
         <CardPreviewPanel card={selectedCard} analysis={analysis} />
       </aside>
 
-      {selectedCard && (
-        <MobileCardPeek card={selectedCard} analysis={analysis} />
-      )}
-
-      <div className="deck-rise min-w-0" style={{ animationDelay: "70ms" }}>
-        <div className="mb-3 flex items-end justify-between gap-3 sm:mb-4">
+      <div className="deck-rise min-w-0 space-y-3" style={{ animationDelay: "70ms" }}>
+        <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
               Visual stacks
@@ -348,12 +376,49 @@ function DeckVisualBoard({
               {analysis.commander?.name ?? "Deck"} · <ColorIdentity colors={analysis.colorIdentity} />
             </p>
           </div>
-          <p className="hidden shrink-0 text-xs text-[var(--muted)] sm:block">
-            Deslize pelos tipos
-          </p>
+          <p className="hidden shrink-0 text-xs text-[var(--muted)] xl:block">Deslize pelos tipos</p>
         </div>
 
-        <div className="deck-stacks-scroll -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-none sm:mx-0 sm:px-0 xl:grid xl:grid-cols-7 xl:overflow-visible xl:pb-0">
+        <MobileMetrics analysis={analysis} />
+
+        {selectedCard ? <MobileCardPeek card={selectedCard} analysis={analysis} /> : null}
+
+        {/* Mobile: one category at a time */}
+        <div className="xl:hidden">
+          <div className="deck-stacks-scroll -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none">
+            {groups.map((group) => {
+              const count = group.cards.reduce((sum, card) => sum + card.quantity, 0);
+              const active = group.id === activeGroup?.id;
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => setActiveGroupId(group.id)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                    active
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                      : "border-[var(--deck-stroke)] bg-[var(--deck-panel)] text-[var(--ink)]"
+                  }`}
+                >
+                  <span className={active ? "text-white" : "text-[var(--accent)]"}>{group.icon}</span>
+                  {group.label}
+                  <span className={active ? "text-white/80" : "text-[var(--muted)]"}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {activeGroup ? (
+            <MobileStackList
+              group={activeGroup}
+              selectedName={selectedCard?.name}
+              onSelect={onSelect}
+            />
+          ) : null}
+        </div>
+
+        {/* Desktop / wide: original horizontal stacks */}
+        <div className="deck-stacks-scroll hidden gap-3 overflow-x-auto pb-2 scrollbar-none xl:flex 2xl:grid 2xl:grid-cols-7 2xl:overflow-visible 2xl:pb-0">
           {groups.map((group, index) => (
             <VisualStack
               key={group.id}
@@ -364,6 +429,84 @@ function DeckVisualBoard({
             />
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileMetrics({ analysis }: { analysis: DeckAnalysis }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 xl:hidden">
+      <div className="rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-2.5 py-2 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Cartas</p>
+        <p className="mt-0.5 text-base font-semibold tabular-nums text-[var(--ink)]">{analysis.totalCards}</p>
+      </div>
+      <div className="rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-2.5 py-2 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">Bracket</p>
+        <p className="mt-0.5 text-base font-semibold tabular-nums text-[var(--ink)]">{analysis.bracket.bracket}</p>
+      </div>
+      <div className="rounded-[var(--radius-control)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] px-2.5 py-2 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">CMC</p>
+        <p className="mt-0.5 text-base font-semibold tabular-nums text-[var(--ink)]">{analysis.averageCmc}</p>
+      </div>
+    </div>
+  );
+}
+
+function MobileStackList({
+  group,
+  selectedName,
+  onSelect
+}: {
+  group: StackGroup;
+  selectedName?: string;
+  onSelect: (name: string) => void;
+}) {
+  const featured =
+    group.cards.find((card) => card.name === selectedName) ?? group.cards[0] ?? null;
+
+  return (
+    <div className="rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-3 shadow-[var(--shadow-soft)]">
+      <div className="mb-3 flex items-center gap-1.5">
+        <span className="text-[var(--accent)]">{group.icon}</span>
+        <h3 className="text-sm font-semibold text-[var(--ink)]">
+          {group.label}
+          <span className="ml-1.5 font-medium text-[var(--muted)]">
+            {group.cards.reduce((sum, card) => sum + card.quantity, 0)}
+          </span>
+        </h3>
+      </div>
+
+      {featured?.imageUrl ? (
+        <button
+          type="button"
+          onClick={() => onSelect(featured.name)}
+          className="relative mb-3 aspect-[16/9] w-full overflow-hidden rounded-xl border border-slate-900/70 bg-slate-900"
+        >
+          <Image
+            src={featured.artCropUrl || featured.imageUrl}
+            alt=""
+            fill
+            unoptimized
+            className="object-cover object-[center_22%]"
+            sizes="(max-width: 768px) 100vw, 400px"
+          />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pb-2.5 pt-10">
+            <p className="truncate text-sm font-semibold text-white">{featured.name}</p>
+            <p className="mt-0.5 truncate text-[11px] text-white/75">{featured.typeLine}</p>
+          </div>
+        </button>
+      ) : null}
+
+      <div className="max-h-[min(58vh,520px)] space-y-1.5 overflow-y-auto overscroll-contain scrollbar-none">
+        {group.cards.map((card) => (
+          <StackCardBar
+            key={`${group.id}-${card.name}`}
+            card={card}
+            selected={card.name === selectedName}
+            onSelect={() => onSelect(card.name)}
+          />
+        ))}
       </div>
     </div>
   );
@@ -483,7 +626,7 @@ function VisualStack({
 
   return (
     <div
-      className="deck-rise deck-stack-pane w-[min(82vw,240px)] shrink-0 sm:w-[196px] xl:w-auto"
+      className="deck-rise deck-stack-pane w-[196px] shrink-0 2xl:w-auto"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="mb-2.5 flex items-center gap-1.5 px-0.5">
@@ -649,9 +792,9 @@ const GENERIC_PIP_LABEL: Record<string, string> = {
 
 function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
       <Panel title="Bracket estimado">
-        <p className="text-[1.65rem] font-semibold tracking-tight text-[var(--ink)]">
+        <p className="text-[1.35rem] font-semibold tracking-tight text-[var(--ink)] sm:text-[1.65rem]">
           {analysis.bracket.label}
         </p>
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{analysis.bracket.summary}</p>
@@ -659,7 +802,7 @@ function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
           {analysis.bracket.signals.map((signal) => (
             <li key={signal} className="flex gap-2">
               <Check size={14} className="mt-1 shrink-0 text-[var(--accent)]" />
-              <span>{signal}</span>
+              <span className="min-w-0 break-words">{signal}</span>
             </li>
           ))}
         </ul>
@@ -776,7 +919,7 @@ function InsightsBoard({ analysis }: { analysis: DeckAnalysis }) {
 
 function StatusBar({ analysis }: { analysis: DeckAnalysis }) {
   return (
-    <div className="deck-status-bar fixed inset-x-0 bottom-[calc(3.75rem+var(--safe-bottom))] z-40 md:bottom-0">
+    <div className="deck-status-bar fixed inset-x-0 bottom-0 z-40 hidden md:block">
       <div className="mx-auto flex max-w-[1440px] items-center gap-3 overflow-x-auto px-4 py-2 text-[12px] text-white scrollbar-none sm:gap-4 sm:px-6 sm:py-2.5 sm:text-[13px]">
         <p className="shrink-0 font-semibold">
           {analysis.totalCards}
@@ -891,7 +1034,7 @@ function MobileCardPeek({
   analysis: DeckAnalysis;
 }) {
   return (
-    <div className="deck-rise sticky top-14 z-30 -mx-4 border-y border-[var(--deck-stroke)] bg-white/92 px-4 py-2.5 backdrop-blur-xl lg:hidden">
+    <div className="rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-white p-2.5 shadow-[var(--shadow-soft)] xl:hidden">
       <div className="flex items-center gap-3">
         <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-slate-900/70 bg-slate-200 shadow-sm">
           {card.imageUrl ? (
@@ -902,7 +1045,7 @@ function MobileCardPeek({
           <p className="truncate text-sm font-semibold text-[var(--ink)]">{card.name}</p>
           <p className="mt-0.5 truncate text-[11px] text-[var(--muted)]">
             CMC {card.cmc}
-            {card.manaCost ? ` · ${card.manaCost}` : ""} · Bracket {analysis.bracket.bracket}
+            {card.manaCost ? ` · ${card.manaCost}` : ""} · B{analysis.bracket.bracket}
           </p>
         </div>
         <ColorIdentity colors={card.colorIdentity} />
@@ -1189,11 +1332,11 @@ function ManaCurveChart({
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-5 shadow-[var(--shadow-soft)]">
+    <section className="rounded-[var(--radius-card)] border border-[var(--deck-stroke)] bg-[var(--deck-panel)] p-4 shadow-[var(--shadow-soft)] sm:p-5">
       <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
         {title}
       </h3>
-      {children}
+      <div className="min-w-0 overflow-hidden">{children}</div>
     </section>
   );
 }
