@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Database,
   Gauge,
+  Inbox,
   Layers3,
   PackageCheck,
   Plus,
@@ -82,6 +83,7 @@ const buylistStatuses = ["new", "reviewing", "approved", "declined", "paid"] as 
 const orderStatuses = ["pending", "paid", "shipped", "delivered", "cancelled"] as const;
 const tabs = [
   "overview",
+  "pendencias",
   "inventory",
   "new-card",
   "buylists",
@@ -98,6 +100,10 @@ const tabLabels: Record<AdminTab, { title: string; description: string }> = {
   overview: {
     title: "Visão geral",
     description: "Resumo operacional de estoque, pedidos e cotações."
+  },
+  pendencias: {
+    title: "Pendências",
+    description: "Fila do dia: pedidos, cotações e estoque que pedem ação agora."
   },
   inventory: {
     title: "Inventário",
@@ -294,7 +300,7 @@ export default async function AdminPage({
                 </Link>
                 <Link
                   className="relative grid h-11 w-11 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-soft)]"
-                  href="/admin?tab=buylists&status=new"
+                  href="/admin?tab=pendencias"
                   aria-label={`${alertCount} pendências`}
                   title="Pendências"
                 >
@@ -362,6 +368,13 @@ export default async function AdminPage({
                 submissions={submissions}
                 topCards={topCards}
                 totalStock={totalStock}
+              />
+            )}
+            {activeTab === "pendencias" && (
+              <PendenciasTab
+                lowStockCards={lowStockCards}
+                openSubmissions={openSubmissions}
+                pendingOrders={pendingOrders}
               />
             )}
             {activeTab === "inventory" && (
@@ -510,14 +523,14 @@ function OverviewTab({
               urgent={lowStockCards.length > 0}
             />
             <PriorityCard
-              href="/admin?tab=buylists&status=new"
+              href="/admin?tab=pendencias"
               label="Responder cotações"
               value={String(openSubmissions.length)}
               text="Lotes novos ou em análise."
               urgent={openSubmissions.length > 0}
             />
             <PriorityCard
-              href="/admin?tab=orders&status=pending"
+              href="/admin?tab=pendencias"
               label="Atualizar pedidos"
               value={String(pendingOrders.length)}
               text="Compras ainda pendentes de pagamento."
@@ -533,6 +546,232 @@ function OverviewTab({
         <TopCardsPanel topCards={topCards} />
         <RecentOrdersPanel orders={orders.slice(0, 5)} />
       </section>
+    </div>
+  );
+}
+
+function PendenciasTab({
+  lowStockCards,
+  openSubmissions,
+  pendingOrders
+}: {
+  lowStockCards: TcgCard[];
+  openSubmissions: BuylistSubmission[];
+  pendingOrders: OrderSummary[];
+}) {
+  const total = pendingOrders.length + openSubmissions.length + lowStockCards.length;
+
+  if (total === 0) {
+    return (
+      <Panel>
+        <EmptyState
+          icon={<CheckCircle2 size={28} />}
+          title="Nenhuma pendência no momento"
+          text="Pedidos pendentes, cotações abertas e estoque baixo aparecem aqui."
+          action={
+            <Link
+              className="inline-flex h-10 items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)]"
+              href="/admin?tab=overview"
+            >
+              Voltar à visão geral
+            </Link>
+          }
+        />
+      </Panel>
+    );
+  }
+
+  return (
+    <div className="grid gap-6">
+      <section className="grid gap-3 sm:grid-cols-3">
+        <MetricCard
+          icon={<ShoppingBag size={20} />}
+          label="Pedidos pendentes"
+          hint="Aguardando pagamento ou ação"
+          value={String(pendingOrders.length)}
+          tone="orange"
+        />
+        <MetricCard
+          icon={<Camera size={20} />}
+          label="Cotações abertas"
+          hint="Novas ou em análise"
+          value={String(openSubmissions.length)}
+          tone="cyan"
+        />
+        <MetricCard
+          icon={<Boxes size={20} />}
+          label="Estoque baixo"
+          hint="1 a 3 unidades"
+          value={String(lowStockCards.length)}
+          tone="red"
+        />
+      </section>
+
+      {pendingOrders.length > 0 ? (
+        <Panel>
+          <PanelHeader
+            title="Pedidos pendentes"
+            text="Atualize o status assim que o pagamento for confirmado."
+            badge={`${pendingOrders.length} pedidos`}
+            tone="gold"
+            action={
+              <Link className="text-sm font-semibold text-[var(--accent)]" href="/admin?tab=orders&status=pending">
+                Ver em Pedidos
+              </Link>
+            }
+          />
+          <div className="grid gap-4">
+            {pendingOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                showCustomer
+                footer={
+                  <form
+                    action={updateOrderStatusAction}
+                    className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
+                  >
+                    <input type="hidden" name="id" value={order.id} />
+                    <input type="hidden" name="tab" value="pendencias" />
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-semibold text-[var(--ink)]">
+                        Status do pedido
+                      </span>
+                      <select className={adminInputClass} name="status" defaultValue={order.status}>
+                        {orderStatuses.map((item) => (
+                          <option key={item} value={item}>
+                            {orderStatusLabels[item] ?? item}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                      type="submit"
+                    >
+                      Atualizar status
+                    </button>
+                  </form>
+                }
+              />
+            ))}
+          </div>
+        </Panel>
+      ) : null}
+
+      {openSubmissions.length > 0 ? (
+        <Panel>
+          <PanelHeader
+            title="Cotações aguardando resposta"
+            text="Somente lotes novos ou em análise — sem o histórico completo de buylists."
+            badge={`${openSubmissions.length} abertas`}
+            tone="gold"
+            action={
+              <Link className="text-sm font-semibold text-[var(--accent)]" href="/admin?tab=buylists">
+                Abrir Buylists
+              </Link>
+            }
+          />
+          <div className="grid gap-4 lg:grid-cols-2">
+            {openSubmissions.map((submission) => (
+              <article
+                key={submission.id}
+                className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]"
+              >
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-[var(--ink)]">{submission.customerName}</p>
+                    <p className="truncate text-sm text-[var(--muted)]">
+                      {submission.email} · {submission.game} · {formatDate(submission.createdAt)}
+                    </p>
+                  </div>
+                  <StatusBadge
+                    label={buylistStatusLabels[submission.status] ?? submission.status}
+                    className={buylistStatusStyles[submission.status]}
+                  />
+                </div>
+                {submission.notes ? (
+                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--muted)]">{submission.notes}</p>
+                ) : null}
+                <BuylistPhotoGallery
+                  customerName={submission.customerName}
+                  photos={submission.photoUrls}
+                />
+                <form action={updateBuylistAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_140px_auto]">
+                  <input type="hidden" name="id" value={submission.id} />
+                  <input type="hidden" name="tab" value="pendencias" />
+                  <select className={adminInputClass} name="status" defaultValue={submission.status}>
+                    {buylistStatuses.map((item) => (
+                      <option key={item} value={item}>
+                        {buylistStatusLabels[item]}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={adminInputClass}
+                    name="offer"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Oferta R$"
+                    defaultValue={
+                      submission.offerCents === null ? "" : (submission.offerCents / 100).toFixed(2)
+                    }
+                  />
+                  <button
+                    className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]"
+                    type="submit"
+                  >
+                    Salvar
+                  </button>
+                </form>
+              </article>
+            ))}
+          </div>
+        </Panel>
+      ) : null}
+
+      {lowStockCards.length > 0 ? (
+        <Panel>
+          <PanelHeader
+            title="Estoque baixo"
+            text="Cartas com 1 a 3 unidades — priorize reposição."
+            badge={`${lowStockCards.length} cartas`}
+            tone="gold"
+            action={
+              <Link className="text-sm font-semibold text-[var(--accent)]" href="/admin?tab=inventory&stock=low">
+                Abrir inventário
+              </Link>
+            }
+          />
+          <div className="grid gap-2">
+            {lowStockCards.slice(0, 12).map((card) => (
+              <div
+                key={card.id}
+                className="flex items-center justify-between gap-3 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[var(--ink)]">{card.name}</p>
+                  <p className="truncate text-xs text-[var(--muted)]">
+                    {card.game} · {card.setName} · {card.condition}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-bold text-amber-800">
+                  {card.stock} un.
+                </span>
+              </div>
+            ))}
+            {lowStockCards.length > 12 ? (
+              <p className="pt-1 text-sm text-[var(--muted)]">
+                +{lowStockCards.length - 12} cartas.{" "}
+                <Link className="font-semibold text-[var(--accent)]" href="/admin?tab=inventory&stock=low">
+                  Ver todas
+                </Link>
+              </p>
+            ) : null}
+          </div>
+        </Panel>
+      ) : null}
     </div>
   );
 }
@@ -1132,14 +1371,14 @@ function ReportsTab({
             urgent={lowStockCards.length > 0}
           />
           <PriorityCard
-            href="/admin?tab=buylists&status=new"
+            href="/admin?tab=pendencias"
             label="Compra de coleções"
             value={String(submissions.filter((item) => item.status === "new").length)}
             text="Novas buylists devem ser respondidas rápido para aumentar aceite."
             urgent={submissions.some((item) => item.status === "new")}
           />
           <PriorityCard
-            href="/admin?tab=orders&status=pending"
+            href="/admin?tab=pendencias"
             label="Operação"
             value={String(orders.filter((item) => item.status === "pending").length)}
             text="Pedidos pendentes merecem primeiro contato ou confirmação de pagamento."
@@ -1546,10 +1785,16 @@ function getNavGroups(openSubmissions: number, pendingOrders: number): Array<{ l
       label: "Operação",
       items: [
         { tab: "overview", icon: <Gauge size={18} />, label: "Visão geral" },
+        {
+          tab: "pendencias",
+          icon: <Inbox size={18} />,
+          label: "Pendências",
+          badge: openSubmissions + pendingOrders > 0 ? openSubmissions + pendingOrders : undefined
+        },
         { tab: "inventory", icon: <Layers3 size={18} />, label: "Inventário" },
         { tab: "new-card", icon: <Plus size={18} />, label: "Nova carta" },
-        { tab: "buylists", icon: <ClipboardList size={18} />, label: "Buylists", badge: openSubmissions || undefined },
-        { tab: "orders", icon: <ShoppingBag size={18} />, label: "Pedidos", badge: pendingOrders || undefined }
+        { tab: "buylists", icon: <ClipboardList size={18} />, label: "Buylists" },
+        { tab: "orders", icon: <ShoppingBag size={18} />, label: "Pedidos" }
       ]
     },
     {
