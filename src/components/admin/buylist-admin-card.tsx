@@ -10,13 +10,12 @@ import {
   upsertBuylistLineAction
 } from "@/app/actions";
 import { BuylistPhotoGallery } from "@/components/admin/buylist-photo-gallery";
-import { CopyLinkButton } from "@/components/admin/copy-link-button";
+import { ShareOfferLinks } from "@/components/admin/share-offer-links";
 import {
   FieldLabel,
   StatusBadge,
   adminInputClass
 } from "@/components/admin/ui";
-import { buylistCustomerUrl } from "@/lib/buylist-flow";
 import {
   buylistAdminSelectableStatuses,
   buylistLineStatusLabels,
@@ -48,7 +47,6 @@ export function BuylistAdminCard({
   const showReceive = ["awaiting_shipment", "in_transit"].includes(status);
   const showChecking = status === "received" || status === "checking";
   const showPaid = status === "stocked";
-  const customerLink = tokenUrl || (submission.hasAcceptToken ? buylistCustomerUrl(submission.id) : null);
 
   return (
     <article className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
@@ -91,9 +89,19 @@ export function BuylistAdminCard({
 
       <BuylistPhotoGallery customerName={submission.customerName} photos={submission.photoUrls} />
 
-      {customerLink ? (
+      {submission.hasAcceptToken ? (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <CopyLinkButton url={customerLink} />
+          <form action={regenerateBuylistTokenAction}>
+            <input type="hidden" name="id" value={submission.id} />
+            <input type="hidden" name="tab" value={tab} />
+            <input type="hidden" name="sendEmail" value="1" />
+            <button
+              type="submit"
+              className="inline-flex h-10 items-center rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-sm font-semibold text-white hover:bg-[var(--accent-strong)]"
+            >
+              Reenviar oferta ao cliente
+            </button>
+          </form>
           <form action={regenerateBuylistTokenAction}>
             <input type="hidden" name="id" value={submission.id} />
             <input type="hidden" name="tab" value={tab} />
@@ -101,9 +109,22 @@ export function BuylistAdminCard({
               type="submit"
               className="inline-flex h-10 items-center rounded-[var(--radius-control)] border border-[var(--line)] px-3 text-sm font-semibold text-[var(--muted)] hover:text-[var(--ink)]"
             >
-              Gerar novo link
+              Só gerar novo link
             </button>
           </form>
+        </div>
+      ) : null}
+
+      {tokenUrl ? (
+        <div className="mt-3">
+          <ShareOfferLinks
+            customerEmail={submission.email}
+            customerName={submission.customerName}
+            offerLabel={
+              submission.offerCents != null ? formatCurrency(submission.offerCents) : "sua oferta"
+            }
+            url={tokenUrl}
+          />
         </div>
       ) : null}
 
@@ -141,6 +162,10 @@ export function BuylistAdminCard({
             >
               Enviar oferta ao cliente
             </button>
+            <p className="text-xs text-[var(--muted)]">
+              Envia e-mail automático se RESEND_API_KEY estiver configurada; senão, mostramos o link para você
+              copiar/WhatsApp.
+            </p>
           </form>
           {status === "new" ? (
             <form action={updateBuylistAction}>

@@ -28,6 +28,7 @@ import {
   getSql,
   hasDatabase
 } from "@/lib/db";
+import { sendBuylistOfferEmail } from "@/lib/email";
 import { createCheckoutPreference, hasMercadoPago } from "@/lib/payments/mercadopago";
 import { findQuoteById, normalizePostalCode, quoteShipping } from "@/lib/shipping";
 import { storeBuylistPhoto } from "@/lib/storage/blob";
@@ -698,7 +699,6 @@ export async function updateBuylistAction(formData: FormData) {
   const offerInput = readString(formData, "offer");
   const offerNote = readString(formData, "offerNote");
   const offerCents = offerInput ? readMoneyCents(formData, "offer") : null;
-  const regenerateToken = readString(formData, "regenerateToken") === "1";
   const tab = adminTabFrom(formData, "buylists");
 
   if (
@@ -729,8 +729,7 @@ export async function updateBuylistAction(formData: FormData) {
     redirect(`/admin?tab=${tab}&error=invalid-buylist-transition`);
   }
 
-  const shouldIssueToken =
-    normalizedStatus === "offered" && (regenerateToken || !existing.hasAcceptToken || existing.status !== "offered");
+  const shouldIssueToken = normalizedStatus === "offered";
   const tokenBundle = shouldIssueToken ? generateAcceptToken() : null;
   const expiresAt = normalizedStatus === "offered" ? offerExpiryDate(14).toISOString() : existing.offerExpiresAt;
   const payoutCents =
@@ -782,10 +781,27 @@ export async function updateBuylistAction(formData: FormData) {
   revalidatePath("/conta");
   revalidatePath(`/buylist/${id}`);
 
-  if (tokenBundle) {
+  if (tokenBundle && offerCents !== null) {
     const url = buylistCustomerUrl(id, tokenBundle.token);
+    const emailResult = await sendBuylistOfferEmail({
+      to: existing.email,
+      customerName: existing.customerName,
+      game: existing.game,
+      offerCents,
+      offerNote: offerNote || existing.offerNote,
+      offerUrl: url,
+      expiresAt
+    });
+
+    const notice =
+      emailResult.ok
+        ? "buylist-offered-email"
+        : emailResult.reason === "not-configured"
+          ? "buylist-offered-manual"
+          : "buylist-offered-email-failed";
+
     redirect(
-      `/admin?tab=${tab}&notice=buylist-offered&tokenUrl=${encodeURIComponent(url)}&focus=${encodeURIComponent(id)}`
+      `/admin?tab=${tab}&notice=${notice}&tokenUrl=${encodeURIComponent(url)}&focus=${encodeURIComponent(id)}`
     );
   }
 
@@ -821,9 +837,29 @@ export async function regenerateBuylistTokenAction(formData: FormData) {
   `;
 
   const url = buylistCustomerUrl(id, tokenBundle.token);
+  const sendEmail = readString(formData, "sendEmail") === "1";
+  let notice = "buylist-token";
+
+  if (sendEmail && existing.offerCents != null) {
+    const emailResult = await sendBuylistOfferEmail({
+      to: existing.email,
+      customerName: existing.customerName,
+      game: existing.game,
+      offerCents: existing.offerCents,
+      offerNote: existing.offerNote,
+      offerUrl: url,
+      expiresAt
+    });
+    notice = emailResult.ok
+      ? "buylist-offered-email"
+      : emailResult.reason === "not-configured"
+        ? "buylist-offered-manual"
+        : "buylist-offered-email-failed";
+  }
+
   revalidatePath("/admin");
   redirect(
-    `/admin?tab=${tab}&notice=buylist-token&tokenUrl=${encodeURIComponent(url)}&focus=${encodeURIComponent(id)}`
+    `/admin?tab=${tab}&notice=${notice}&tokenUrl=${encodeURIComponent(url)}&focus=${encodeURIComponent(id)}`
   );
 }
 

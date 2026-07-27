@@ -96,8 +96,12 @@ export function isOfferExpired(expiresAt: string | null | undefined) {
 }
 
 export function siteOrigin() {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  const configured =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    "";
+  if (configured) {
+    return configured.replace(/\/$/, "");
   }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;

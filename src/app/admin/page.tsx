@@ -34,6 +34,7 @@ import {
 } from "@/app/actions";
 import { BuylistAdminCard } from "@/components/admin/buylist-admin-card";
 import { CopyLinkButton } from "@/components/admin/copy-link-button";
+import { ShareOfferLinks } from "@/components/admin/share-offer-links";
 import {
   AlertBanner,
   DataBar,
@@ -70,6 +71,7 @@ import {
   getBuylistSubmissions,
   hasDatabase
 } from "@/lib/db";
+import { hasEmailProvider } from "@/lib/email";
 import { formatCurrency, formatUsd } from "@/lib/format";
 import { orderStatusLabels, orderStatusStyles } from "@/lib/orders-ui";
 import type {
@@ -391,11 +393,35 @@ export default async function AdminPage({
               </AlertBanner>
             )}
             {tokenUrl ? (
-              <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[var(--radius-control)] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-4 py-3">
-                <p className="min-w-0 flex-1 text-sm text-[var(--accent-strong)]">
-                  Link para o cliente aceitar a oferta (copie e envie por WhatsApp/e-mail):
+              <div className="mb-5 space-y-3 rounded-[var(--radius-control)] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-4 py-4">
+                <p className="text-sm font-medium text-[var(--accent-strong)]">
+                  {notice === "buylist-offered-email"
+                    ? "E-mail enviado ao cliente com o link da oferta."
+                    : notice === "buylist-offered-email-failed"
+                      ? "Não foi possível enviar o e-mail automaticamente. Envie o link manualmente:"
+                      : "O cliente ainda não recebe e-mail automático sem RESEND_API_KEY. Envie o link agora:"}
                 </p>
-                <CopyLinkButton url={tokenUrl} />
+                {focusId ? (
+                  (() => {
+                    const focused = submissions.find((item) => item.id === focusId);
+                    if (!focused) {
+                      return <CopyLinkButton url={tokenUrl} />;
+                    }
+                    return (
+                      <ShareOfferLinks
+                        customerEmail={focused.email}
+                        customerName={focused.customerName}
+                        offerLabel={
+                          focused.offerCents != null ? formatCurrency(focused.offerCents) : "sua oferta"
+                        }
+                        url={tokenUrl}
+                      />
+                    );
+                  })()
+                ) : (
+                  <CopyLinkButton url={tokenUrl} />
+                )}
+                <p className="break-all text-xs text-[var(--muted)]">{tokenUrl}</p>
               </div>
             ) : null}
 
@@ -1335,6 +1361,11 @@ function SettingsTab({ cards, userEmail }: { cards: TcgCard[]; userEmail: string
   const checks = [
     { label: "Neon Database", value: hasDatabase() ? "Conectado" : "Modo demo", ok: hasDatabase() },
     { label: "Admin logado", value: userEmail, ok: true },
+    {
+      label: "E-mail (Resend)",
+      value: hasEmailProvider() ? "RESEND_API_KEY ok" : "Não configurado — ofertas só com link manual",
+      ok: hasEmailProvider()
+    },
     { label: "API de cartas", value: "/api/card-lookup", ok: true },
     { label: "Catálogo carregado", value: `${cards.length} cartas`, ok: cards.length > 0 }
   ];
@@ -1376,7 +1407,7 @@ function SettingsTab({ cards, userEmail }: { cards: TcgCard[]; userEmail: string
           <Database className="text-[var(--accent)]" size={20} />
         </div>
         <div className="space-y-3 text-sm">
-          {["DATABASE_URL", "ADMIN_EMAIL"].map((item) => (
+          {["DATABASE_URL", "ADMIN_EMAIL", "RESEND_API_KEY", "EMAIL_FROM", "NEXT_PUBLIC_APP_URL"].map((item) => (
             <div key={item} className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
               <p className="font-semibold text-[var(--ink)]">{item}</p>
               <p className="mt-1 text-[var(--muted)]">Configure no painel do Vercel antes do deploy.</p>
@@ -1868,8 +1899,11 @@ function messageFor(code: string) {
     "card-created": "Carta cadastrada com sucesso.",
     "card-deleted": "Carta removida do estoque.",
     "buylist-updated": "Cotação atualizada com sucesso.",
-    "buylist-offered": "Oferta enviada. Copie o link e mande ao cliente.",
-    "buylist-token": "Novo link gerado. Copie e envie ao cliente.",
+    "buylist-offered": "Oferta salva. Envie o link ao cliente.",
+    "buylist-offered-email": "Oferta enviada por e-mail ao cliente.",
+    "buylist-offered-manual": "Oferta salva. Configure RESEND_API_KEY ou envie o link manualmente (copiar / e-mail / WhatsApp).",
+    "buylist-offered-email-failed": "Oferta salva, mas o e-mail falhou. Envie o link manualmente.",
+    "buylist-token": "Novo link gerado. Envie ao cliente.",
     "buylist-received": "Lote marcado como recebido.",
     "buylist-checking": "Conferência iniciada.",
     "buylist-line-saved": "Linha de conferência salva.",
