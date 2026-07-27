@@ -1,11 +1,12 @@
 import {
+  AlertCircle,
   BarChart3,
   Bell,
   Boxes,
   Camera,
+  CheckCircle2,
   ChevronLeft,
   CircleDollarSign,
-  Diamond,
   ClipboardList,
   Database,
   Gauge,
@@ -16,7 +17,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
+  Store,
   Trash2,
   TrendingUp,
   UsersRound
@@ -31,10 +32,30 @@ import {
   updateCardAction,
   updateOrderStatusAction
 } from "@/app/actions";
+import {
+  AlertBanner,
+  DataBar,
+  EmptyState,
+  FieldLabel,
+  FilterChip,
+  HeroStat,
+  InfoValue,
+  MetricCard,
+  NavItem,
+  NavSection,
+  Panel,
+  PanelHeader,
+  PriorityCard,
+  StatusBadge,
+  adminInputClass,
+  adminInputWithIconClass
+} from "@/components/admin/ui";
 import { AuthPanel } from "@/components/auth-panel";
 import { CardAutocomplete } from "@/components/card-autocomplete";
 import { OrderCard } from "@/components/order-card";
 import { currentUser } from "@/lib/auth";
+import { buylistStatusLabels, buylistStatusStyles } from "@/lib/buylist-ui";
+import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import {
   getAdminCards,
   getAdminCustomers,
@@ -43,21 +64,38 @@ import {
   hasDatabase
 } from "@/lib/db";
 import { formatCurrency, formatUsd } from "@/lib/format";
-import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import { orderStatusLabels, orderStatusStyles } from "@/lib/orders-ui";
-import type { AdminCustomer, BuylistSubmission, CardCondition, FilterGame, Game, OrderSummary, TcgCard } from "@/lib/types";
+import type {
+  AdminCustomer,
+  BuylistSubmission,
+  CardCondition,
+  FilterGame,
+  Game,
+  OrderSummary,
+  TcgCard
+} from "@/lib/types";
 
 const games: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
 const conditions: CardCondition[] = ["NM", "SP", "MP", "HP"];
-const buylistStatuses = ["new", "reviewing", "approved", "declined", "paid"];
-const orderStatuses = ["pending", "paid", "shipped", "delivered", "cancelled"];
-const tabs = ["overview", "inventory", "new-card", "buylists", "orders", "customers", "internal-users", "reports", "settings"] as const;
+const buylistStatuses = ["new", "reviewing", "approved", "declined", "paid"] as const;
+const orderStatuses = ["pending", "paid", "shipped", "delivered", "cancelled"] as const;
+const tabs = [
+  "overview",
+  "inventory",
+  "new-card",
+  "buylists",
+  "orders",
+  "customers",
+  "internal-users",
+  "reports",
+  "settings"
+] as const;
 
 type AdminTab = (typeof tabs)[number];
 
 const tabLabels: Record<AdminTab, { title: string; description: string }> = {
   overview: {
-    title: "Overview",
+    title: "Visão geral",
     description: "Resumo operacional de estoque, pedidos e cotações."
   },
   inventory: {
@@ -82,7 +120,7 @@ const tabLabels: Record<AdminTab, { title: string; description: string }> = {
   },
   "internal-users": {
     title: "Usuários internos",
-    description: "Gerencie a visibilidade de admins e contas internas da operação."
+    description: "Contas admin e de operação da loja."
   },
   reports: {
     title: "Relatórios",
@@ -107,26 +145,37 @@ export default async function AdminPage({
   const game = normalizeGame(params.game);
   const stock = normalizeStock(params.stock);
   const activeTab = normalizeTab(params.tab);
+  const orderFilter = normalizeOrderFilter(params.status);
+  const buylistFilter = normalizeBuylistFilter(params.status);
 
   if (user?.role !== "admin") {
     return (
-      <main className="min-h-screen px-4 py-10 text-[var(--ink)] sm:px-6 lg:px-8">
-        <section className="mx-auto max-w-4xl">
-          <Link className="text-sm font-semibold text-[var(--accent)]" href="/">
+      <main className="admin-console min-h-screen px-4 py-10 text-[var(--ink)] sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-lg">
+          <Link
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
+            href="/"
+          >
+            <ChevronLeft size={16} />
             Voltar para loja
           </Link>
-          <div className="surface-card mt-8 p-6 sm:p-8">
-            <p className="text-3xl font-semibold tracking-tight">Mana Draw</p>
-            <h1 className="mt-2 text-xl font-medium text-[var(--ink)]">Acesso admin</h1>
-            <p className="mt-2 text-[var(--muted)]">
-              Entre com uma conta admin para gerenciar estoque, preços, pedidos e cotações.
-            </p>
-            <div className="mt-6">
-              <AuthPanel redirectTo="/admin" />
+          <div className="surface-card mt-8 overflow-hidden">
+            <div className="border-b border-[var(--line)] bg-[var(--surface-soft)]/80 px-6 py-6 sm:px-8">
+              <span className="grid h-12 w-12 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white shadow-[0_8px_18px_rgba(15,159,144,0.28)]">
+                MD
+              </span>
+              <p className="mt-4 text-2xl font-semibold tracking-tight">Mana Draw Admin</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                Entre com uma conta admin para gerenciar estoque, preços, pedidos e cotações.
+              </p>
             </div>
-            <p className="mt-3 text-xs text-[var(--muted)]">
-              Demo local sem Neon: admin@manadraw.local / admin123.
-            </p>
+            <div className="px-6 py-6 sm:px-8">
+              <AuthPanel redirectTo="/admin" />
+              <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
+                Demo local sem Neon: <span className="font-medium text-[var(--ink)]">admin@manadraw.local</span> /{" "}
+                <span className="font-medium text-[var(--ink)]">admin123</span>
+              </p>
+            </div>
           </div>
         </section>
       </main>
@@ -143,47 +192,75 @@ export default async function AdminPage({
 
   const totalStock = allCards.reduce((sum, card) => sum + card.stock, 0);
   const inventoryValue = allCards.reduce((sum, card) => sum + card.stock * card.priceCents, 0);
-  const lowStockCards = allCards.filter((card) => card.stock <= 3);
-  const openSubmissions = submissions.filter((submission) => ["new", "reviewing"].includes(submission.status));
+  const lowStockCards = allCards.filter((card) => card.stock > 0 && card.stock <= 3);
+  const outOfStockCards = allCards.filter((card) => card.stock === 0);
+  const openSubmissions = submissions.filter((submission) =>
+    ["new", "reviewing"].includes(submission.status)
+  );
+  const pendingOrders = orders.filter((order) => order.status === "pending");
   const paidRevenue = orders
-    .filter((order) => !["cancelled"].includes(order.status))
+    .filter((order) => order.status !== "cancelled")
     .reduce((sum, order) => sum + (order.totalCents || order.subtotalCents), 0);
-  const topCards = [...allCards].sort((a, b) => b.stock * b.priceCents - a.stock * a.priceCents).slice(0, 4);
+  const topCards = [...allCards]
+    .sort((a, b) => b.stock * b.priceCents - a.stock * a.priceCents)
+    .slice(0, 5);
   const gameStats = getGameStats(allCards);
   const conditionStats = getConditionStats(allCards);
   const statusStats = getStatusStats(orders);
   const customerAccounts = customers.filter((customer) => customer.role === "customer");
   const internalUsers = customers.filter((customer) => customer.role !== "customer");
-  const navItems = getNavItems(openSubmissions.length, orders.filter((order) => order.status === "pending").length);
+  const navGroups = getNavGroups(openSubmissions.length, pendingOrders.length);
   const page = tabLabels[activeTab];
+  const initials = userInitials(user.name || user.email);
+  const alertCount = openSubmissions.length + pendingOrders.length;
 
   return (
-    <main className="min-h-screen text-[var(--ink)]">
-      <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
+    <main className="admin-console min-h-screen text-[var(--ink)]">
+      <div className="grid min-h-screen lg:grid-cols-[272px_1fr]">
         <aside className="hidden border-r border-[var(--line)] bg-white/95 backdrop-blur-xl lg:flex lg:flex-col">
-          <div className="flex h-[76px] items-center gap-3 border-b border-[var(--line)] px-6">
+          <div className="flex h-[76px] items-center gap-3 border-b border-[var(--line)] px-5">
             <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white shadow-[0_8px_18px_rgba(15,159,144,0.28)]">
               MD
             </span>
-            <div>
-              <p className="text-lg font-semibold tracking-tight">Mana Draw</p>
-              <p className="text-xs text-[var(--muted)]">TCG Admin</p>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold tracking-tight">Mana Draw</p>
+              <p className="text-xs text-[var(--muted)]">Console admin</p>
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1.5 px-4 py-6 text-sm font-medium text-[var(--muted)]">
-            {navItems.map((item) => (
-              <NavItem key={item.tab} active={activeTab === item.tab} badge={item.badge} href={`/admin?tab=${item.tab}`} icon={item.icon} label={item.label} />
+          <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
+            {navGroups.map((group) => (
+              <NavSection key={group.label} label={group.label}>
+                {group.items.map((item) => (
+                  <NavItem
+                    key={item.tab}
+                    active={activeTab === item.tab}
+                    badge={item.badge}
+                    href={`/admin?tab=${item.tab}`}
+                    icon={item.icon}
+                    label={item.label}
+                  />
+                ))}
+              </NavSection>
             ))}
           </nav>
 
-          <div className="border-t border-[var(--line)] p-4">
+          <div className="space-y-2 border-t border-[var(--line)] p-4">
+            <div className="flex items-center gap-3 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-xs font-bold text-white">
+                {initials}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{user.name || "Admin"}</p>
+                <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
+              </div>
+            </div>
             <Link
-              className="flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-3 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
+              className="flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
               href="/"
             >
-              <ChevronLeft size={18} />
-              Voltar para loja
+              <Store size={18} />
+              Abrir loja
             </Link>
           </div>
         </aside>
@@ -192,44 +269,49 @@ export default async function AdminPage({
           <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur-xl">
             <div className="flex min-h-[76px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-7">
               <div className="min-w-0">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
-                  <span className="hidden items-center gap-2 text-sm text-[var(--muted)] sm:inline-flex">
-                    <Sparkles size={15} className="text-[var(--accent)]" />
-                    Operação TCG
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-[var(--muted)]">{page.description}</p>
+                <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
+                <p className="mt-1 hidden text-sm text-[var(--muted)] sm:block">{page.description}</p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <form className="relative hidden w-[280px] xl:block">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <form action="/admin" className="relative hidden w-[260px] xl:block" method="get">
                   <input type="hidden" name="tab" value="inventory" />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
-                  <input className={inputClassWithIcon} name="query" placeholder="Busca global" defaultValue={query} />
+                  <input
+                    className={adminInputWithIconClass}
+                    name="query"
+                    placeholder="Buscar no inventário…"
+                    defaultValue={activeTab === "inventory" ? query : ""}
+                  />
                 </form>
                 <Link
-                  className="hidden h-11 items-center justify-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] sm:inline-flex"
+                  className="hidden h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] sm:inline-flex"
                   href="/"
                 >
+                  <Store size={16} />
                   Loja
                 </Link>
                 <Link
                   className="relative grid h-11 w-11 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-soft)]"
-                  href="/admin?tab=buylists"
-                  aria-label="Notificações"
+                  href="/admin?tab=buylists&status=new"
+                  aria-label={`${alertCount} pendências`}
+                  title="Pendências"
                 >
                   <Bell size={18} />
-                  {openSubmissions.length > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />}
+                  {alertCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white">
+                      {alertCount > 9 ? "9+" : alertCount}
+                    </span>
+                  ) : null}
                 </Link>
-                <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white">
-                  MD
+                <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white lg:hidden">
+                  {initials}
                 </span>
               </div>
             </div>
 
             <nav className="flex gap-2 overflow-x-auto border-t border-[var(--line)] px-4 py-3 scrollbar-none lg:hidden">
-              {navItems.map((item) => (
+              {navGroups.flatMap((group) => group.items).map((item) => (
                 <Link
                   key={item.tab}
                   className={`chip inline-flex h-10 shrink-0 items-center gap-2 px-3 text-sm ${
@@ -257,9 +339,12 @@ export default async function AdminPage({
 
           <div className="px-4 py-6 sm:px-6 lg:px-7">
             {(notice || error) && (
-              <p className={`mb-5 rounded-[var(--radius-control)] border px-4 py-3 text-sm ${error ? "border-rose-200 bg-rose-50 text-rose-700" : "border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent-strong)]"}`}>
-                {messageFor(error || notice)}
-              </p>
+              <AlertBanner tone={error ? "error" : "success"}>
+                <span className="inline-flex items-center gap-2">
+                  {error ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                  {messageFor(error || notice)}
+                </span>
+              </AlertBanner>
             )}
 
             {activeTab === "overview" && (
@@ -270,18 +355,32 @@ export default async function AdminPage({
                 lowStockCards={lowStockCards}
                 openSubmissions={openSubmissions}
                 orders={orders}
+                outOfStockCount={outOfStockCards.length}
                 paidRevenue={paidRevenue}
+                pendingOrders={pendingOrders}
                 submissions={submissions}
                 topCards={topCards}
                 totalStock={totalStock}
               />
             )}
             {activeTab === "inventory" && (
-              <InventoryTab cards={cards} game={game} gameStats={gameStats} inventoryValue={inventoryValue} query={query} stock={stock} topCards={topCards} />
+              <InventoryTab
+                cards={cards}
+                game={game}
+                gameStats={gameStats}
+                inventoryValue={inventoryValue}
+                query={query}
+                stock={stock}
+                topCards={topCards}
+              />
             )}
-            {activeTab === "new-card" && <NewCardTab gameStats={gameStats} inventoryValue={inventoryValue} topCards={topCards} />}
-            {activeTab === "buylists" && <BuylistsTab submissions={submissions} openCount={openSubmissions.length} />}
-            {activeTab === "orders" && <OrdersTab orders={orders} />}
+            {activeTab === "new-card" && (
+              <NewCardTab gameStats={gameStats} inventoryValue={inventoryValue} topCards={topCards} />
+            )}
+            {activeTab === "buylists" && (
+              <BuylistsTab filter={buylistFilter} openCount={openSubmissions.length} submissions={submissions} />
+            )}
+            {activeTab === "orders" && <OrdersTab filter={orderFilter} orders={orders} />}
             {activeTab === "customers" && <CustomersTab customers={customerAccounts} />}
             {activeTab === "internal-users" && <InternalUsersTab users={internalUsers} />}
             {activeTab === "reports" && (
@@ -311,7 +410,9 @@ function OverviewTab({
   lowStockCards,
   openSubmissions,
   orders,
+  outOfStockCount,
   paidRevenue,
+  pendingOrders,
   submissions,
   topCards,
   totalStock
@@ -322,11 +423,15 @@ function OverviewTab({
   lowStockCards: TcgCard[];
   openSubmissions: BuylistSubmission[];
   orders: OrderSummary[];
+  outOfStockCount: number;
   paidRevenue: number;
+  pendingOrders: OrderSummary[];
   submissions: BuylistSubmission[];
   topCards: TcgCard[];
   totalStock: number;
 }) {
+  const priorityCount = lowStockCards.length + openSubmissions.length + pendingOrders.length;
+
   return (
     <div className="grid gap-6">
       <section className="surface-card overflow-hidden">
@@ -334,8 +439,7 @@ function OverviewTab({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)]">
-                <Diamond size={14} />
-                Painel executivo
+                Painel do dia
               </span>
               <span className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)]">
                 {cards.length} prints ativos
@@ -345,32 +449,79 @@ function OverviewTab({
               Estoque, compra e venda em uma leitura rápida.
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Priorize reposição, acompanhe buylist e veja a distribuição por jogo sem tabelas densas.
+              Priorize reposição, responda buylists e acompanhe pedidos sem perder o contexto do inventário.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <HeroStat label="Estoque total" value={`${totalStock} un.`} />
             <HeroStat label="Valor parado" value={formatCurrency(inventoryValue)} />
             <HeroStat label="Cotações abertas" value={String(openSubmissions.length)} />
-            <HeroStat label="Pedidos" value={String(orders.length)} />
+            <HeroStat label="Pedidos pendentes" value={String(pendingOrders.length)} />
           </div>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={<CircleDollarSign size={20} />} label="Valor em estoque" trend="+ inventario" value={formatCurrency(inventoryValue)} tone="cyan" />
-        <MetricCard icon={<Boxes size={20} />} label="Cartas ativas" trend={`${totalStock} unidades`} value={String(cards.length)} tone="green" />
-        <MetricCard icon={<Camera size={20} />} label="Cotações abertas" trend={`${submissions.length} recebidas`} value={String(openSubmissions.length)} tone="orange" />
-        <MetricCard icon={<ShoppingBag size={20} />} label="Receita em pedidos" trend={`${orders.length} pedidos`} value={formatCurrency(paidRevenue)} tone="red" />
+        <MetricCard
+          icon={<CircleDollarSign size={20} />}
+          label="Valor em estoque"
+          hint="Soma de preço × unidades"
+          value={formatCurrency(inventoryValue)}
+          tone="cyan"
+        />
+        <MetricCard
+          icon={<Boxes size={20} />}
+          label="Cartas ativas"
+          hint={`${totalStock} unidades · ${outOfStockCount} sem estoque`}
+          value={String(cards.length)}
+          tone="green"
+        />
+        <MetricCard
+          icon={<Camera size={20} />}
+          label="Cotações abertas"
+          hint={`${submissions.length} recebidas no total`}
+          value={String(openSubmissions.length)}
+          tone="orange"
+        />
+        <MetricCard
+          icon={<ShoppingBag size={20} />}
+          label="Receita em pedidos"
+          hint={`${orders.length} pedidos recentes`}
+          value={formatCurrency(paidRevenue)}
+          tone="red"
+        />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.8fr)]">
         <Panel>
-          <PanelHeader title="Prioridades de hoje" text="Acoes que impactam compra, cotacao e reposicao." badge={`${lowStockCards.length + openSubmissions.length} pendencias`} />
+          <PanelHeader
+            title="Prioridades de hoje"
+            text="Ações que impactam compra, cotação e reposição."
+            badge={`${priorityCount} pendências`}
+            tone={priorityCount > 0 ? "gold" : "muted"}
+          />
           <div className="grid gap-3 md:grid-cols-3">
-            <PriorityCard href="/admin?tab=inventory&stock=low" label="Repor estoque baixo" value={String(lowStockCards.length)} text="Cartas com 3 unidades ou menos." />
-            <PriorityCard href="/admin?tab=buylists" label="Responder cotações" value={String(openSubmissions.length)} text="Lotes novos ou em analise." />
-            <PriorityCard href="/admin?tab=orders" label="Atualizar pedidos" value={String(orders.filter((order) => order.status === "pending").length)} text="Compras ainda pendentes." />
+            <PriorityCard
+              href="/admin?tab=inventory&stock=low"
+              label="Repor estoque baixo"
+              value={String(lowStockCards.length)}
+              text="Cartas com 1 a 3 unidades."
+              urgent={lowStockCards.length > 0}
+            />
+            <PriorityCard
+              href="/admin?tab=buylists&status=new"
+              label="Responder cotações"
+              value={String(openSubmissions.length)}
+              text="Lotes novos ou em análise."
+              urgent={openSubmissions.length > 0}
+            />
+            <PriorityCard
+              href="/admin?tab=orders&status=pending"
+              label="Atualizar pedidos"
+              value={String(pendingOrders.length)}
+              text="Compras ainda pendentes de pagamento."
+              urgent={pendingOrders.length > 0}
+            />
           </div>
         </Panel>
 
@@ -405,37 +556,69 @@ function InventoryTab({
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.85fr)]">
       <Panel>
-        <PanelHeader title="Inventário" text="Cards consolidados por print, condição, idioma e acabamento." badge={`${cards.length} itens únicos`} />
-        <form className="mb-5 grid gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-2">
+        <PanelHeader
+          title="Inventário"
+          text="Cards consolidados por print, condição, idioma e acabamento."
+          badge={`${cards.length} itens`}
+        />
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          <FilterChip active={stock === "all"} href={inventoryHref({ query, game, stock: "all" })} label="Todos" />
+          <FilterChip active={stock === "low"} href={inventoryHref({ query, game, stock: "low" })} label="Baixo estoque" />
+          <FilterChip active={stock === "out"} href={inventoryHref({ query, game, stock: "out" })} label="Sem estoque" />
+          {games.map((item) => (
+            <FilterChip
+              key={item}
+              active={game === item}
+              href={inventoryHref({ query, game: item, stock })}
+              label={item}
+            />
+          ))}
+        </div>
+
+        <form action="/admin" className="mb-5 grid gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-soft)] p-3 md:grid-cols-[1fr_auto]" method="get">
           <input type="hidden" name="tab" value="inventory" />
-          <label className="relative block md:col-span-2">
+          <input type="hidden" name="game" value={game} />
+          <input type="hidden" name="stock" value={stock} />
+          <label className="relative block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
-            <input className={inputClassWithIcon} name="query" placeholder="Buscar carta, coleção ou tag" defaultValue={query} />
+            <input
+              className={adminInputWithIconClass}
+              name="query"
+              placeholder="Buscar carta, coleção ou tag"
+              defaultValue={query}
+            />
           </label>
-          <select className={inputClass} name="game" defaultValue={game}>
-            <option value="Todos">Todos os jogos</option>
-            {games.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-          <select className={inputClass} name="stock" defaultValue={stock}>
-            <option value="all">Todo estoque</option>
-            <option value="low">Baixo estoque</option>
-            <option value="out">Sem estoque</option>
-          </select>
-          <button className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] md:col-span-2" type="submit">
-            Filtrar
+          <button
+            className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-5 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]"
+            type="submit"
+          >
+            Buscar
           </button>
         </form>
 
         <div className="grid gap-3">
           {cards.length === 0 ? (
-            <EmptyState icon={<Search size={30} />} title="Nenhuma carta encontrada" text="Ajuste os filtros ou cadastre uma nova carta." />
+            <EmptyState
+              icon={<Search size={28} />}
+              title="Nenhuma carta encontrada"
+              text="Ajuste os filtros ou cadastre uma nova carta."
+              action={
+                <Link
+                  className="inline-flex h-10 items-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white"
+                  href="/admin?tab=new-card"
+                >
+                  Cadastrar carta
+                </Link>
+              }
+            />
           ) : (
             cards.map((card) => <InventoryRow key={card.id} card={card} />)
           )}
         </div>
       </Panel>
 
-      <div className="grid gap-6">
+      <div className="grid gap-6 self-start xl:sticky xl:top-24">
         <DistributionPanel gameStats={gameStats} inventoryValue={inventoryValue} />
         <TopCardsPanel topCards={topCards} />
       </div>
@@ -455,22 +638,20 @@ function NewCardTab({
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]">
       <NewCardPanel />
-      <div className="grid gap-6">
+      <div className="grid gap-6 self-start xl:sticky xl:top-24">
         <Panel>
-          <PanelHeader title="Como cadastrar melhor" text="Use a busca para escolher o print correto e evitar dados duplicados." />
+          <PanelHeader title="Como cadastrar melhor" text="Use a busca para escolher o print correto e evitar duplicatas." />
           <div className="grid gap-3 text-sm text-[var(--muted)]">
-            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-              <p className="font-semibold text-[var(--ink)]">1. Escolha o jogo e busque pelo nome</p>
-              <p className="mt-1 leading-6">A integração preenche coleção, raridade, imagem e preço médio quando disponível.</p>
-            </div>
-            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-              <p className="font-semibold text-[var(--ink)]">2. Selecione o print exato</p>
-              <p className="mt-1 leading-6">Prefira a versão com arte, acabamento e coleção corretos para reduzir retrabalho.</p>
-            </div>
-            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-              <p className="font-semibold text-[var(--ink)]">3. Revise preço e estoque</p>
-              <p className="mt-1 leading-6">O preço sugerido é referência de mercado; ajuste antes de publicar na vitrine.</p>
-            </div>
+            {[
+              ["1. Escolha o jogo e busque pelo nome", "A integração preenche coleção, raridade, imagem e preço médio quando disponível."],
+              ["2. Selecione o print exato", "Prefira a versão com arte, acabamento e coleção corretos para reduzir retrabalho."],
+              ["3. Revise preço e estoque", "O preço sugerido é referência de mercado; ajuste antes de publicar na vitrine."]
+            ].map(([title, text]) => (
+              <div key={title} className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+                <p className="font-semibold text-[var(--ink)]">{title}</p>
+                <p className="mt-1 leading-6">{text}</p>
+              </div>
+            ))}
           </div>
         </Panel>
         <DistributionPanel gameStats={gameStats} inventoryValue={inventoryValue} />
@@ -480,32 +661,83 @@ function NewCardTab({
   );
 }
 
-function BuylistsTab({ submissions, openCount }: { submissions: BuylistSubmission[]; openCount: number }) {
+function BuylistsTab({
+  submissions,
+  openCount,
+  filter
+}: {
+  submissions: BuylistSubmission[];
+  openCount: number;
+  filter: "all" | (typeof buylistStatuses)[number];
+}) {
+  const filtered =
+    filter === "all" ? submissions : submissions.filter((item) => item.status === filter);
+
   return (
     <Panel>
-      <PanelHeader title="Cotações de buylist" text="Analise fotos, status e valor oferecido." badge={`${openCount} abertas`} tone="gold" />
-      {submissions.length === 0 ? (
-        <EmptyState icon={<Camera size={30} />} title="Nenhuma cotacao recebida" text="Os lotes enviados pelo site aparecem aqui." />
+      <PanelHeader
+        title="Cotações de buylist"
+        text="Analise fotos, status e valor oferecido."
+        badge={`${openCount} abertas`}
+        tone="gold"
+      />
+
+      <div className="mb-5 flex flex-wrap gap-2">
+        <FilterChip
+          active={filter === "all"}
+          count={submissions.length}
+          href="/admin?tab=buylists"
+          label="Todas"
+        />
+        {buylistStatuses.map((status) => (
+          <FilterChip
+            key={status}
+            active={filter === status}
+            count={submissions.filter((item) => item.status === status).length}
+            href={`/admin?tab=buylists&status=${status}`}
+            label={buylistStatusLabels[status]}
+          />
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={<Camera size={28} />}
+          title={submissions.length === 0 ? "Nenhuma cotação recebida" : "Nenhuma cotação neste filtro"}
+          text={
+            submissions.length === 0
+              ? "Os lotes enviados pelo site aparecem aqui."
+              : "Troque o filtro para ver outras cotações."
+          }
+        />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          {submissions.map((submission) => (
-            <article key={submission.id} className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
+          {filtered.map((submission) => (
+            <article
+              key={submission.id}
+              className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]"
+            >
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">{submission.customerName}</p>
+                  <p className="truncate font-semibold text-[var(--ink)]">{submission.customerName}</p>
                   <p className="truncate text-sm text-[var(--muted)]">
                     {submission.email} · {submission.game} · {formatDate(submission.createdAt)}
                   </p>
                 </div>
-                <StatusPill label={submission.status} />
+                <StatusBadge
+                  label={buylistStatusLabels[submission.status] ?? submission.status}
+                  className={buylistStatusStyles[submission.status]}
+                />
               </div>
-              <p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--muted)]">{submission.notes}</p>
+              {submission.notes ? (
+                <p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--muted)]">{submission.notes}</p>
+              ) : null}
               {submission.photoUrls.length > 0 && (
                 <div className="mt-4 grid grid-cols-4 gap-2">
                   {submission.photoUrls.slice(0, 4).map((url, index) => (
                     <a
                       key={`${submission.id}-${index}`}
-                      className="block aspect-[3/4] rounded-lg border border-[var(--line)] bg-cover bg-center"
+                      className="block aspect-[3/4] overflow-hidden rounded-[var(--radius-control)] border border-[var(--line)] bg-cover bg-center transition hover:ring-2 hover:ring-[var(--accent)]/40"
                       href={url}
                       style={{ backgroundImage: `url(${url})` }}
                       target="_blank"
@@ -515,14 +747,31 @@ function BuylistsTab({ submissions, openCount }: { submissions: BuylistSubmissio
                   ))}
                 </div>
               )}
-              <form action={updateBuylistAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_140px_92px]">
+              <form action={updateBuylistAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_140px_auto]">
                 <input type="hidden" name="id" value={submission.id} />
                 <input type="hidden" name="tab" value="buylists" />
-                <select className={inputClass} name="status" defaultValue={submission.status}>
-                  {buylistStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
+                <select className={adminInputClass} name="status" defaultValue={submission.status}>
+                  {buylistStatuses.map((item) => (
+                    <option key={item} value={item}>
+                      {buylistStatusLabels[item]}
+                    </option>
+                  ))}
                 </select>
-                <input className={inputClass} name="offer" type="number" min="0" step="0.01" placeholder="Oferta" defaultValue={submission.offerCents === null ? "" : (submission.offerCents / 100).toFixed(2)} />
-                <button className="h-11 rounded-lg bg-[var(--accent)] px-3 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]" type="submit">
+                <input
+                  className={adminInputClass}
+                  name="offer"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Oferta R$"
+                  defaultValue={
+                    submission.offerCents === null ? "" : (submission.offerCents / 100).toFixed(2)
+                  }
+                />
+                <button
+                  className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]"
+                  type="submit"
+                >
                   Salvar
                 </button>
               </form>
@@ -534,53 +783,92 @@ function BuylistsTab({ submissions, openCount }: { submissions: BuylistSubmissio
   );
 }
 
-function OrdersTab({ orders }: { orders: OrderSummary[] }) {
+function OrdersTab({
+  orders,
+  filter
+}: {
+  orders: OrderSummary[];
+  filter: "all" | (typeof orderStatuses)[number];
+}) {
   const pending = orders.filter((order) => order.status === "pending").length;
   const paid = orders.filter((order) => order.status === "paid").length;
+  const filtered = filter === "all" ? orders : orders.filter((order) => order.status === filter);
 
   return (
     <div className="grid gap-6">
       <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Recentes</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{orders.length}</p>
-        </div>
-        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Pendentes</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{pending}</p>
-        </div>
-        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Pagos</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{paid}</p>
-        </div>
+        <MetricCard
+          icon={<PackageCheck size={20} />}
+          label="Recentes"
+          hint="Últimos pedidos carregados"
+          value={String(orders.length)}
+          tone="cyan"
+        />
+        <MetricCard
+          icon={<ShoppingBag size={20} />}
+          label="Pendentes"
+          hint="Aguardando pagamento ou ação"
+          value={String(pending)}
+          tone="orange"
+        />
+        <MetricCard
+          icon={<CheckCircle2 size={20} />}
+          label="Pagos"
+          hint="Prontos para envio"
+          value={String(paid)}
+          tone="green"
+        />
       </section>
 
       <Panel>
         <PanelHeader
           title="Pedidos"
           text="Detalhes, frete, pagamento e atualização de status."
-          badge={`${orders.length} recentes`}
+          badge={`${filtered.length} exibidos`}
         />
-        {orders.length === 0 ? (
+
+        <div className="mb-5 flex flex-wrap gap-2">
+          <FilterChip active={filter === "all"} count={orders.length} href="/admin?tab=orders" label="Todos" />
+          {orderStatuses.map((status) => (
+            <FilterChip
+              key={status}
+              active={filter === status}
+              count={orders.filter((order) => order.status === status).length}
+              href={`/admin?tab=orders&status=${status}`}
+              label={orderStatusLabels[status]}
+            />
+          ))}
+        </div>
+
+        {filtered.length === 0 ? (
           <EmptyState
-            icon={<PackageCheck size={30} />}
-            title="Nenhum pedido ainda"
-            text="Os pedidos finalizados aparecem aqui."
+            icon={<PackageCheck size={28} />}
+            title={orders.length === 0 ? "Nenhum pedido ainda" : "Nenhum pedido neste filtro"}
+            text={
+              orders.length === 0
+                ? "Os pedidos finalizados aparecem aqui."
+                : "Troque o filtro para ver outros status."
+            }
           />
         ) : (
           <div className="grid gap-4">
-            {orders.map((order) => (
+            {filtered.map((order) => (
               <OrderCard
                 key={order.id}
                 order={order}
                 showCustomer
                 footer={
-                  <form action={updateOrderStatusAction} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <form
+                    action={updateOrderStatusAction}
+                    className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
+                  >
                     <input type="hidden" name="id" value={order.id} />
                     <input type="hidden" name="tab" value="orders" />
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-semibold text-[var(--ink)]">Status do pedido</span>
-                      <select className={inputClass} name="status" defaultValue={order.status}>
+                      <span className="mb-1.5 block text-xs font-semibold text-[var(--ink)]">
+                        Status do pedido
+                      </span>
+                      <select className={adminInputClass} name="status" defaultValue={order.status}>
                         {orderStatuses.map((item) => (
                           <option key={item} value={item}>
                             {orderStatusLabels[item] ?? item}
@@ -611,34 +899,67 @@ function CustomersTab({ customers }: { customers: AdminCustomer[] }) {
   return (
     <div className="grid gap-6">
       <section className="grid gap-4 md:grid-cols-3">
-        <MetricCard icon={<UsersRound size={20} />} label="Clientes cadastrados" trend="base ativa" value={String(customers.length)} tone="cyan" />
-        <MetricCard icon={<ShoppingBag size={20} />} label="Pedidos da base" trend="historico" value={String(customers.reduce((sum, customer) => sum + customer.orderCount, 0))} tone="green" />
-        <MetricCard icon={<CircleDollarSign size={20} />} label="Receita vinculada" trend="por cliente" value={formatCurrency(totalSpent)} tone="orange" />
+        <MetricCard
+          icon={<UsersRound size={20} />}
+          label="Clientes cadastrados"
+          hint="Base ativa no Neon"
+          value={String(customers.length)}
+          tone="cyan"
+        />
+        <MetricCard
+          icon={<ShoppingBag size={20} />}
+          label="Pedidos da base"
+          hint="Histórico consolidado"
+          value={String(customers.reduce((sum, customer) => sum + customer.orderCount, 0))}
+          tone="green"
+        />
+        <MetricCard
+          icon={<CircleDollarSign size={20} />}
+          label="Receita vinculada"
+          hint="Soma por cliente"
+          value={formatCurrency(totalSpent)}
+          tone="orange"
+        />
       </section>
 
       <Panel>
-        <PanelHeader title="Clientes" text="Compras, buylists e papel de cada conta." badge={`${customers.length} contas`} />
+        <PanelHeader title="Clientes" text="Compras, buylists e atividade de cada conta." badge={`${customers.length} contas`} />
         {customers.length === 0 ? (
-          <EmptyState icon={<UsersRound size={30} />} title="Nenhum cliente no Neon" text="Cadastros e logins reais aparecem aqui quando o banco estiver configurado." />
+          <EmptyState
+            icon={<UsersRound size={28} />}
+            title="Nenhum cliente no Neon"
+            text="Cadastros e logins reais aparecem aqui quando o banco estiver configurado."
+          />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-[var(--line)]">
-            <div className="hidden grid-cols-[minmax(220px,1fr)_120px_120px_140px_120px] gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-xs font-semibold uppercase text-[var(--muted)] lg:grid">
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)]">
+            <div className="hidden grid-cols-[minmax(220px,1fr)_100px_100px_140px_130px] gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)] lg:grid">
               <span>Cliente</span>
               <span>Pedidos</span>
               <span>Buylists</span>
               <span>Total</span>
-              <span>Ultima compra</span>
+              <span>Última compra</span>
             </div>
             {customers.map((customer) => (
-              <div key={customer.id} className="grid gap-3 border-b border-[var(--line)] px-4 py-4 last:border-b-0 lg:grid-cols-[minmax(220px,1fr)_120px_120px_140px_120px] lg:items-center">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{customer.name}</p>
-                  <p className="truncate text-sm text-[var(--muted)]">{customer.email}</p>
+              <div
+                key={customer.id}
+                className="grid gap-3 border-b border-[var(--line)] px-4 py-4 last:border-b-0 hover:bg-[var(--surface-soft)]/70 lg:grid-cols-[minmax(220px,1fr)_100px_100px_140px_130px] lg:items-center"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--accent)]/12 text-xs font-bold text-[var(--accent)]">
+                    {userInitials(customer.name || customer.email)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{customer.name}</p>
+                    <p className="truncate text-sm text-[var(--muted)]">{customer.email}</p>
+                  </div>
                 </div>
                 <InfoValue label="Pedidos" value={String(customer.orderCount)} />
                 <InfoValue label="Buylists" value={String(customer.buylistCount)} />
                 <InfoValue label="Total" value={formatCurrency(customer.totalSpentCents)} />
-                <InfoValue label="Ultima compra" value={customer.lastOrderAt ? formatDate(customer.lastOrderAt) : "Sem compra"} />
+                <InfoValue
+                  label="Última compra"
+                  value={customer.lastOrderAt ? formatDate(customer.lastOrderAt) : "Sem compra"}
+                />
               </div>
             ))}
           </div>
@@ -652,31 +973,65 @@ function InternalUsersTab({ users }: { users: AdminCustomer[] }) {
   return (
     <div className="grid gap-6">
       <section className="grid gap-4 md:grid-cols-3">
-        <MetricCard icon={<ShieldCheck size={20} />} label="Usuarios internos" trend="acesso admin" value={String(users.length)} tone="cyan" />
-        <MetricCard icon={<ShoppingBag size={20} />} label="Pedidos criados" trend="pela conta" value={String(users.reduce((sum, user) => sum + user.orderCount, 0))} tone="green" />
-        <MetricCard icon={<Camera size={20} />} label="Buylists enviadas" trend="pela conta" value={String(users.reduce((sum, user) => sum + user.buylistCount, 0))} tone="orange" />
+        <MetricCard
+          icon={<ShieldCheck size={20} />}
+          label="Usuários internos"
+          hint="Acesso admin"
+          value={String(users.length)}
+          tone="cyan"
+        />
+        <MetricCard
+          icon={<ShoppingBag size={20} />}
+          label="Pedidos criados"
+          hint="Pela conta interna"
+          value={String(users.reduce((sum, user) => sum + user.orderCount, 0))}
+          tone="green"
+        />
+        <MetricCard
+          icon={<Camera size={20} />}
+          label="Buylists enviadas"
+          hint="Pela conta interna"
+          value={String(users.reduce((sum, user) => sum + user.buylistCount, 0))}
+          tone="orange"
+        />
       </section>
 
       <Panel>
-        <PanelHeader title="Usuarios internos" text="Admins e contas de operacao ficam separadas da base de clientes." badge={`${users.length} contas internas`} />
+        <PanelHeader
+          title="Usuários internos"
+          text="Admins e contas de operação ficam separados da base de clientes."
+          badge={`${users.length} contas`}
+        />
         {users.length === 0 ? (
-          <EmptyState icon={<ShieldCheck size={30} />} title="Nenhum usuario interno encontrado" text="Contas com role admin aparecem aqui quando existirem no Neon." />
+          <EmptyState
+            icon={<ShieldCheck size={28} />}
+            title="Nenhum usuário interno encontrado"
+            text="Contas com role admin aparecem aqui quando existirem no Neon."
+          />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-[var(--line)]">
-            <div className="hidden grid-cols-[minmax(220px,1fr)_120px_140px_140px_140px] gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-xs font-semibold uppercase text-[var(--muted)] lg:grid">
-              <span>Usuario</span>
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--line)]">
+            <div className="hidden grid-cols-[minmax(220px,1fr)_120px_100px_100px_140px] gap-4 border-b border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)] lg:grid">
+              <span>Usuário</span>
               <span>Perfil</span>
               <span>Pedidos</span>
               <span>Buylists</span>
               <span>Criado em</span>
             </div>
             {users.map((user) => (
-              <div key={user.id} className="grid gap-3 border-b border-[var(--line)] px-4 py-4 last:border-b-0 lg:grid-cols-[minmax(220px,1fr)_120px_140px_140px_140px] lg:items-center">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{user.name}</p>
-                  <p className="truncate text-sm text-[var(--muted)]">{user.email}</p>
+              <div
+                key={user.id}
+                className="grid gap-3 border-b border-[var(--line)] px-4 py-4 last:border-b-0 hover:bg-[var(--surface-soft)]/70 lg:grid-cols-[minmax(220px,1fr)_120px_100px_100px_140px] lg:items-center"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--ink)] text-xs font-bold text-white">
+                    {userInitials(user.name || user.email)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{user.name}</p>
+                    <p className="truncate text-sm text-[var(--muted)]">{user.email}</p>
+                  </div>
                 </div>
-                <InfoValue label="Perfil" value={user.role} />
+                <InfoValue label="Perfil" value={user.role === "admin" ? "Admin" : user.role} />
                 <InfoValue label="Pedidos" value={String(user.orderCount)} />
                 <InfoValue label="Buylists" value={String(user.buylistCount)} />
                 <InfoValue label="Criado em" value={formatDate(user.createdAt)} />
@@ -709,29 +1064,97 @@ function ReportsTab({
   submissions: BuylistSubmission[];
 }) {
   const conversionBase = Math.max(submissions.length, 1);
-  const acceptedBuylists = submissions.filter((submission) => ["approved", "paid"].includes(submission.status)).length;
+  const acceptedBuylists = submissions.filter((submission) =>
+    ["approved", "paid"].includes(submission.status)
+  ).length;
 
   return (
     <div className="grid gap-6">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={<CircleDollarSign size={20} />} label="Receita registrada" trend={`${orders.length} pedidos`} value={formatCurrency(paidRevenue)} tone="cyan" />
-        <MetricCard icon={<Boxes size={20} />} label="Valor parado" trend="estoque atual" value={formatCurrency(inventoryValue)} tone="green" />
-        <MetricCard icon={<ShieldCheck size={20} />} label="Risco de ruptura" trend="baixo estoque" value={String(lowStockCards.length)} tone="red" />
-        <MetricCard icon={<Camera size={20} />} label="Conversao buylist" trend="aprovadas/pagas" value={`${Math.round((acceptedBuylists / conversionBase) * 100)}%`} tone="orange" />
+        <MetricCard
+          icon={<CircleDollarSign size={20} />}
+          label="Receita registrada"
+          hint={`${orders.length} pedidos`}
+          value={formatCurrency(paidRevenue)}
+          tone="cyan"
+        />
+        <MetricCard
+          icon={<Boxes size={20} />}
+          label="Valor parado"
+          hint="Estoque atual"
+          value={formatCurrency(inventoryValue)}
+          tone="green"
+        />
+        <MetricCard
+          icon={<ShieldCheck size={20} />}
+          label="Risco de ruptura"
+          hint="Baixo estoque"
+          value={String(lowStockCards.length)}
+          tone="red"
+        />
+        <MetricCard
+          icon={<Camera size={20} />}
+          label="Conversão buylist"
+          hint="Aprovadas / pagas"
+          value={`${Math.round((acceptedBuylists / conversionBase) * 100)}%`}
+          tone="orange"
+        />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-3">
-        <ReportPanel title="Estoque por jogo" rows={gameStats.map((item) => ({ label: item.game, value: `${item.count} unidades`, percent: item.percent, className: item.barClass }))} />
-        <ReportPanel title="Condição das cartas" rows={conditionStats.map((item) => ({ label: item.condition, value: `${item.count} unidades`, percent: item.percent, className: item.barClass }))} />
-        <ReportPanel title="Status de pedidos" rows={statusStats.map((item) => ({ label: item.status, value: `${item.count} pedidos`, percent: item.percent, className: item.barClass }))} />
+        <ReportPanel
+          title="Estoque por jogo"
+          rows={gameStats.map((item) => ({
+            label: item.game,
+            value: `${item.count} unidades`,
+            percent: item.percent,
+            className: item.barClass
+          }))}
+        />
+        <ReportPanel
+          title="Condição das cartas"
+          rows={conditionStats.map((item) => ({
+            label: item.condition,
+            value: `${item.count} unidades`,
+            percent: item.percent,
+            className: item.barClass
+          }))}
+        />
+        <ReportPanel
+          title="Status de pedidos"
+          rows={statusStats.map((item) => ({
+            label: orderStatusLabels[item.status] ?? item.status,
+            value: `${item.count} pedidos`,
+            percent: item.percent,
+            className: item.barClass
+          }))}
+        />
       </section>
 
       <Panel>
-        <PanelHeader title="Recomendacoes imediatas" text="Leitura operacional a partir dos dados atuais." />
+        <PanelHeader title="Recomendações imediatas" text="Leitura operacional a partir dos dados atuais." />
         <div className="grid gap-3 md:grid-cols-3">
-          <PriorityCard href="/admin?tab=inventory&stock=low" label="Reposicao" value={String(lowStockCards.length)} text="Priorize singles com demanda e menos de 4 unidades." />
-          <PriorityCard href="/admin?tab=buylists" label="Compra de colecoes" value={String(submissions.filter((item) => item.status === "new").length)} text="Novas buylists devem ser respondidas rapido para aumentar aceite." />
-          <PriorityCard href="/admin?tab=orders" label="Operacao" value={String(orders.filter((item) => item.status === "pending").length)} text="Pedidos pendentes merecem primeiro contato ou pagamento." />
+          <PriorityCard
+            href="/admin?tab=inventory&stock=low"
+            label="Reposição"
+            value={String(lowStockCards.length)}
+            text="Priorize singles com demanda e menos de 4 unidades."
+            urgent={lowStockCards.length > 0}
+          />
+          <PriorityCard
+            href="/admin?tab=buylists&status=new"
+            label="Compra de coleções"
+            value={String(submissions.filter((item) => item.status === "new").length)}
+            text="Novas buylists devem ser respondidas rápido para aumentar aceite."
+            urgent={submissions.some((item) => item.status === "new")}
+          />
+          <PriorityCard
+            href="/admin?tab=orders&status=pending"
+            label="Operação"
+            value={String(orders.filter((item) => item.status === "pending").length)}
+            text="Pedidos pendentes merecem primeiro contato ou confirmação de pagamento."
+            urgent={orders.some((item) => item.status === "pending")}
+          />
         </div>
       </Panel>
     </div>
@@ -743,7 +1166,7 @@ function SettingsTab({ cards, userEmail }: { cards: TcgCard[]; userEmail: string
     { label: "Neon Database", value: hasDatabase() ? "Conectado" : "Modo demo", ok: hasDatabase() },
     { label: "Admin logado", value: userEmail, ok: true },
     { label: "API de cartas", value: "/api/card-lookup", ok: true },
-    { label: "Catalogo carregado", value: `${cards.length} cartas`, ok: cards.length > 0 }
+    { label: "Catálogo carregado", value: `${cards.length} cartas`, ok: cards.length > 0 }
   ];
 
   return (
@@ -752,13 +1175,22 @@ function SettingsTab({ cards, userEmail }: { cards: TcgCard[]; userEmail: string
         <PanelHeader title="Checklist de ambiente" text="Itens importantes antes de publicar ou operar no Vercel." />
         <div className="grid gap-3">
           {checks.map((check) => (
-            <div key={check.label} className="flex items-center justify-between gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
-              <div>
+            <div
+              key={check.label}
+              className="flex items-center justify-between gap-4 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-4"
+            >
+              <div className="min-w-0">
                 <p className="font-semibold">{check.label}</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">{check.value}</p>
+                <p className="mt-1 truncate text-sm text-[var(--muted)]">{check.value}</p>
               </div>
-              <span className={`rounded-lg px-3 py-2 text-xs font-bold ${check.ok ? "bg-[var(--accent)]/15 text-[var(--accent)]" : "bg-[var(--gold)]/15 text-[var(--gold)]"}`}>
-                {check.ok ? "OK" : "Atencao"}
+              <span
+                className={`shrink-0 rounded-[var(--radius-control)] px-3 py-2 text-xs font-bold ${
+                  check.ok
+                    ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                    : "bg-[var(--gold)]/15 text-[var(--gold)]"
+                }`}
+              >
+                {check.ok ? "OK" : "Atenção"}
               </span>
             </div>
           ))}
@@ -769,13 +1201,13 @@ function SettingsTab({ cards, userEmail }: { cards: TcgCard[]; userEmail: string
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Deploy</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">Variaveis esperadas para producao.</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">Variáveis esperadas para produção.</p>
           </div>
           <Database className="text-[var(--accent)]" size={20} />
         </div>
         <div className="space-y-3 text-sm">
           {["DATABASE_URL", "ADMIN_EMAIL"].map((item) => (
-            <div key={item} className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+            <div key={item} className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
               <p className="font-semibold text-[var(--ink)]">{item}</p>
               <p className="mt-1 text-[var(--muted)]">Configure no painel do Vercel antes do deploy.</p>
             </div>
@@ -792,7 +1224,7 @@ function NewCardPanel() {
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Nova carta</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Cadastre uma carta direto no catalogo.</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">Cadastre uma carta direto no catálogo.</p>
         </div>
         <Plus className="text-[var(--accent)]" size={20} />
       </div>
@@ -803,7 +1235,10 @@ function NewCardPanel() {
           <input className="h-4 w-4 accent-[var(--accent)]" name="featured" type="checkbox" />
           Destacar na vitrine
         </label>
-        <button className="h-11 rounded-lg bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]" type="submit">
+        <button
+          className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]"
+          type="submit"
+        >
           Cadastrar carta
         </button>
       </form>
@@ -811,26 +1246,38 @@ function NewCardPanel() {
   );
 }
 
-function DistributionPanel({ gameStats, inventoryValue }: { gameStats: ReturnType<typeof getGameStats>; inventoryValue: number }) {
+function DistributionPanel({
+  gameStats,
+  inventoryValue
+}: {
+  gameStats: ReturnType<typeof getGameStats>;
+  inventoryValue: number;
+}) {
   return (
     <Panel>
-      <PanelHeader title="Cartas por jogo" text="Barras horizontais para comparar volume sem distorção." />
-      <div className="space-y-4">
-        {gameStats.map((item) => (
-          <DataBar
-            key={item.game}
-            accentClass={item.barClass}
-            label={item.game}
-            meta={`${item.percent}% do estoque`}
-            percent={item.percent}
-            value={`${item.count} un.`}
-          />
-        ))}
-      </div>
-      <div className="mt-6 flex items-end justify-between border-t border-[var(--line)] pt-5">
-        <span className="text-sm text-[var(--muted)]">Valor total</span>
-        <strong className="text-2xl font-semibold">{formatCurrency(inventoryValue)}</strong>
-      </div>
+      <PanelHeader title="Cartas por jogo" text="Comparação de volume por jogo." />
+      {gameStats.every((item) => item.count === 0) ? (
+        <EmptyState icon={<Boxes size={28} />} title="Sem estoque" text="Cadastre cartas para ver a distribuição." />
+      ) : (
+        <>
+          <div className="space-y-4">
+            {gameStats.map((item) => (
+              <DataBar
+                key={item.game}
+                accentClass={item.barClass}
+                label={item.game}
+                meta={`${item.percent}% do estoque`}
+                percent={item.percent}
+                value={`${item.count} un.`}
+              />
+            ))}
+          </div>
+          <div className="mt-6 flex items-end justify-between border-t border-[var(--line)] pt-5">
+            <span className="text-sm text-[var(--muted)]">Valor total</span>
+            <strong className="text-2xl font-semibold">{formatCurrency(inventoryValue)}</strong>
+          </div>
+        </>
+      )}
     </Panel>
   );
 }
@@ -845,20 +1292,31 @@ function TopCardsPanel({ topCards }: { topCards: TcgCard[] }) {
         </div>
         <TrendingUp className="text-[var(--accent)]" size={20} />
       </div>
-      <div className="space-y-3">
-        {topCards.map((card, index) => (
-          <div key={card.id} className="flex items-center justify-between gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--accent)]/15 text-xs font-bold text-[var(--accent)]">{index + 1}</span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{card.name}</p>
-                <p className="text-xs text-[var(--muted)]">{card.stock} un. · {card.condition}</p>
+      {topCards.length === 0 ? (
+        <EmptyState icon={<TrendingUp size={28} />} title="Sem cartas" text="O ranking aparece quando houver inventário." />
+      ) : (
+        <div className="space-y-3">
+          {topCards.map((card, index) => (
+            <div
+              key={card.id}
+              className="flex items-center justify-between gap-4 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-3"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)]/15 text-xs font-bold text-[var(--accent)]">
+                  {index + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{card.name}</p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {card.stock} un. · {card.condition}
+                  </p>
+                </div>
               </div>
+              <strong className="text-sm">{formatCurrency(card.stock * card.priceCents)}</strong>
             </div>
-            <strong className="text-sm">{formatCurrency(card.stock * card.priceCents)}</strong>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Panel>
   );
 }
@@ -866,27 +1324,34 @@ function TopCardsPanel({ topCards }: { topCards: TcgCard[] }) {
 function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
   return (
     <Panel>
-      <PanelHeader title="Pedidos recentes" text="Últimas compras criadas no site." />
+      <PanelHeader
+        title="Pedidos recentes"
+        text="Últimas compras criadas no site."
+        action={
+          <Link className="text-sm font-semibold text-[var(--accent)] hover:text-[var(--accent-strong)]" href="/admin?tab=orders">
+            Ver todos
+          </Link>
+        }
+      />
       {orders.length === 0 ? (
-        <EmptyState icon={<ShoppingBag size={30} />} title="Nenhum pedido recente" text="Pedidos finalizados aparecem aqui." />
+        <EmptyState icon={<ShoppingBag size={28} />} title="Nenhum pedido recente" text="Pedidos finalizados aparecem aqui." />
       ) : (
         <div className="space-y-3">
           {orders.map((order) => (
-            <div
+            <Link
               key={order.id}
-              className="flex items-center justify-between gap-4 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-4"
+              href="/admin?tab=orders"
+              className="flex items-center justify-between gap-4 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)]/40 hover:bg-[var(--surface-soft)]"
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-semibold text-[var(--ink)]">Pedido {order.id.slice(0, 8).toUpperCase()}</p>
-                  <span
-                    className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                      orderStatusStyles[order.status] ??
-                      "border-[var(--line)] bg-[var(--surface-soft)] text-[var(--ink)]"
-                    }`}
-                  >
-                    {orderStatusLabels[order.status] ?? order.status}
-                  </span>
+                  <p className="font-semibold text-[var(--ink)]">
+                    Pedido {order.id.slice(0, 8).toUpperCase()}
+                  </p>
+                  <StatusBadge
+                    label={orderStatusLabels[order.status] ?? order.status}
+                    className={orderStatusStyles[order.status]}
+                  />
                 </div>
                 <p className="mt-1 truncate text-sm text-[var(--muted)]">
                   {order.customerEmail ?? "Cliente"} · {order.itemCount} itens
@@ -899,7 +1364,7 @@ function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
                 </p>
                 <p className="text-xs text-[var(--muted)]">{formatDate(order.createdAt)}</p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
@@ -911,24 +1376,38 @@ function InventoryRow({ card }: { card: TcgCard }) {
   const secondFaceUrl = resolveCardBackImageUrl(card);
   const hasSecondFace = cardHasSecondFace(card);
   const zoomUrls = [card.imageUrl, secondFaceUrl].filter((url): url is string => Boolean(url));
+  const stockTone =
+    card.stock === 0
+      ? "border-rose-200 bg-rose-50 text-rose-700"
+      : card.stock <= 3
+        ? "border-amber-200 bg-amber-50 text-amber-800"
+        : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]";
 
   return (
-    <form action={updateCardAction} className="group grid gap-4 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/45 hover:bg-[var(--surface-elevated)]">
+    <form
+      action={updateCardAction}
+      className="group grid gap-4 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-soft)] p-3 transition hover:border-[var(--accent)]/45 hover:bg-[var(--surface-elevated)]"
+    >
       <input type="hidden" name="id" value={card.id} />
       <input type="hidden" name="tab" value="inventory" />
 
       <div className="grid min-w-0 gap-4 sm:grid-cols-[88px_minmax(0,1fr)] sm:items-center">
         <div
           aria-label={`${card.name}. Passe o mouse para ampliar.`}
-          className="group/preview relative h-28 w-[88px] overflow-visible rounded-lg outline-none"
+          className="group/preview relative h-28 w-[88px] overflow-visible rounded-[var(--radius-control)] outline-none"
           tabIndex={0}
         >
-          <div className="absolute inset-0 overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+          <div className="absolute inset-0 overflow-hidden rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)]">
             <Image src={card.imageUrl} alt={card.name} fill unoptimized sizes="88px" className="object-cover" />
           </div>
-          <div className={`pointer-events-none absolute left-full top-1/2 z-50 ml-4 hidden -translate-y-1/2 scale-95 gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover/preview:scale-100 group-hover/preview:opacity-100 group-focus/preview:scale-100 group-focus/preview:opacity-100 md:grid ${hasSecondFace ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div
+            className={`pointer-events-none absolute left-full top-1/2 z-50 ml-4 hidden -translate-y-1/2 scale-95 gap-3 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-2 opacity-0 shadow-[0_24px_60px_rgba(15,23,42,0.18)] ring-1 ring-[var(--accent)]/25 transition duration-200 group-hover/preview:scale-100 group-hover/preview:opacity-100 group-focus/preview:scale-100 group-focus/preview:opacity-100 md:grid ${hasSecondFace ? "grid-cols-2" : "grid-cols-1"}`}
+          >
             {zoomUrls.map((url, index) => (
-              <div key={`${card.id}-${index}`} className="relative aspect-[5/7] w-[min(240px,34vw)] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
+              <div
+                key={`${card.id}-${index}`}
+                className="relative aspect-[5/7] w-[min(240px,34vw)] overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]"
+              >
                 <Image
                   src={url}
                   alt={index === 0 ? `${card.name} frente ampliada` : `${card.name} segunda face ampliada`}
@@ -950,11 +1429,22 @@ function InventoryRow({ card }: { card: TcgCard }) {
         <div className="min-w-0 space-y-3">
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">{card.game}</span>
-              <span className="rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.language}</span>
-              <span className="rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">{card.finish}</span>
+              <span className="rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">
+                {card.game}
+              </span>
+              <span className="rounded-md border border-[var(--line)] bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">
+                {card.language}
+              </span>
+              <span className="rounded-md border border-[var(--line)] bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">
+                {card.finish}
+              </span>
+              <span className={`rounded-md border px-2 py-1 text-[11px] font-bold ${stockTone}`}>
+                {card.stock === 0 ? "Sem estoque" : card.stock <= 3 ? "Baixo estoque" : `${card.stock} un.`}
+              </span>
             </div>
-            <p className="truncate text-base font-semibold text-[var(--ink)]" title={card.name}>{card.name}</p>
+            <p className="truncate text-base font-semibold text-[var(--ink)]" title={card.name}>
+              {card.name}
+            </p>
             <p className="truncate text-sm text-[var(--muted)]" title={`${card.setName} · ${card.rarity}`}>
               {card.setName} · {card.rarity}
             </p>
@@ -976,19 +1466,37 @@ function InventoryRow({ card }: { card: TcgCard }) {
       </div>
 
       <div className="grid min-w-0 gap-3 min-[760px]:grid-cols-[minmax(140px,1fr)_110px_130px_112px_52px] min-[760px]:items-end">
-        <FieldLabel label="Preco"><input className={inputClass} name="price" type="number" min="0" step="0.01" defaultValue={(card.priceCents / 100).toFixed(2)} /></FieldLabel>
-        <FieldLabel label="Estoque"><input className={inputClass} name="stock" type="number" min="0" step="1" defaultValue={card.stock} /></FieldLabel>
-        <FieldLabel label="Condicao">
-          <select className={inputClass} name="condition" defaultValue={card.condition}>
-            {conditions.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
+        <FieldLabel label="Preço">
+          <input
+            className={adminInputClass}
+            name="price"
+            type="number"
+            min="0"
+            step="0.01"
+            defaultValue={(card.priceCents / 100).toFixed(2)}
+          />
+        </FieldLabel>
+        <FieldLabel label="Estoque">
+          <input className={adminInputClass} name="stock" type="number" min="0" step="1" defaultValue={card.stock} />
+        </FieldLabel>
+        <FieldLabel label="Condição">
+          <select className={adminInputClass} name="condition" defaultValue={card.condition}>
+            {conditions.map((condition) => (
+              <option key={condition} value={condition}>
+                {condition}
+              </option>
+            ))}
           </select>
         </FieldLabel>
-        <button className="h-11 w-full rounded-lg bg-[var(--accent)] px-3 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] active:scale-95" type="submit">
+        <button
+          className="h-11 w-full rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] active:scale-95"
+          type="submit"
+        >
           Salvar
         </button>
         <button
           aria-label={`Excluir ${card.name} do estoque`}
-          className="grid h-11 w-full place-items-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 active:scale-95"
+          className="grid h-11 w-full place-items-center rounded-[var(--radius-control)] border border-rose-200 bg-rose-50 text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 active:scale-95"
           formAction={deleteCardAction}
           title="Excluir do estoque"
           type="submit"
@@ -1002,168 +1510,72 @@ function InventoryRow({ card }: { card: TcgCard }) {
 
 function InventoryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2">
+    <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-3 py-2">
       <p className="text-[10px] font-semibold uppercase text-[var(--muted)]">{label}</p>
       <p className="mt-1 truncate font-semibold text-[var(--ink)]">{value}</p>
     </div>
   );
 }
 
-function EmptyState({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
-  return (
-    <div className="rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-8 text-center">
-      <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-lg bg-[var(--surface)] text-[var(--muted)]">{icon}</span>
-      <p className="font-semibold text-[var(--ink)]">{title}</p>
-      <p className="mt-1 text-sm text-[var(--muted)]">{text}</p>
-    </div>
-  );
-}
-
-function NavItem({ active, badge, href, icon, label }: { active?: boolean; badge?: number; href: string; icon: ReactNode; label: string }) {
-  return (
-    <Link
-      className={`flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 transition ${
-        active
-          ? "bg-[var(--accent)]/10 text-[var(--ink)] ring-1 ring-[var(--accent)]/25"
-          : "hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
-      }`}
-      href={href}
-    >
-      <span className={active ? "text-[var(--accent)]" : "text-[var(--muted)]"}>{icon}</span>
-      <span className="min-w-0 flex-1">{label}</span>
-      {badge ? (
-        <span className="rounded-[0.45rem] bg-[var(--accent)]/15 px-2 py-0.5 text-xs font-semibold text-[var(--accent)]">
-          {badge}
-        </span>
-      ) : null}
-    </Link>
-  );
-}
-
-function Panel({ children }: { children: ReactNode }) {
-  return <div className="surface-card p-5 lg:p-6">{children}</div>;
-}
-
-function PanelHeader({ badge, text, title, tone = "muted" }: { badge?: string; text: string; title: string; tone?: "muted" | "gold" }) {
-  return (
-    <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">{text}</p>
-      </div>
-      {badge ? (
-        <span className={`w-fit rounded-[var(--radius-control)] bg-[var(--surface-hover)] px-3 py-2 text-xs font-semibold ${tone === "gold" ? "text-[var(--gold)]" : "text-[var(--muted)]"}`}>
-          {badge}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function MetricCard({ icon, label, trend, value, tone }: { icon: ReactNode; label: string; trend: string; value: string; tone: "cyan" | "green" | "orange" | "red" }) {
-  const toneClass = {
-    cyan: "text-teal-700 bg-teal-50",
-    green: "text-emerald-700 bg-emerald-50",
-    orange: "text-amber-700 bg-amber-50",
-    red: "text-rose-700 bg-rose-50"
-  }[tone];
-
-  return (
-    <div className="surface-card p-5">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <p className="text-sm font-semibold text-[var(--muted)]">{label}</p>
-        <span className={`grid h-11 w-11 place-items-center rounded-[var(--radius-control)] ${toneClass}`}>{icon}</span>
-      </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <strong className="text-3xl font-semibold tracking-tight text-[var(--ink)]">{value}</strong>
-        <span className="pb-1 text-sm font-semibold text-[var(--accent)]">{trend}</span>
-      </div>
-    </div>
-  );
-}
-
-function HeroStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</p>
-      <p className="mt-2 truncate text-xl font-semibold text-[var(--ink)]">{value}</p>
-    </div>
-  );
-}
-
-function PriorityCard({ href, label, text, value }: { href: string; label: string; text: string; value: string }) {
-  return (
-    <Link className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-soft)] p-4 transition hover:border-[var(--accent)] hover:bg-[var(--surface-hover)]/60" href={href}>
-      <strong className="text-3xl tracking-tight">{value}</strong>
-      <p className="mt-3 font-semibold">{label}</p>
-      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{text}</p>
-    </Link>
-  );
-}
-
-function ReportPanel({ rows, title }: { rows: Array<{ className: string; label: string; percent: number; value: string }>; title: string }) {
+function ReportPanel({
+  rows,
+  title
+}: {
+  rows: Array<{ className: string; label: string; percent: number; value: string }>;
+  title: string;
+}) {
   return (
     <Panel>
       <PanelHeader title={title} text="Comparação objetiva por volume." />
       <div className="space-y-4">
         {rows.map((row) => (
-          <DataBar key={row.label} accentClass={row.className} label={row.label} meta={`${row.percent}%`} percent={row.percent} value={row.value} />
+          <DataBar
+            key={row.label}
+            accentClass={row.className}
+            label={row.label}
+            meta={`${row.percent}%`}
+            percent={row.percent}
+            value={row.value}
+          />
         ))}
       </div>
     </Panel>
   );
 }
 
-function DataBar({ accentClass, label, meta, percent, value }: { accentClass: string; label: string; meta: string; percent: number; value: string }) {
-  return (
-    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
-      <div className="mb-3 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[var(--ink)]">{label}</p>
-          <p className="mt-0.5 text-xs text-[var(--muted)]">{meta}</p>
-        </div>
-        <span className="shrink-0 text-sm font-semibold text-[var(--ink)]">{value}</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-hover)]">
-        <div className={`h-full rounded-full ${accentClass}`} style={{ width: `${Math.max(percent, 3)}%` }} />
-      </div>
-    </div>
-  );
-}
+type NavItemConfig = {
+  tab: AdminTab;
+  icon: ReactNode;
+  label: string;
+  badge?: number;
+};
 
-function StatusPill({ label }: { label: string }) {
-  return <span className="w-fit rounded-lg bg-[var(--surface-hover)] px-3 py-2 text-xs font-semibold text-[var(--ink)]">{label}</span>;
-}
-
-function FieldLabel({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <label className="grid min-w-0 gap-1 text-sm">
-      <span className="text-[11px] font-semibold uppercase text-[var(--muted)]">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function InfoValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <span className="text-xs text-[var(--muted)] lg:hidden">{label}</span>
-      <p className="truncate text-sm font-semibold text-[var(--ink)]">{value}</p>
-    </div>
-  );
-}
-
-function getNavItems(openSubmissions: number, pendingOrders: number) {
+function getNavGroups(openSubmissions: number, pendingOrders: number): Array<{ label: string; items: NavItemConfig[] }> {
   return [
-    { tab: "overview" as const, icon: <Gauge size={19} />, label: "Overview" },
-    { tab: "inventory" as const, icon: <Layers3 size={19} />, label: "Inventário" },
-    { tab: "new-card" as const, icon: <Plus size={19} />, label: "Nova carta" },
-    { tab: "buylists" as const, icon: <ClipboardList size={19} />, label: "Buylists", badge: openSubmissions },
-    { tab: "orders" as const, icon: <ShoppingBag size={19} />, label: "Pedidos", badge: pendingOrders },
-    { tab: "customers" as const, icon: <UsersRound size={19} />, label: "Clientes" },
-    { tab: "internal-users" as const, icon: <ShieldCheck size={19} />, label: "Usuários internos" },
-    { tab: "reports" as const, icon: <BarChart3 size={19} />, label: "Relatórios" },
-    { tab: "settings" as const, icon: <Settings size={19} />, label: "Ajustes" }
+    {
+      label: "Operação",
+      items: [
+        { tab: "overview", icon: <Gauge size={18} />, label: "Visão geral" },
+        { tab: "inventory", icon: <Layers3 size={18} />, label: "Inventário" },
+        { tab: "new-card", icon: <Plus size={18} />, label: "Nova carta" },
+        { tab: "buylists", icon: <ClipboardList size={18} />, label: "Buylists", badge: openSubmissions || undefined },
+        { tab: "orders", icon: <ShoppingBag size={18} />, label: "Pedidos", badge: pendingOrders || undefined }
+      ]
+    },
+    {
+      label: "Pessoas",
+      items: [
+        { tab: "customers", icon: <UsersRound size={18} />, label: "Clientes" },
+        { tab: "internal-users", icon: <ShieldCheck size={18} />, label: "Usuários internos" }
+      ]
+    },
+    {
+      label: "Sistema",
+      items: [
+        { tab: "reports", icon: <BarChart3 size={18} />, label: "Relatórios" },
+        { tab: "settings", icon: <Settings size={18} />, label: "Ajustes" }
+      ]
+    }
   ];
 }
 
@@ -1173,7 +1585,10 @@ function getGameStats(cards: Array<{ game: Game; stock: number }>) {
     { game: "Pokemon", barClass: "bg-[var(--gold)]" },
     { game: "Yu-Gi-Oh!", barClass: "bg-sky-500" }
   ];
-  const total = Math.max(cards.reduce((sum, card) => sum + card.stock, 0), 1);
+  const total = Math.max(
+    cards.reduce((sum, card) => sum + card.stock, 0),
+    1
+  );
 
   return items.map((item) => {
     const count = cards
@@ -1190,7 +1605,10 @@ function getConditionStats(cards: Array<{ condition: CardCondition; stock: numbe
     { condition: "MP", barClass: "bg-orange-400" },
     { condition: "HP", barClass: "bg-red-400" }
   ];
-  const total = Math.max(cards.reduce((sum, card) => sum + card.stock, 0), 1);
+  const total = Math.max(
+    cards.reduce((sum, card) => sum + card.stock, 0),
+    1
+  );
 
   return items.map((item) => {
     const count = cards
@@ -1211,16 +1629,57 @@ function getStatusStats(orders: Array<{ status: string }>) {
   });
 }
 
+function inventoryHref({
+  query,
+  game,
+  stock
+}: {
+  query: string;
+  game: FilterGame;
+  stock: "all" | "low" | "out";
+}) {
+  const params = new URLSearchParams({ tab: "inventory" });
+  if (query) params.set("query", query);
+  if (game !== "Todos") params.set("game", game);
+  if (stock !== "all") params.set("stock", stock);
+  return `/admin?${params.toString()}`;
+}
+
 function normalizeTab(value: string | string[] | undefined): AdminTab {
   return typeof value === "string" && tabs.includes(value as AdminTab) ? (value as AdminTab) : "overview";
 }
 
 function normalizeGame(value: string | string[] | undefined): FilterGame {
-  return typeof value === "string" && (value === "Magic" || value === "Pokemon" || value === "Yu-Gi-Oh!") ? value : "Todos";
+  return typeof value === "string" && (value === "Magic" || value === "Pokemon" || value === "Yu-Gi-Oh!")
+    ? value
+    : "Todos";
 }
 
 function normalizeStock(value: string | string[] | undefined): "all" | "low" | "out" {
   return typeof value === "string" && (value === "low" || value === "out") ? value : "all";
+}
+
+function normalizeOrderFilter(
+  value: string | string[] | undefined
+): "all" | (typeof orderStatuses)[number] {
+  return typeof value === "string" && orderStatuses.includes(value as (typeof orderStatuses)[number])
+    ? (value as (typeof orderStatuses)[number])
+    : "all";
+}
+
+function normalizeBuylistFilter(
+  value: string | string[] | undefined
+): "all" | (typeof buylistStatuses)[number] {
+  return typeof value === "string" && buylistStatuses.includes(value as (typeof buylistStatuses)[number])
+    ? (value as (typeof buylistStatuses)[number])
+    : "all";
+}
+
+function userInitials(value: string) {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "MD";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
 }
 
 function formatDate(value: string) {
@@ -1232,21 +1691,16 @@ function messageFor(code: string) {
     "card-updated": "Carta atualizada com sucesso.",
     "card-created": "Carta cadastrada com sucesso.",
     "card-deleted": "Carta removida do estoque.",
-    "buylist-updated": "Cotacao atualizada com sucesso.",
+    "buylist-updated": "Cotação atualizada com sucesso.",
     "order-updated": "Pedido atualizado com sucesso.",
-    "demo-no-db": "Modo demo ativo. Configure o Neon para persistir esta alteracao.",
+    "demo-no-db": "Modo demo ativo. Configure o Neon para persistir esta alteração.",
     unauthorized: "Acesso restrito a administradores.",
-    "invalid-card": "Dados da carta invalidos.",
+    "invalid-card": "Dados da carta inválidos.",
     "invalid-new-card": "Selecione um print real retornado pela busca antes de cadastrar.",
-    "invalid-buylist": "Dados da cotacao invalidos.",
-    "invalid-order": "Status do pedido invalido.",
-    "no-db": "Banco indisponivel."
+    "invalid-buylist": "Dados da cotação inválidos.",
+    "invalid-order": "Status do pedido inválido.",
+    "no-db": "Banco indisponível."
   };
 
   return messages[code] ?? code;
 }
-
-const inputClass =
-  "field-input h-11 w-full min-w-0 rounded-[var(--radius-control)] px-3 text-sm placeholder:text-[var(--muted)]";
-const inputClassWithIcon =
-  "field-input h-11 w-full rounded-[var(--radius-control)] pl-10 pr-3 text-sm placeholder:text-[var(--muted)]";
