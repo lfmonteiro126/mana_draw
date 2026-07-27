@@ -760,6 +760,20 @@ export async function updateBuylistAction(formData: FormData) {
         updated_at = now()
       where id = ${id}
     `;
+
+    // Vincula à conta do mesmo e-mail, se existir (para aparecer em /conta).
+    try {
+      await sql`
+        update buylist_submissions
+        set user_id = users.id
+        from users
+        where buylist_submissions.id = ${id}
+          and lower(users.email) = lower(buylist_submissions.email)
+          and buylist_submissions.user_id is null
+      `;
+    } catch {
+      // best-effort
+    }
   } else {
     await sql`
       update buylist_submissions

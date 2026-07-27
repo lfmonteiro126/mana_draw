@@ -4,9 +4,11 @@ import { AuthPanel } from "@/components/auth-panel";
 import { StatusBadge } from "@/components/admin/ui";
 import { OrderCard } from "@/components/order-card";
 import { currentUser } from "@/lib/auth";
+import { isOfferExpired, normalizeBuylistStatus } from "@/lib/buylist-flow";
 import { buylistStatusLabels, buylistStatusStyles } from "@/lib/buylist-ui";
-import { getBuylistSubmissionsForEmail, getOrdersForUser } from "@/lib/db";
+import { getBuylistSubmissionsForUser, getOrdersForUser } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
+import type { BuylistSubmission } from "@/lib/types";
 
 function AccountChrome({ children }: { children: React.ReactNode }) {
   return (
@@ -37,6 +39,41 @@ function AccountChrome({ children }: { children: React.ReactNode }) {
   );
 }
 
+function offerCta(status: string) {
+  switch (normalizeBuylistStatus(status)) {
+    case "offered":
+      return "Ver e responder oferta";
+    case "awaiting_shipment":
+      return "Informar envio";
+    case "in_transit":
+      return "Acompanhar envio";
+    case "new":
+    case "reviewing":
+      return "Acompanhar cotação";
+    default:
+      return "Ver detalhes";
+  }
+}
+
+function sortedBuylists(items: BuylistSubmission[]) {
+  const rank = (status: string) => {
+    const value = normalizeBuylistStatus(status);
+    if (value === "offered") return 0;
+    if (value === "awaiting_shipment") return 1;
+    if (value === "in_transit") return 2;
+    if (value === "received" || value === "checking") return 3;
+    if (value === "new" || value === "reviewing") return 4;
+    if (value === "stocked") return 5;
+    if (value === "paid") return 6;
+    return 7;
+  };
+  return [...items].sort((a, b) => {
+    const byRank = rank(a.status) - rank(b.status);
+    if (byRank !== 0) return byRank;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
 export default async function AccountPage() {
   const user = await currentUser();
 
@@ -56,15 +93,19 @@ export default async function AccountPage() {
 
   const [orders, buylists] = await Promise.all([
     getOrdersForUser(user.id),
-    getBuylistSubmissionsForEmail(user.email)
+    getBuylistSubmissionsForUser({ email: user.email, userId: user.id })
   ]);
   const openCount = orders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length;
   const spentCents = orders
     .filter((order) => !["cancelled", "pending"].includes(order.status))
     .reduce((sum, order) => sum + (order.totalCents || order.subtotalCents), 0);
-  const openBuylists = buylists.filter((item) =>
-    ["offered", "awaiting_shipment", "in_transit", "received", "checking", "stocked"].includes(item.status)
+  const pendingOffers = buylists.filter((item) => normalizeBuylistStatus(item.status) === "offered");
+  const activeBuylists = buylists.filter((item) =>
+    ["offered", "awaiting_shipment", "in_transit", "received", "checking", "stocked", "new", "reviewing"].includes(
+      normalizeBuylistStatus(item.status) as string
+    )
   );
+  const listed = sortedBuylists(buylists);
 
   return (
     <AccountChrome>
@@ -86,7 +127,65 @@ export default async function AccountPage() {
         )}
       </div>
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-3">
+      {pendingOffers.length > 0 ? (
+        <section className="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-[var(--accent)]/30 bg-[var(--accent)]/10 shadow-[var(--shadow-soft)]">
+          <div className="border-b border-[var(--accent)]/20 px-5 py-4 sm:px-6">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-strong)]">
+              Oferta aguardando resposta
+            </p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--ink)]">
+              {pendingOffers.length === 1
+                ? "A loja enviou uma oferta pelo seu lote"
+                : `A loja enviou ${pendingOffers.length} ofertas`}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Entre na cotação para aceitar ou recusar. Depois informe o envio ou a retirada.
+            </p>
+          </div>
+          <div className="grid gap-3 p-4 sm:p-5">
+            {pendingOffers.map((submission) => {
+              const expired = isOfferExpired(submission.offerExpiresAt);
+              return (
+                <Link
+                  key={submission.id}
+                  href={`/buylist/${submission.id}`}
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-4 transition hover:border-[var(--accent)]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-[var(--ink)]">{submission.game}</p>
+                      <StatusBadge
+                        label={buylistStatusLabels[submission.status] ?? submission.status}
+                        className={buylistStatusStyles[submission.status]}
+                      />
+                      {expired ? (
+                        <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                          Expirada
+                        </span>
+                      ) : null}
+                    </div>
+                    {submission.offerNote ? (
+                      <p className="mt-1 line-clamp-2 text-sm text-[var(--muted)]">{submission.offerNote}</p>
+                    ) : (
+                      <p className="mt-1 text-sm text-[var(--muted)]">
+                        Enviada em {new Date(submission.createdAt).toLocaleDateString("pt-BR")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
+                      {submission.offerCents != null ? formatCurrency(submission.offerCents) : "—"}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--accent)]">Responder agora</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="mt-6 grid gap-3 sm:grid-cols-4">
         <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Pedidos</p>
           <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{orders.length}</p>
@@ -96,6 +195,10 @@ export default async function AccountPage() {
           <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{openCount}</p>
         </div>
         <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Ofertas buylist</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{pendingOffers.length}</p>
+        </div>
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Total pago</p>
           <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">
             {formatCurrency(spentCents)}
@@ -103,21 +206,23 @@ export default async function AccountPage() {
         </div>
       </section>
 
-      <section className="mt-10">
+      <section className="mt-10" id="buylists">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-[var(--ink)]">Cotações de buylist</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Aceite ofertas e informe o envio do lote.
+              As ofertas da loja aparecem aqui no mesmo e-mail da sua conta.
             </p>
           </div>
-          <span className="text-sm font-semibold text-[var(--muted)]">{openBuylists.length} ativas</span>
+          <span className="text-sm font-semibold text-[var(--muted)]">{activeBuylists.length} ativas</span>
         </div>
-        {buylists.length === 0 ? (
+        {listed.length === 0 ? (
           <div className="rounded-[var(--radius-card)] border border-dashed border-[var(--line)] bg-[var(--surface)] p-8 text-center shadow-[var(--shadow-soft)]">
             <Camera className="mx-auto mb-3 text-[var(--muted)]" size={34} />
             <p className="font-semibold text-[var(--ink)]">Nenhuma cotação ainda</p>
-            <p className="mt-1 text-sm text-[var(--muted)]">Envie um lote pela buylist da loja.</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Envie um lote pela buylist usando o mesmo e-mail desta conta.
+            </p>
             <Link
               href="/#venda"
               className="mt-4 inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white"
@@ -127,28 +232,46 @@ export default async function AccountPage() {
           </div>
         ) : (
           <div className="grid gap-3">
-            {buylists.map((submission) => (
-              <Link
-                key={submission.id}
-                href={`/buylist/${submission.id}`}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] transition hover:border-[var(--accent)]/40"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-[var(--ink)]">{submission.game}</p>
-                    <StatusBadge
-                      label={buylistStatusLabels[submission.status] ?? submission.status}
-                      className={buylistStatusStyles[submission.status]}
-                    />
+            {listed.map((submission) => {
+              const status = normalizeBuylistStatus(submission.status);
+              const isOffer = status === "offered";
+              return (
+                <Link
+                  key={submission.id}
+                  href={`/buylist/${submission.id}`}
+                  className={`flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border p-4 shadow-[var(--shadow-soft)] transition hover:border-[var(--accent)]/40 ${
+                    isOffer
+                      ? "border-[var(--accent)]/35 bg-[var(--accent)]/5"
+                      : "border-[var(--line)] bg-[var(--surface)]"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-[var(--ink)]">{submission.game}</p>
+                      <StatusBadge
+                        label={buylistStatusLabels[submission.status] ?? submission.status}
+                        className={buylistStatusStyles[submission.status]}
+                      />
+                    </div>
+                    <p className="mt-1 truncate text-sm text-[var(--muted)]">
+                      {new Date(submission.createdAt).toLocaleDateString("pt-BR")}
+                      {submission.offerCents != null ? ` · Oferta ${formatCurrency(submission.offerCents)}` : " · Sem oferta ainda"}
+                    </p>
+                    {submission.offerNote && isOffer ? (
+                      <p className="mt-1 line-clamp-2 text-sm text-[var(--ink)]">{submission.offerNote}</p>
+                    ) : null}
                   </div>
-                  <p className="mt-1 truncate text-sm text-[var(--muted)]">
-                    {new Date(submission.createdAt).toLocaleDateString("pt-BR")}
-                    {submission.offerCents != null ? ` · ${formatCurrency(submission.offerCents)}` : ""}
-                  </p>
-                </div>
-                <span className="text-sm font-semibold text-[var(--accent)]">Ver oferta</span>
-              </Link>
-            ))}
+                  <div className="text-right">
+                    {submission.offerCents != null ? (
+                      <p className="text-lg font-semibold tracking-tight text-[var(--ink)]">
+                        {formatCurrency(submission.offerCents)}
+                      </p>
+                    ) : null}
+                    <span className="text-sm font-semibold text-[var(--accent)]">{offerCta(submission.status)}</span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>

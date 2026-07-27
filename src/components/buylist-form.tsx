@@ -9,12 +9,18 @@ import type { Game } from "@/lib/types";
 const initialState = { ok: false, message: "" };
 const games: Game[] = ["Magic", "Yu-Gi-Oh!", "Pokemon"];
 
-export function BuylistForm() {
+export function BuylistForm({
+  defaultEmail = "",
+  defaultName = ""
+}: {
+  defaultEmail?: string;
+  defaultName?: string;
+}) {
   const [state, formAction, pending] = useActionState(createBuylistAction, initialState);
   const [files, setFiles] = useState<File[]>([]);
   const [step, setStep] = useState(0);
-  const [customerName, setCustomerName] = useState("");
-  const [email, setEmail] = useState("");
+  const [customerName, setCustomerName] = useState(defaultName);
+  const [email, setEmail] = useState(defaultEmail);
   const [stepError, setStepError] = useState("");
 
   const previews = useMemo(
@@ -56,7 +62,11 @@ export function BuylistForm() {
           </span>
           <div>
             <h3 className="text-lg font-semibold text-[var(--ink)]">Enviar lote para cotação</h3>
-            <p className="text-xs text-[var(--muted)]">Resposta em até 24h úteis.</p>
+            <p className="text-xs text-[var(--muted)]">
+              {defaultEmail
+                ? "Resposta na sua conta e por e-mail/link, em até 24h úteis."
+                : "Use o mesmo e-mail da conta para ver a oferta em /conta."}
+            </p>
           </div>
         </div>
         <span className="rounded-[var(--radius-control)] bg-[var(--accent)]/12 px-2.5 py-1 text-xs font-semibold text-[var(--accent)] sm:hidden">

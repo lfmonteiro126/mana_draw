@@ -889,50 +889,94 @@ export async function getBuylistSubmissions(): Promise<BuylistSubmission[]> {
   }
 }
 
-export async function getBuylistSubmissionsForEmail(email: string): Promise<BuylistSubmission[]> {
+export async function getBuylistSubmissionsForUser({
+  email,
+  userId
+}: {
+  email: string;
+  userId?: string | null;
+}): Promise<BuylistSubmission[]> {
   if (!hasDatabase()) return [];
   const sql = getSql();
   if (!sql) return [];
   const normalized = email.trim().toLowerCase();
-  if (!normalized) return [];
+  if (!normalized && !userId) return [];
 
   const run = async () => {
-    const rows = await sql`
-      select
-        buylist_submissions.id,
-        buylist_submissions.customer_name,
-        buylist_submissions.email,
-        buylist_submissions.game,
-        buylist_submissions.status,
-        buylist_submissions.notes,
-        buylist_submissions.offer_cents,
-        buylist_submissions.offer_note,
-        buylist_submissions.offer_expires_at::text,
-        buylist_submissions.payout_cents,
-        buylist_submissions.inbound_method,
-        buylist_submissions.tracking_code,
-        buylist_submissions.pickup_at::text,
-        buylist_submissions.customer_accepted_at::text,
-        buylist_submissions.customer_declined_at::text,
-        buylist_submissions.received_at::text,
-        buylist_submissions.stocked_at::text,
-        buylist_submissions.paid_at::text,
-        buylist_submissions.user_id,
-        buylist_submissions.accept_token_hash,
-        buylist_submissions.accept_token_expires_at::text,
-        count(buylist_photos.id)::int as photo_count,
-        coalesce(
-          array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
-          '{}'
-        ) as photo_urls,
-        buylist_submissions.created_at::text
-      from buylist_submissions
-      left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
-      where lower(buylist_submissions.email) = ${normalized}
-      group by buylist_submissions.id
-      order by buylist_submissions.created_at desc
-      limit 40
-    `;
+    const rows = userId
+      ? await sql`
+          select
+            buylist_submissions.id,
+            buylist_submissions.customer_name,
+            buylist_submissions.email,
+            buylist_submissions.game,
+            buylist_submissions.status,
+            buylist_submissions.notes,
+            buylist_submissions.offer_cents,
+            buylist_submissions.offer_note,
+            buylist_submissions.offer_expires_at::text,
+            buylist_submissions.payout_cents,
+            buylist_submissions.inbound_method,
+            buylist_submissions.tracking_code,
+            buylist_submissions.pickup_at::text,
+            buylist_submissions.customer_accepted_at::text,
+            buylist_submissions.customer_declined_at::text,
+            buylist_submissions.received_at::text,
+            buylist_submissions.stocked_at::text,
+            buylist_submissions.paid_at::text,
+            buylist_submissions.user_id,
+            buylist_submissions.accept_token_hash,
+            buylist_submissions.accept_token_expires_at::text,
+            count(buylist_photos.id)::int as photo_count,
+            coalesce(
+              array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
+              '{}'
+            ) as photo_urls,
+            buylist_submissions.created_at::text
+          from buylist_submissions
+          left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
+          where lower(buylist_submissions.email) = ${normalized}
+             or buylist_submissions.user_id = ${userId}
+          group by buylist_submissions.id
+          order by buylist_submissions.created_at desc
+          limit 40
+        `
+      : await sql`
+          select
+            buylist_submissions.id,
+            buylist_submissions.customer_name,
+            buylist_submissions.email,
+            buylist_submissions.game,
+            buylist_submissions.status,
+            buylist_submissions.notes,
+            buylist_submissions.offer_cents,
+            buylist_submissions.offer_note,
+            buylist_submissions.offer_expires_at::text,
+            buylist_submissions.payout_cents,
+            buylist_submissions.inbound_method,
+            buylist_submissions.tracking_code,
+            buylist_submissions.pickup_at::text,
+            buylist_submissions.customer_accepted_at::text,
+            buylist_submissions.customer_declined_at::text,
+            buylist_submissions.received_at::text,
+            buylist_submissions.stocked_at::text,
+            buylist_submissions.paid_at::text,
+            buylist_submissions.user_id,
+            buylist_submissions.accept_token_hash,
+            buylist_submissions.accept_token_expires_at::text,
+            count(buylist_photos.id)::int as photo_count,
+            coalesce(
+              array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
+              '{}'
+            ) as photo_urls,
+            buylist_submissions.created_at::text
+          from buylist_submissions
+          left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
+          where lower(buylist_submissions.email) = ${normalized}
+          group by buylist_submissions.id
+          order by buylist_submissions.created_at desc
+          limit 40
+        `;
     const submissions = rows as DbBuylistSubmission[];
     const linesMap = await loadBuylistLines(
       sql,
@@ -948,6 +992,11 @@ export async function getBuylistSubmissionsForEmail(email: string): Promise<Buyl
     await ensureBuylistSchema(sql);
     return run();
   }
+}
+
+/** @deprecated Prefer getBuylistSubmissionsForUser */
+export async function getBuylistSubmissionsForEmail(email: string): Promise<BuylistSubmission[]> {
+  return getBuylistSubmissionsForUser({ email });
 }
 
 export async function getBuylistSubmissionById(id: string): Promise<BuylistSubmission | null> {
