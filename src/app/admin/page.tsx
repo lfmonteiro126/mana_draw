@@ -32,6 +32,7 @@ import {
   updateCardAction,
   updateOrderStatusAction
 } from "@/app/actions";
+import { BuylistPhotoGallery } from "@/components/admin/buylist-photo-gallery";
 import {
   AlertBanner,
   DataBar,
@@ -732,21 +733,10 @@ function BuylistsTab({
               {submission.notes ? (
                 <p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--muted)]">{submission.notes}</p>
               ) : null}
-              {submission.photoUrls.length > 0 && (
-                <div className="mt-4 grid grid-cols-4 gap-2">
-                  {submission.photoUrls.slice(0, 4).map((url, index) => (
-                    <a
-                      key={`${submission.id}-${index}`}
-                      className="block aspect-[3/4] overflow-hidden rounded-[var(--radius-control)] border border-[var(--line)] bg-cover bg-center transition hover:ring-2 hover:ring-[var(--accent)]/40"
-                      href={url}
-                      style={{ backgroundImage: `url(${url})` }}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Abrir foto ${index + 1}`}
-                    />
-                  ))}
-                </div>
-              )}
+              <BuylistPhotoGallery
+                customerName={submission.customerName}
+                photos={submission.photoUrls}
+              />
               <form action={updateBuylistAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_140px_auto]">
                 <input type="hidden" name="id" value={submission.id} />
                 <input type="hidden" name="tab" value="buylists" />
