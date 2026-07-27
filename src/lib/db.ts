@@ -1,10 +1,16 @@
 import { neon } from "@neondatabase/serverless";
+import { normalizeBuylistStatus } from "./buylist-flow";
 import { cards as fallbackCards } from "./mock-data";
 import type {
   AdminCustomer,
+  BuylistInboundMethod,
+  BuylistLine,
+  BuylistLineStatus,
   BuylistSubmission,
+  CardCondition,
   CardSuggestion,
   FilterGame,
+  Game,
   OrderLineItem,
   OrderSummary,
   SortMode,
@@ -107,14 +113,97 @@ type DbBuylistSubmission = {
   id: string;
   customer_name: string;
   email: string;
-  game: BuylistSubmission["game"];
+  game: Game;
   status: string;
   notes: string | null;
   photo_count: number;
   offer_cents: number | null;
+  offer_note?: string | null;
+  offer_expires_at?: string | null;
+  payout_cents?: number | null;
+  inbound_method?: string | null;
+  tracking_code?: string | null;
+  pickup_at?: string | null;
+  customer_accepted_at?: string | null;
+  customer_declined_at?: string | null;
+  received_at?: string | null;
+  stocked_at?: string | null;
+  paid_at?: string | null;
+  user_id?: string | null;
+  accept_token_hash?: string | null;
+  accept_token_expires_at?: string | null;
   photo_urls: string[] | null;
   created_at: string;
 };
+
+type DbBuylistLine = {
+  id: string;
+  submission_id: string;
+  name: string;
+  game: Game;
+  set_name: string | null;
+  condition_expected: string | null;
+  condition_received: string | null;
+  qty_offered: number;
+  qty_accepted: number;
+  unit_offer_cents: number;
+  line_status: string;
+  card_id: string | null;
+  external_id: string | null;
+  notes: string | null;
+};
+
+function mapBuylistLine(line: DbBuylistLine): BuylistLine {
+  return {
+    id: line.id,
+    submissionId: line.submission_id,
+    name: line.name,
+    game: line.game,
+    setName: line.set_name,
+    conditionExpected: (line.condition_expected as CardCondition | null) ?? null,
+    conditionReceived: (line.condition_received as CardCondition | null) ?? null,
+    qtyOffered: line.qty_offered,
+    qtyAccepted: line.qty_accepted,
+    unitOfferCents: line.unit_offer_cents,
+    lineStatus: (line.line_status as BuylistLineStatus) || "pending",
+    cardId: line.card_id,
+    externalId: line.external_id,
+    notes: line.notes
+  };
+}
+
+function mapBuylistSubmission(
+  submission: DbBuylistSubmission,
+  lines: BuylistLine[] = []
+): BuylistSubmission {
+  return {
+    id: submission.id,
+    customerName: submission.customer_name,
+    email: submission.email,
+    game: submission.game,
+    status: normalizeBuylistStatus(submission.status),
+    notes: submission.notes ?? "",
+    photoCount: submission.photo_count,
+    offerCents: submission.offer_cents,
+    offerNote: submission.offer_note ?? null,
+    offerExpiresAt: submission.offer_expires_at ?? null,
+    payoutCents: submission.payout_cents ?? null,
+    inboundMethod: (submission.inbound_method as BuylistInboundMethod | null) ?? null,
+    trackingCode: submission.tracking_code ?? null,
+    pickupAt: submission.pickup_at ?? null,
+    customerAcceptedAt: submission.customer_accepted_at ?? null,
+    customerDeclinedAt: submission.customer_declined_at ?? null,
+    receivedAt: submission.received_at ?? null,
+    stockedAt: submission.stocked_at ?? null,
+    paidAt: submission.paid_at ?? null,
+    userId: submission.user_id ?? null,
+    hasAcceptToken: Boolean(submission.accept_token_hash),
+    acceptTokenExpiresAt: submission.accept_token_expires_at ?? null,
+    photoUrls: submission.photo_urls ?? [],
+    lines,
+    createdAt: submission.created_at
+  };
+}
 
 type DbAdminCustomer = {
   id: string;
@@ -646,45 +735,304 @@ export async function getOrdersForUser(userId: string): Promise<OrderSummary[]> 
   return (rows as DbOrder[]).map(mapOrder);
 }
 
+let buylistSchemaEnsured = false;
+
+function isMissingBuylistColumns(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("offer_note") ||
+    message.includes("offer_expires_at") ||
+    message.includes("payout_cents") ||
+    message.includes("inbound_method") ||
+    message.includes("tracking_code") ||
+    message.includes("pickup_at") ||
+    message.includes("customer_accepted_at") ||
+    message.includes("customer_declined_at") ||
+    message.includes("received_at") ||
+    message.includes("stocked_at") ||
+    message.includes("paid_at") ||
+    message.includes("accept_token_hash") ||
+    message.includes("accept_token_expires_at") ||
+    message.includes("user_id") ||
+    message.includes("buylist_lines")
+  );
+}
+
+export async function ensureBuylistSchema(sql: NeonSql) {
+  if (buylistSchemaEnsured) return;
+  await sql`
+    alter table buylist_submissions
+      add column if not exists offer_note text,
+      add column if not exists offer_expires_at timestamptz,
+      add column if not exists payout_cents integer,
+      add column if not exists inbound_method text,
+      add column if not exists tracking_code text,
+      add column if not exists pickup_at timestamptz,
+      add column if not exists customer_accepted_at timestamptz,
+      add column if not exists customer_declined_at timestamptz,
+      add column if not exists received_at timestamptz,
+      add column if not exists stocked_at timestamptz,
+      add column if not exists paid_at timestamptz,
+      add column if not exists accept_token_hash text,
+      add column if not exists accept_token_expires_at timestamptz,
+      add column if not exists user_id text
+  `;
+  await sql`
+    create table if not exists buylist_lines (
+      id text primary key default gen_random_uuid()::text,
+      submission_id text not null references buylist_submissions (id) on delete cascade,
+      name text not null,
+      game text not null,
+      set_name text,
+      condition_expected text,
+      condition_received text,
+      qty_offered integer not null default 1,
+      qty_accepted integer not null default 0,
+      unit_offer_cents integer not null default 0,
+      line_status text not null default 'pending',
+      card_id text,
+      external_id text,
+      notes text,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    )
+  `;
+  buylistSchemaEnsured = true;
+}
+
+async function loadBuylistLines(sql: NeonSql, submissionIds: string[]) {
+  if (submissionIds.length === 0) return new Map<string, BuylistLine[]>();
+  const rows = await sql`
+    select
+      id,
+      submission_id,
+      name,
+      game,
+      set_name,
+      condition_expected,
+      condition_received,
+      qty_offered,
+      qty_accepted,
+      unit_offer_cents,
+      line_status,
+      card_id,
+      external_id,
+      notes
+    from buylist_lines
+    where submission_id = any(${submissionIds})
+    order by created_at asc
+  `;
+  const map = new Map<string, BuylistLine[]>();
+  for (const row of rows as DbBuylistLine[]) {
+    const list = map.get(row.submission_id) ?? [];
+    list.push(mapBuylistLine(row));
+    map.set(row.submission_id, list);
+  }
+  return map;
+}
+
 export async function getBuylistSubmissions(): Promise<BuylistSubmission[]> {
   if (!hasDatabase()) return [];
   const sql = getSql();
   if (!sql) return [];
 
-  const rows = await sql`
-    select
-      buylist_submissions.id,
-      buylist_submissions.customer_name,
-      buylist_submissions.email,
-      buylist_submissions.game,
-      buylist_submissions.status,
-      buylist_submissions.notes,
-      buylist_submissions.offer_cents,
-      count(buylist_photos.id)::int as photo_count,
-      coalesce(
-        array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
-        '{}'
-      ) as photo_urls,
-      buylist_submissions.created_at::text
-    from buylist_submissions
-    left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
-    group by buylist_submissions.id
-    order by buylist_submissions.created_at desc
-    limit 50
-  `;
+  const run = async () => {
+    const rows = await sql`
+      select
+        buylist_submissions.id,
+        buylist_submissions.customer_name,
+        buylist_submissions.email,
+        buylist_submissions.game,
+        buylist_submissions.status,
+        buylist_submissions.notes,
+        buylist_submissions.offer_cents,
+        buylist_submissions.offer_note,
+        buylist_submissions.offer_expires_at::text,
+        buylist_submissions.payout_cents,
+        buylist_submissions.inbound_method,
+        buylist_submissions.tracking_code,
+        buylist_submissions.pickup_at::text,
+        buylist_submissions.customer_accepted_at::text,
+        buylist_submissions.customer_declined_at::text,
+        buylist_submissions.received_at::text,
+        buylist_submissions.stocked_at::text,
+        buylist_submissions.paid_at::text,
+        buylist_submissions.user_id,
+        buylist_submissions.accept_token_hash,
+        buylist_submissions.accept_token_expires_at::text,
+        count(buylist_photos.id)::int as photo_count,
+        coalesce(
+          array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
+          '{}'
+        ) as photo_urls,
+        buylist_submissions.created_at::text
+      from buylist_submissions
+      left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
+      group by buylist_submissions.id
+      order by buylist_submissions.created_at desc
+      limit 50
+    `;
+    const submissions = rows as DbBuylistSubmission[];
+    const linesMap = await loadBuylistLines(
+      sql,
+      submissions.map((item) => item.id)
+    );
+    return submissions.map((item) => mapBuylistSubmission(item, linesMap.get(item.id) ?? []));
+  };
 
-  return (rows as DbBuylistSubmission[]).map((submission) => ({
-    id: submission.id,
-    customerName: submission.customer_name,
-    email: submission.email,
-    game: submission.game,
-    status: submission.status,
-    notes: submission.notes ?? "",
-    photoCount: submission.photo_count,
-    offerCents: submission.offer_cents,
-    photoUrls: submission.photo_urls ?? [],
-    createdAt: submission.created_at
-  }));
+  try {
+    return await run();
+  } catch (error) {
+    if (!isMissingBuylistColumns(error)) throw error;
+    await ensureBuylistSchema(sql);
+    return run();
+  }
+}
+
+export async function getBuylistSubmissionsForEmail(email: string): Promise<BuylistSubmission[]> {
+  if (!hasDatabase()) return [];
+  const sql = getSql();
+  if (!sql) return [];
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return [];
+
+  const run = async () => {
+    const rows = await sql`
+      select
+        buylist_submissions.id,
+        buylist_submissions.customer_name,
+        buylist_submissions.email,
+        buylist_submissions.game,
+        buylist_submissions.status,
+        buylist_submissions.notes,
+        buylist_submissions.offer_cents,
+        buylist_submissions.offer_note,
+        buylist_submissions.offer_expires_at::text,
+        buylist_submissions.payout_cents,
+        buylist_submissions.inbound_method,
+        buylist_submissions.tracking_code,
+        buylist_submissions.pickup_at::text,
+        buylist_submissions.customer_accepted_at::text,
+        buylist_submissions.customer_declined_at::text,
+        buylist_submissions.received_at::text,
+        buylist_submissions.stocked_at::text,
+        buylist_submissions.paid_at::text,
+        buylist_submissions.user_id,
+        buylist_submissions.accept_token_hash,
+        buylist_submissions.accept_token_expires_at::text,
+        count(buylist_photos.id)::int as photo_count,
+        coalesce(
+          array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
+          '{}'
+        ) as photo_urls,
+        buylist_submissions.created_at::text
+      from buylist_submissions
+      left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
+      where lower(buylist_submissions.email) = ${normalized}
+      group by buylist_submissions.id
+      order by buylist_submissions.created_at desc
+      limit 40
+    `;
+    const submissions = rows as DbBuylistSubmission[];
+    const linesMap = await loadBuylistLines(
+      sql,
+      submissions.map((item) => item.id)
+    );
+    return submissions.map((item) => mapBuylistSubmission(item, linesMap.get(item.id) ?? []));
+  };
+
+  try {
+    return await run();
+  } catch (error) {
+    if (!isMissingBuylistColumns(error)) throw error;
+    await ensureBuylistSchema(sql);
+    return run();
+  }
+}
+
+export async function getBuylistSubmissionById(id: string): Promise<BuylistSubmission | null> {
+  if (!hasDatabase()) return null;
+  const sql = getSql();
+  if (!sql) return null;
+
+  const run = async () => {
+    const rows = await sql`
+      select
+        buylist_submissions.id,
+        buylist_submissions.customer_name,
+        buylist_submissions.email,
+        buylist_submissions.game,
+        buylist_submissions.status,
+        buylist_submissions.notes,
+        buylist_submissions.offer_cents,
+        buylist_submissions.offer_note,
+        buylist_submissions.offer_expires_at::text,
+        buylist_submissions.payout_cents,
+        buylist_submissions.inbound_method,
+        buylist_submissions.tracking_code,
+        buylist_submissions.pickup_at::text,
+        buylist_submissions.customer_accepted_at::text,
+        buylist_submissions.customer_declined_at::text,
+        buylist_submissions.received_at::text,
+        buylist_submissions.stocked_at::text,
+        buylist_submissions.paid_at::text,
+        buylist_submissions.user_id,
+        buylist_submissions.accept_token_hash,
+        buylist_submissions.accept_token_expires_at::text,
+        count(buylist_photos.id)::int as photo_count,
+        coalesce(
+          array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
+          '{}'
+        ) as photo_urls,
+        buylist_submissions.created_at::text
+      from buylist_submissions
+      left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
+      where buylist_submissions.id = ${id}
+      group by buylist_submissions.id
+      limit 1
+    `;
+    const [submission] = rows as DbBuylistSubmission[];
+    if (!submission) return null;
+    const linesMap = await loadBuylistLines(sql, [submission.id]);
+    return mapBuylistSubmission(submission, linesMap.get(submission.id) ?? []);
+  };
+
+  try {
+    return await run();
+  } catch (error) {
+    if (!isMissingBuylistColumns(error)) throw error;
+    await ensureBuylistSchema(sql);
+    return run();
+  }
+}
+
+export async function getBuylistAcceptTokenHash(id: string): Promise<{
+  hash: string | null;
+  expiresAt: string | null;
+  email: string;
+} | null> {
+  if (!hasDatabase()) return null;
+  const sql = getSql();
+  if (!sql) return null;
+
+  try {
+    await ensureBuylistSchema(sql);
+    const rows = await sql`
+      select accept_token_hash, accept_token_expires_at::text, email
+      from buylist_submissions
+      where id = ${id}
+      limit 1
+    `;
+    const [row] = rows as Array<{
+      accept_token_hash: string | null;
+      accept_token_expires_at: string | null;
+      email: string;
+    }>;
+    if (!row) return null;
+    return { hash: row.accept_token_hash, expiresAt: row.accept_token_expires_at, email: row.email };
+  } catch {
+    return null;
+  }
 }
 
 export async function getAdminCustomers(): Promise<AdminCustomer[]> {

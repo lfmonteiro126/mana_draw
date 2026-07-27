@@ -1,9 +1,11 @@
-import { PackageCheck } from "lucide-react";
+import { Camera, PackageCheck } from "lucide-react";
 import Link from "next/link";
 import { AuthPanel } from "@/components/auth-panel";
+import { StatusBadge } from "@/components/admin/ui";
 import { OrderCard } from "@/components/order-card";
 import { currentUser } from "@/lib/auth";
-import { getOrdersForUser } from "@/lib/db";
+import { buylistStatusLabels, buylistStatusStyles } from "@/lib/buylist-ui";
+import { getBuylistSubmissionsForEmail, getOrdersForUser } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 
 function AccountChrome({ children }: { children: React.ReactNode }) {
@@ -52,18 +54,24 @@ export default async function AccountPage() {
     );
   }
 
-  const orders = await getOrdersForUser(user.id);
+  const [orders, buylists] = await Promise.all([
+    getOrdersForUser(user.id),
+    getBuylistSubmissionsForEmail(user.email)
+  ]);
   const openCount = orders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length;
   const spentCents = orders
     .filter((order) => !["cancelled", "pending"].includes(order.status))
     .reduce((sum, order) => sum + (order.totalCents || order.subtotalCents), 0);
+  const openBuylists = buylists.filter((item) =>
+    ["offered", "awaiting_shipment", "in_transit", "received", "checking", "stocked"].includes(item.status)
+  );
 
   return (
     <AccountChrome>
       <div className="flex flex-col justify-between gap-4 border-b border-[var(--line)] pb-6 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">Conta</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--ink)]">Seus pedidos</h1>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--ink)]">Seus pedidos e cotações</h1>
           <p className="mt-2 text-[var(--muted)]">
             {user.name} · {user.email}
           </p>
@@ -78,26 +86,75 @@ export default async function AccountPage() {
         )}
       </div>
 
-      {orders.length > 0 ? (
-        <section className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Pedidos</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{orders.length}</p>
-          </div>
-          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Em andamento</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{openCount}</p>
-          </div>
-          <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Total pago</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-              {formatCurrency(spentCents)}
+      <section className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Pedidos</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{orders.length}</p>
+        </div>
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Em andamento</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">{openCount}</p>
+        </div>
+        <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Total pago</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+            {formatCurrency(spentCents)}
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-[var(--ink)]">Cotações de buylist</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Aceite ofertas e informe o envio do lote.
             </p>
           </div>
-        </section>
-      ) : null}
+          <span className="text-sm font-semibold text-[var(--muted)]">{openBuylists.length} ativas</span>
+        </div>
+        {buylists.length === 0 ? (
+          <div className="rounded-[var(--radius-card)] border border-dashed border-[var(--line)] bg-[var(--surface)] p-8 text-center shadow-[var(--shadow-soft)]">
+            <Camera className="mx-auto mb-3 text-[var(--muted)]" size={34} />
+            <p className="font-semibold text-[var(--ink)]">Nenhuma cotação ainda</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">Envie um lote pela buylist da loja.</p>
+            <Link
+              href="/#venda"
+              className="mt-4 inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white"
+            >
+              Ir para buylist
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {buylists.map((submission) => (
+              <Link
+                key={submission.id}
+                href={`/buylist/${submission.id}`}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] transition hover:border-[var(--accent)]/40"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-[var(--ink)]">{submission.game}</p>
+                    <StatusBadge
+                      label={buylistStatusLabels[submission.status] ?? submission.status}
+                      className={buylistStatusStyles[submission.status]}
+                    />
+                  </div>
+                  <p className="mt-1 truncate text-sm text-[var(--muted)]">
+                    {new Date(submission.createdAt).toLocaleDateString("pt-BR")}
+                    {submission.offerCents != null ? ` · ${formatCurrency(submission.offerCents)}` : ""}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold text-[var(--accent)]">Ver oferta</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
-      <section className="mt-6 grid gap-4">
+      <section className="mt-10">
+        <h2 className="mb-4 text-xl font-semibold tracking-tight text-[var(--ink)]">Pedidos</h2>
         {orders.length === 0 ? (
           <div className="rounded-[var(--radius-card)] border border-dashed border-[var(--line)] bg-[var(--surface)] p-8 text-center shadow-[var(--shadow-soft)]">
             <PackageCheck className="mx-auto mb-3 text-[var(--muted)]" size={34} />
@@ -113,7 +170,11 @@ export default async function AccountPage() {
             </Link>
           </div>
         ) : (
-          orders.map((order) => <OrderCard key={order.id} order={order} />)
+          <div className="grid gap-4">
+            {orders.map((order) => (
+              <OrderCard key={order.id} order={order} />
+            ))}
+          </div>
         )}
       </section>
     </AccountChrome>
