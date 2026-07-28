@@ -8,15 +8,18 @@ import {
   Gauge,
   Inbox,
   Layers3,
+  LogOut,
   MoreHorizontal,
   Plus,
   Settings,
   ShieldCheck,
   ShoppingBag,
   Store,
+  UserRound,
   UsersRound,
   X
 } from "lucide-react";
+import { logoutAction } from "@/app/actions";
 
 type AdminTab =
   | "overview"
@@ -43,10 +46,12 @@ const PRIMARY_TABS: AdminTab[] = ["overview", "pendencias", "inventory", "new-ca
 
 export function AdminMobileNav({
   activeTab,
-  alertCount
+  alertCount,
+  operatorName
 }: {
   activeTab: string;
   alertCount: number;
+  operatorName: string;
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -62,7 +67,7 @@ export function AdminMobileNav({
       {
         tab: "pendencias",
         label: "Pendências",
-        shortLabel: "Pendências",
+        shortLabel: "Fila",
         href: "/admin?tab=pendencias",
         icon: <Inbox size={18} />,
         badge: alertCount > 0 ? alertCount : undefined
@@ -90,7 +95,7 @@ export function AdminMobileNav({
       },
       {
         tab: "orders",
-        label: "Pedidos",
+        label: "Pedidos da loja",
         shortLabel: "Pedidos",
         href: "/admin?tab=orders",
         icon: <ShoppingBag size={18} />
@@ -104,7 +109,7 @@ export function AdminMobileNav({
       },
       {
         tab: "internal-users",
-        label: "Usuários internos",
+        label: "Equipe interna",
         shortLabel: "Equipe",
         href: "/admin?tab=internal-users",
         icon: <ShieldCheck size={18} />
@@ -118,7 +123,7 @@ export function AdminMobileNav({
       },
       {
         tab: "settings",
-        label: "Ajustes",
+        label: "Ajustes do sistema",
         shortLabel: "Ajustes",
         href: "/admin?tab=settings",
         icon: <Settings size={18} />
@@ -154,59 +159,100 @@ export function AdminMobileNav({
         <div className="fixed inset-0 z-40">
           <button
             aria-label="Fechar menu"
-            className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-slate-950/55 backdrop-blur-[2px]"
             type="button"
             onClick={() => setMoreOpen(false)}
           />
-          <div className="absolute inset-x-0 bottom-[calc(4.25rem+var(--safe-bottom))] mx-3 animate-slide-up rounded-[var(--radius-sheet)] border border-[var(--line)] bg-[var(--surface)] p-3 shadow-[var(--shadow-lift)]">
-            <div className="mb-2 flex items-center justify-between px-1">
-              <p className="text-sm font-semibold text-[var(--ink)]">Mais opções</p>
+          <div className="absolute inset-x-0 bottom-[calc(4.6rem+var(--safe-bottom))] mx-3 animate-slide-up overflow-hidden rounded-[1.1rem] border border-white/10 bg-[#0f172a] text-slate-100 shadow-[var(--shadow-lift)]">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-300">Console operacional</p>
+                <p className="mt-0.5 text-sm font-semibold">{operatorName}</p>
+              </div>
               <button
                 aria-label="Fechar"
-                className="grid h-9 w-9 place-items-center rounded-[var(--radius-control)] text-[var(--muted)] transition hover:bg-[var(--surface-soft)]"
+                className="grid h-9 w-9 place-items-center rounded-lg text-slate-300 transition hover:bg-white/10"
                 type="button"
                 onClick={() => setMoreOpen(false)}
               >
                 <X size={18} />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {secondary.map((item) => {
-                const active = activeTab === item.tab;
-                return (
+
+            <div className="space-y-4 p-3">
+              <div>
+                <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                  Módulos do console
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {secondary.map((item) => {
+                    const active = activeTab === item.tab;
+                    return (
+                      <Link
+                        key={item.tab}
+                        className={`flex items-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold transition ${
+                          active
+                            ? "border-teal-400/40 bg-teal-400/15 text-teal-100"
+                            : "border-white/10 bg-white/5 text-slate-200"
+                        }`}
+                        href={item.href}
+                        onClick={() => setMoreOpen(false)}
+                      >
+                        <span className={active ? "text-teal-300" : "text-slate-400"}>{item.icon}</span>
+                        <span className="min-w-0 truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                  Sessões separadas
+                </p>
+                <div className="grid gap-2">
                   <Link
-                    key={item.tab}
-                    className={`flex items-center gap-2 rounded-[var(--radius-control)] border px-3 py-3 text-sm font-semibold transition ${
-                      active
-                        ? "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--ink)]"
-                        : "border-[var(--line)] bg-[var(--surface-soft)] text-[var(--muted)]"
-                    }`}
-                    href={item.href}
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm font-semibold text-slate-200"
+                    href="/"
                     onClick={() => setMoreOpen(false)}
                   >
-                    <span className={active ? "text-[var(--accent)]" : ""}>{item.icon}</span>
-                    <span className="min-w-0 truncate">{item.label}</span>
+                    <Store size={18} className="text-slate-400" />
+                    Sair do console · Loja
                   </Link>
-                );
-              })}
-              <Link
-                className="col-span-2 flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3 text-sm font-semibold text-[var(--muted)]"
-                href="/"
-                onClick={() => setMoreOpen(false)}
-              >
-                <Store size={18} />
-                Abrir loja
-              </Link>
+                  <Link
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm font-semibold text-slate-200"
+                    href="/conta"
+                    onClick={() => setMoreOpen(false)}
+                  >
+                    <UserRound size={18} className="text-slate-400" />
+                    Conta de cliente
+                  </Link>
+                  <form action={logoutAction}>
+                    <button
+                      className="flex w-full items-center gap-2 rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-3 text-sm font-semibold text-rose-200"
+                      type="submit"
+                    >
+                      <LogOut size={18} />
+                      Encerrar sessão
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       ) : null}
 
       <nav
-        aria-label="Navegação admin"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--line)] bg-[var(--surface)]/95 px-1 pt-1.5 backdrop-blur-xl"
+        aria-label="Navegação do console operacional"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0b1220]/96 px-1.5 pt-1.5 text-slate-300 backdrop-blur-xl"
         style={{ paddingBottom: "max(0.45rem, var(--safe-bottom))" }}
       >
+        <div className="mb-1 flex items-center justify-center">
+          <span className="rounded-full bg-teal-400/15 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-teal-300">
+            Console OPS
+          </span>
+        </div>
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-0.5">
           {primary.map((item) => {
             const active = activeTab === item.tab;
@@ -215,14 +261,14 @@ export function AdminMobileNav({
                 key={item.tab}
                 aria-current={active ? "page" : undefined}
                 className={`relative flex min-w-0 flex-col items-center gap-1 rounded-[0.85rem] px-1 py-2 text-[10px] font-semibold transition ${
-                  active ? "bg-[var(--accent)]/10 text-[var(--accent-strong)]" : "text-[var(--muted)]"
+                  active ? "bg-teal-400/15 text-teal-200" : "text-slate-400"
                 }`}
                 href={item.href}
               >
                 <span className="relative">
                   {item.icon}
                   {item.badge ? (
-                    <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold text-white">
+                    <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-teal-400 px-1 text-[9px] font-bold text-slate-950">
                       {item.badge > 9 ? "9+" : item.badge}
                     </span>
                   ) : null}
@@ -234,9 +280,7 @@ export function AdminMobileNav({
           <button
             aria-expanded={moreOpen}
             className={`relative flex min-w-0 flex-col items-center gap-1 rounded-[0.85rem] px-1 py-2 text-[10px] font-semibold transition ${
-              moreOpen || moreActive
-                ? "bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                : "text-[var(--muted)]"
+              moreOpen || moreActive ? "bg-teal-400/15 text-teal-200" : "text-slate-400"
             }`}
             type="button"
             onClick={() => setMoreOpen((open) => !open)}
