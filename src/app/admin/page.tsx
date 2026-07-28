@@ -26,13 +26,13 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  createCardAction,
   deleteCardAction,
   updateBuylistAction,
   updateCardAction,
   updateOrderStatusAction
 } from "@/app/actions";
 import { BuylistPhotoGallery } from "@/components/admin/buylist-photo-gallery";
+import { NewCardEntry } from "@/components/admin/new-card-entry";
 import {
   AlertBanner,
   DataBar,
@@ -52,7 +52,6 @@ import {
   adminInputWithIconClass
 } from "@/components/admin/ui";
 import { AuthPanel } from "@/components/auth-panel";
-import { CardAutocomplete } from "@/components/card-autocomplete";
 import { OrderCard } from "@/components/order-card";
 import { currentUser } from "@/lib/auth";
 import { buylistStatusLabels, buylistStatusStyles } from "@/lib/buylist-ui";
@@ -105,7 +104,7 @@ const tabLabels: Record<AdminTab, { title: string; description: string }> = {
   },
   "new-card": {
     title: "Nova carta",
-    description: "Cadastre singles com autocomplete, print selecionado e preço de mercado."
+    description: "Cadastre singles uma a uma ou importe lotes CSV/TXT do ManaBox."
   },
   buylists: {
     title: "Buylists",
@@ -641,12 +640,12 @@ function NewCardTab({
       <NewCardPanel />
       <div className="grid gap-6 self-start xl:sticky xl:top-24">
         <Panel>
-          <PanelHeader title="Como cadastrar melhor" text="Use a busca para escolher o print correto e evitar duplicatas." />
+          <PanelHeader title="Como cadastrar melhor" text="Use a busca unitária ou o lote ManaBox com prévia Scryfall." />
           <div className="grid gap-3 text-sm text-[var(--muted)]">
             {[
-              ["1. Escolha o jogo e busque pelo nome", "A integração preenche coleção, raridade, imagem e preço médio quando disponível."],
-              ["2. Selecione o print exato", "Prefira a versão com arte, acabamento e coleção corretos para reduzir retrabalho."],
-              ["3. Revise preço e estoque", "O preço sugerido é referência de mercado; ajuste antes de publicar na vitrine."]
+              ["1. Uma carta", "Busque o nome, escolha o print e revise preço BRL antes de publicar."],
+              ["2. Em lote (ManaBox)", "Exporte CSV/TXT no app, pré-visualize matches no Scryfall e importe só o que estiver OK."],
+              ["3. Preço de venda", "Mercado Scryfall fica em USD; venda é BRL — no lote pode deixar R$ 0 e ajustar no inventário."]
             ].map(([title, text]) => (
               <div key={title} className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
                 <p className="font-semibold text-[var(--ink)]">{title}</p>
@@ -1214,24 +1213,13 @@ function NewCardPanel() {
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Nova carta</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Cadastre uma carta direto no catálogo.</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Cadastro unitário ou importação em lote via ManaBox (CSV/TXT).
+          </p>
         </div>
         <Plus className="text-[var(--accent)]" size={20} />
       </div>
-      <form action={createCardAction} className="grid gap-3">
-        <input type="hidden" name="tab" value="new-card" />
-        <CardAutocomplete />
-        <label className="flex items-center gap-2 text-sm font-medium text-[var(--muted)]">
-          <input className="h-4 w-4 accent-[var(--accent)]" name="featured" type="checkbox" />
-          Destacar na vitrine
-        </label>
-        <button
-          className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]"
-          type="submit"
-        >
-          Cadastrar carta
-        </button>
-      </form>
+      <NewCardEntry />
     </Panel>
   );
 }

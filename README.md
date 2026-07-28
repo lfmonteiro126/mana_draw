@@ -44,8 +44,18 @@ Buylist:
 - Com Blob configurado, fotos vão para storage e só a URL fica no Neon.
 - Sem token, o MVP ainda grava `data_url` (ok só para testes locais).
 
+## Importação ManaBox (admin)
+
+Em `/admin?tab=new-card` → **Em lote (ManaBox)**:
+
+- Aceita **CSV** exportado da coleção (colunas `Name`, `Set code`, `Scryfall ID`, `Quantity`, `Foil`, `Condition`, `Language`…)
+- Aceita **TXT** no formato Arena (`4 Lightning Bolt (M10) 146`)
+- Resolve prints no Scryfall (prioridade: ID → set+número → nome+set → fuzzy)
+- Duplicatas somam estoque; preço de venda BRL pode ficar em R$ 0 para ajuste no inventário
+
 ## Próximos passos opcionais
 
 1. Comprar etiqueta Melhor Envio a partir do pedido pago (admin).
 2. Testes automatizados para carrinho, frete e pedidos.
 3. Preços BRL via LigaMagic (item adiado em `docs/deferred/`).
+4. Markup automático / câmbio e export das linhas que falharam no lote ManaBox.
