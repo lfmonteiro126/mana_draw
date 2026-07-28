@@ -33,6 +33,7 @@ import {
 } from "@/app/actions";
 import { BuylistAdminCard } from "@/components/admin/buylist-admin-card";
 import { CopyLinkButton } from "@/components/admin/copy-link-button";
+import { AdminMobileNav } from "@/components/admin/mobile-nav";
 import { NewCardEntry } from "@/components/admin/new-card-entry";
 import { ShareOfferLinks } from "@/components/admin/share-offer-links";
 import {
@@ -61,7 +62,7 @@ import {
   isInboundPendingStatus,
   isOpenBuylistStatus
 } from "@/lib/buylist-flow";
-import { buylistStatusLabels, buylistStatusStyles } from "@/lib/buylist-ui";
+import { buylistStatusLabels } from "@/lib/buylist-ui";
 import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import {
   getAdminCards,
@@ -245,13 +246,13 @@ export default async function AdminPage({
     inboundPending.length +
     receiveQueue.filter((item) => item.status !== "stocked").length +
     pendingOrders.length;
-  const navGroups = getNavGroups(alertCount, pendingOrders.length);
+  const navGroups = getNavGroups(alertCount);
   const page = tabLabels[activeTab];
   const initials = userInitials(user.name || user.email);
 
   return (
-    <main className="admin-console min-h-screen text-[var(--ink)]">
-      <div className="grid min-h-screen lg:grid-cols-[272px_1fr]">
+    <main className="admin-console min-h-screen overflow-x-hidden text-[var(--ink)]">
+      <div className="grid min-h-screen min-w-0 lg:grid-cols-[272px_minmax(0,1fr)]">
         <aside className="hidden border-r border-[var(--line)] bg-white/95 backdrop-blur-xl lg:flex lg:flex-col">
           <div className="flex h-[76px] items-center gap-3 border-b border-[var(--line)] px-5">
             <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white shadow-[0_8px_18px_rgba(15,159,144,0.28)]">
@@ -300,15 +301,18 @@ export default async function AdminPage({
           </div>
         </aside>
 
-        <section className="min-w-0">
-          <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur-xl">
-            <div className="flex min-h-[76px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-7">
-              <div className="min-w-0">
-                <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
+        <section className="min-w-0 overflow-x-hidden pb-[calc(4.75rem+var(--safe-bottom))] lg:pb-0">
+          <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur-xl">
+            <div className="flex min-h-[64px] items-center justify-between gap-3 px-3 py-2.5 sm:min-h-[76px] sm:gap-4 sm:px-6 sm:py-3 lg:px-7">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)] lg:hidden">
+                  Mana Draw Admin
+                </p>
+                <h1 className="truncate text-lg font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
                 <p className="mt-1 hidden text-sm text-[var(--muted)] sm:block">{page.description}</p>
               </div>
 
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                 <form action="/admin" className="relative hidden w-[260px] xl:block" method="get">
                   <input type="hidden" name="tab" value="inventory" />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
@@ -327,7 +331,7 @@ export default async function AdminPage({
                   Loja
                 </Link>
                 <Link
-                  className="relative grid h-11 w-11 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-soft)]"
+                  className="relative grid h-10 w-10 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-soft)] sm:h-11 sm:w-11"
                   href="/admin?tab=pendencias"
                   aria-label={`${alertCount} pendências`}
                   title="Pendências"
@@ -339,40 +343,14 @@ export default async function AdminPage({
                     </span>
                   ) : null}
                 </Link>
-                <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white lg:hidden">
+                <span className="grid h-10 w-10 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white sm:h-11 sm:w-11 lg:hidden">
                   {initials}
                 </span>
               </div>
             </div>
-
-            <nav className="flex gap-2 overflow-x-auto border-t border-[var(--line)] px-4 py-3 scrollbar-none lg:hidden">
-              {navGroups.flatMap((group) => group.items).map((item) => (
-                <Link
-                  key={item.tab}
-                  className={`chip inline-flex h-10 shrink-0 items-center gap-2 px-3 text-sm ${
-                    activeTab === item.tab ? "chip-active" : "text-[var(--muted)]"
-                  }`}
-                  href={`/admin?tab=${item.tab}`}
-                >
-                  {item.icon}
-                  {item.label}
-                  {item.badge ? (
-                    <span
-                      className={`rounded px-1.5 text-xs ${
-                        activeTab === item.tab
-                          ? "bg-white/20 text-white"
-                          : "bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </Link>
-              ))}
-            </nav>
           </header>
 
-          <div className="px-4 py-6 sm:px-6 lg:px-7">
+          <div className="min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-7">
             {(notice || error) && (
               <AlertBanner tone={error ? "error" : "success"}>
                 <span className="inline-flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -494,6 +472,7 @@ export default async function AdminPage({
           </div>
         </section>
       </div>
+      <AdminMobileNav activeTab={activeTab} alertCount={alertCount} />
     </main>
   );
 }
@@ -528,9 +507,9 @@ function OverviewTab({
   const priorityCount = lowStockCards.length + openSubmissions.length + pendingOrders.length;
 
   return (
-    <div className="grid gap-6">
-      <section className="surface-card overflow-hidden">
-        <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
+    <div className="grid min-w-0 gap-4 sm:gap-6">
+      <section className="surface-card min-w-0 overflow-hidden">
+        <div className="grid min-w-0 gap-4 p-4 sm:gap-5 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] lg:p-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)]">
@@ -540,14 +519,14 @@ function OverviewTab({
                 {cards.length} prints ativos
               </span>
             </div>
-            <h2 className="mt-5 max-w-3xl text-2xl font-semibold leading-tight tracking-tight text-[var(--ink)] sm:text-3xl">
+            <h2 className="mt-4 max-w-3xl text-xl font-semibold leading-tight tracking-tight text-[var(--ink)] sm:mt-5 sm:text-3xl">
               Estoque, compra e venda em uma leitura rápida.
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)] sm:mt-3">
               Priorize reposição, responda buylists e acompanhe pedidos sem perder o contexto do inventário.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-3">
             <HeroStat label="Estoque total" value={`${totalStock} un.`} />
             <HeroStat label="Valor parado" value={formatCurrency(inventoryValue)} />
             <HeroStat label="Cotações abertas" value={String(openSubmissions.length)} />
@@ -556,7 +535,7 @@ function OverviewTab({
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid min-w-0 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={<CircleDollarSign size={20} />}
           label="Valor em estoque"
@@ -1739,7 +1718,7 @@ type NavItemConfig = {
   badge?: number;
 };
 
-function getNavGroups(alertCount: number, _pendingOrders: number): Array<{ label: string; items: NavItemConfig[] }> {
+function getNavGroups(alertCount: number): Array<{ label: string; items: NavItemConfig[] }> {
   return [
     {
       label: "Operação",

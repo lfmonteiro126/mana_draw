@@ -8,7 +8,7 @@ export const adminInputWithIconClass =
   "field-input h-11 w-full rounded-[var(--radius-control)] pl-10 pr-3 text-sm placeholder:text-[var(--muted)]";
 
 export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`surface-card p-5 lg:p-6 ${className}`}>{children}</div>;
+  return <div className={`surface-card min-w-0 p-4 sm:p-5 lg:p-6 ${className}`}>{children}</div>;
 }
 
 export function PanelHeader({
@@ -70,14 +70,16 @@ export function MetricCard({
   }[tone];
 
   return (
-    <div className="surface-card p-5 transition hover:shadow-[var(--shadow-lift)]">
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="surface-card min-w-0 p-4 transition hover:shadow-[var(--shadow-lift)] sm:p-5">
+      <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4 sm:gap-4">
         <p className="text-sm font-semibold text-[var(--muted)]">{label}</p>
-        <span className={`grid h-10 w-10 place-items-center rounded-[var(--radius-control)] ${toneClass}`}>
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-control)] sm:h-10 sm:w-10 ${toneClass}`}>
           {icon}
         </span>
       </div>
-      <strong className="block text-3xl font-semibold tracking-tight text-[var(--ink)]">{value}</strong>
+      <strong className="block break-words text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-3xl">
+        {value}
+      </strong>
       <p className="mt-2 text-sm text-[var(--muted)]">{hint}</p>
     </div>
   );
@@ -108,9 +110,13 @@ export function EmptyState({
 
 export function HeroStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</p>
-      <p className="mt-2 truncate text-xl font-semibold text-[var(--ink)]">{value}</p>
+    <div className="min-w-0 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-3 sm:p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)] sm:text-[11px]">
+        {label}
+      </p>
+      <p className="mt-1.5 break-words text-base font-semibold leading-tight text-[var(--ink)] sm:mt-2 sm:text-xl">
+        {value}
+      </p>
     </div>
   );
 }
