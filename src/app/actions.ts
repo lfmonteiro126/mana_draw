@@ -10,7 +10,25 @@ import {
   signOut,
   verifyPassword
 } from "@/lib/auth";
-import { ensureOrderColumns, getSql, hasDatabase } from "@/lib/db";
+import {
+  buylistCustomerUrl,
+  canTransitionBuylistStatus,
+  generateAcceptToken,
+  hashAcceptToken,
+  isOfferExpired,
+  isValidBuylistStatus,
+  normalizeBuylistStatus,
+  offerExpiryDate
+} from "@/lib/buylist-flow";
+import {
+  ensureBuylistSchema,
+  ensureOrderColumns,
+  getBuylistAcceptTokenHash,
+  getBuylistSubmissionById,
+  getSql,
+  hasDatabase
+} from "@/lib/db";
+import { sendBuylistOfferEmail } from "@/lib/email";
 import { createCheckoutPreference, hasMercadoPago } from "@/lib/payments/mercadopago";
 import { findQuoteById, normalizePostalCode, quoteShipping } from "@/lib/shipping";
 import { storeBuylistPhoto } from "@/lib/storage/blob";
@@ -27,7 +45,20 @@ const validConditions = ["NM", "SP", "MP", "HP"] as const;
 const validLanguages = ["PT", "EN", "JP"] as const;
 const validFinishes = ["Normal", "Foil", "Holo", "Secret"] as const;
 const validCardSources = ["Scryfall", "Pokemon TCG", "YGOPRODeck"] as const;
-const validBuylistStatuses = ["new", "reviewing", "approved", "declined", "paid"] as const;
+const validBuylistStatuses = [
+  "new",
+  "reviewing",
+  "offered",
+  "declined",
+  "awaiting_shipment",
+  "in_transit",
+  "received",
+  "checking",
+  "stocked",
+  "paid",
+  "cancelled",
+  "approved"
+] as const;
 const validOrderStatuses = ["pending", "paid", "shipped", "delivered", "cancelled"] as const;
 
 type CartPayload = Array<{
@@ -47,7 +78,34 @@ function readMoneyCents(formData: FormData, key: string) {
 
 function adminTabFrom(formData: FormData, fallback: string) {
   const tab = readString(formData, "tab");
-  return ["inventory", "new-card", "buylists", "orders"].includes(tab) ? tab : fallback;
+  return ["inventory", "new-card", "buylists", "orders", "pendencias"].includes(tab) ? tab : fallback;
+}
+
+function withNotice(path: string, key: string, value: string) {
+  const join = path.includes("?") ? "&" : "?";
+  return `${path}${join}${key}=${encodeURIComponent(value)}`;
+}
+
+async function assertBuylistCustomerAccess(submissionId: string, token: string) {
+  const user = await currentUser();
+  const submission = await getBuylistSubmissionById(submissionId);
+  if (!submission) return { ok: false as const, reason: "not-found" as const, submission: null };
+
+  if (user && user.email.toLowerCase() === submission.email.toLowerCase()) {
+    return { ok: true as const, submission, via: "session" as const };
+  }
+
+  if (!token) return { ok: false as const, reason: "unauthorized" as const, submission };
+
+  const meta = await getBuylistAcceptTokenHash(submissionId);
+  if (!meta?.hash) return { ok: false as const, reason: "unauthorized" as const, submission };
+  if (meta.expiresAt && new Date(meta.expiresAt).getTime() < Date.now()) {
+    return { ok: false as const, reason: "expired" as const, submission };
+  }
+  if (hashAcceptToken(token) !== meta.hash) {
+    return { ok: false as const, reason: "unauthorized" as const, submission };
+  }
+  return { ok: true as const, submission, via: "token" as const };
 }
 
 export async function registerAction(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -639,30 +697,636 @@ export async function updateBuylistAction(formData: FormData) {
   const id = readString(formData, "id");
   const status = readString(formData, "status");
   const offerInput = readString(formData, "offer");
+  const offerNote = readString(formData, "offerNote");
   const offerCents = offerInput ? readMoneyCents(formData, "offer") : null;
   const tab = adminTabFrom(formData, "buylists");
 
   if (
     !id ||
-    !validBuylistStatuses.includes(status as (typeof validBuylistStatuses)[number]) ||
+    !isValidBuylistStatus(status) ||
+    !(validBuylistStatuses as readonly string[]).includes(status) ||
     (offerCents !== null && (!Number.isFinite(offerCents) || offerCents < 0))
   ) {
     redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  }
+
+  const normalizedStatus = status === "approved" ? "offered" : status;
+
+  if (normalizedStatus === "offered" && (offerCents === null || offerCents <= 0)) {
+    redirect(`/admin?tab=${tab}&error=buylist-offer-required`);
   }
 
   if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
 
   const sql = getSql();
   if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  await ensureBuylistSchema(sql);
+
+  const existing = await getBuylistSubmissionById(id);
+  if (!existing) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+
+  if (!canTransitionBuylistStatus(existing.status, normalizedStatus) && existing.status !== normalizedStatus) {
+    redirect(`/admin?tab=${tab}&error=invalid-buylist-transition`);
+  }
+
+  const shouldIssueToken = normalizedStatus === "offered";
+  const tokenBundle = shouldIssueToken ? generateAcceptToken() : null;
+  const expiresAt = normalizedStatus === "offered" ? offerExpiryDate(14).toISOString() : existing.offerExpiresAt;
+  const payoutCents =
+    normalizedStatus === "offered" && offerCents !== null
+      ? offerCents
+      : existing.payoutCents ?? offerCents;
+
+  const receivedAt =
+    normalizedStatus === "received" && !existing.receivedAt ? new Date().toISOString() : existing.receivedAt;
+  const stockedAt =
+    normalizedStatus === "stocked" && !existing.stockedAt ? new Date().toISOString() : existing.stockedAt;
+  const paidAt = normalizedStatus === "paid" && !existing.paidAt ? new Date().toISOString() : existing.paidAt;
+
+  if (tokenBundle) {
+    await sql`
+      update buylist_submissions
+      set
+        status = ${normalizedStatus},
+        offer_cents = ${offerCents},
+        offer_note = ${offerNote || null},
+        offer_expires_at = ${expiresAt},
+        payout_cents = ${payoutCents},
+        accept_token_hash = ${tokenBundle.hash},
+        accept_token_expires_at = ${expiresAt},
+        received_at = ${receivedAt},
+        stocked_at = ${stockedAt},
+        paid_at = ${paidAt},
+        updated_at = now()
+      where id = ${id}
+    `;
+
+    // Vincula à conta do mesmo e-mail, se existir (para aparecer em /conta).
+    try {
+      await sql`
+        update buylist_submissions
+        set user_id = users.id
+        from users
+        where buylist_submissions.id = ${id}
+          and lower(users.email) = lower(buylist_submissions.email)
+          and buylist_submissions.user_id is null
+      `;
+    } catch {
+      // best-effort
+    }
+  } else {
+    await sql`
+      update buylist_submissions
+      set
+        status = ${normalizedStatus},
+        offer_cents = ${offerCents},
+        offer_note = ${offerNote || null},
+        offer_expires_at = ${normalizedStatus === "offered" ? expiresAt : existing.offerExpiresAt},
+        payout_cents = ${payoutCents},
+        received_at = ${receivedAt},
+        stocked_at = ${stockedAt},
+        paid_at = ${paidAt},
+        updated_at = now()
+      where id = ${id}
+    `;
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/conta");
+  revalidatePath(`/buylist/${id}`);
+
+  if (tokenBundle && offerCents !== null) {
+    const url = buylistCustomerUrl(id, tokenBundle.token);
+    const emailResult = await sendBuylistOfferEmail({
+      to: existing.email,
+      customerName: existing.customerName,
+      game: existing.game,
+      offerCents,
+      offerNote: offerNote || existing.offerNote,
+      offerUrl: url,
+      expiresAt
+    });
+
+    const notice =
+      emailResult.ok
+        ? "buylist-offered-email"
+        : emailResult.reason === "not-configured"
+          ? "buylist-offered-manual"
+          : "buylist-offered-email-failed";
+
+    redirect(
+      `/admin?tab=${tab}&notice=${notice}&tokenUrl=${encodeURIComponent(url)}&focus=${encodeURIComponent(id)}`
+    );
+  }
+
+  redirect(`/admin?tab=${tab}&notice=buylist-updated&focus=${encodeURIComponent(id)}`);
+}
+
+export async function regenerateBuylistTokenAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const id = readString(formData, "id");
+  const tab = adminTabFrom(formData, "buylists");
+  if (!id) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  await ensureBuylistSchema(sql);
+
+  const existing = await getBuylistSubmissionById(id);
+  if (!existing) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+
+  const tokenBundle = generateAcceptToken();
+  const expiresAt = existing.offerExpiresAt ?? offerExpiryDate(14).toISOString();
 
   await sql`
     update buylist_submissions
-    set status = ${status}, offer_cents = ${offerCents}, updated_at = now()
+    set
+      accept_token_hash = ${tokenBundle.hash},
+      accept_token_expires_at = ${expiresAt},
+      updated_at = now()
+    where id = ${id}
+  `;
+
+  const url = buylistCustomerUrl(id, tokenBundle.token);
+  const sendEmail = readString(formData, "sendEmail") === "1";
+  let notice = "buylist-token";
+
+  if (sendEmail && existing.offerCents != null) {
+    const emailResult = await sendBuylistOfferEmail({
+      to: existing.email,
+      customerName: existing.customerName,
+      game: existing.game,
+      offerCents: existing.offerCents,
+      offerNote: existing.offerNote,
+      offerUrl: url,
+      expiresAt
+    });
+    notice = emailResult.ok
+      ? "buylist-offered-email"
+      : emailResult.reason === "not-configured"
+        ? "buylist-offered-manual"
+        : "buylist-offered-email-failed";
+  }
+
+  revalidatePath("/admin");
+  redirect(
+    `/admin?tab=${tab}&notice=${notice}&tokenUrl=${encodeURIComponent(url)}&focus=${encodeURIComponent(id)}`
+  );
+}
+
+export async function acceptBuylistOfferAction(formData: FormData) {
+  const id = readString(formData, "id");
+  const token = readString(formData, "token");
+  const access = await assertBuylistCustomerAccess(id, token);
+  const back = token ? `/buylist/${id}?token=${encodeURIComponent(token)}` : `/buylist/${id}`;
+
+  if (!access.ok || !access.submission) {
+    redirect(withNotice(back, "error", access.reason === "expired" ? "offer-expired" : "unauthorized"));
+  }
+
+  const submission = access.submission;
+  const status = normalizeBuylistStatus(submission.status);
+  if (status !== "offered") redirect(withNotice(back, "error", "invalid-buylist-transition"));
+  if (isOfferExpired(submission.offerExpiresAt)) redirect(withNotice(back, "error", "offer-expired"));
+  if (!submission.offerCents || submission.offerCents <= 0) redirect(withNotice(back, "error", "invalid-buylist"));
+
+  if (!hasDatabase()) redirect(withNotice(back, "notice", "demo-no-db"));
+  const sql = getSql();
+  if (!sql) redirect(withNotice(back, "error", "no-db"));
+  await ensureBuylistSchema(sql);
+
+  await sql`
+    update buylist_submissions
+    set
+      status = 'awaiting_shipment',
+      customer_accepted_at = now(),
+      updated_at = now()
     where id = ${id}
   `;
 
   revalidatePath("/admin");
-  redirect(`/admin?tab=${tab}&notice=buylist-updated`);
+  revalidatePath("/conta");
+  revalidatePath(`/buylist/${id}`);
+  redirect(withNotice(back, "notice", "offer-accepted"));
+}
+
+export async function declineBuylistOfferAction(formData: FormData) {
+  const id = readString(formData, "id");
+  const token = readString(formData, "token");
+  const access = await assertBuylistCustomerAccess(id, token);
+  const back = token ? `/buylist/${id}?token=${encodeURIComponent(token)}` : `/buylist/${id}`;
+
+  if (!access.ok || !access.submission) {
+    redirect(withNotice(back, "error", access.reason === "expired" ? "offer-expired" : "unauthorized"));
+  }
+
+  const status = normalizeBuylistStatus(access.submission.status);
+  if (status !== "offered") redirect(withNotice(back, "error", "invalid-buylist-transition"));
+
+  if (!hasDatabase()) redirect(withNotice(back, "notice", "demo-no-db"));
+  const sql = getSql();
+  if (!sql) redirect(withNotice(back, "error", "no-db"));
+  await ensureBuylistSchema(sql);
+
+  await sql`
+    update buylist_submissions
+    set
+      status = 'declined',
+      customer_declined_at = now(),
+      updated_at = now()
+    where id = ${id}
+  `;
+
+  revalidatePath("/admin");
+  revalidatePath("/conta");
+  revalidatePath(`/buylist/${id}`);
+  redirect(withNotice(back, "notice", "offer-declined"));
+}
+
+export async function updateBuylistInboundAction(formData: FormData) {
+  const id = readString(formData, "id");
+  const token = readString(formData, "token");
+  const method = readString(formData, "inboundMethod");
+  const trackingCode = readString(formData, "trackingCode");
+  const pickupAt = readString(formData, "pickupAt");
+  const access = await assertBuylistCustomerAccess(id, token);
+  const back = token ? `/buylist/${id}?token=${encodeURIComponent(token)}` : `/buylist/${id}`;
+
+  if (!access.ok || !access.submission) {
+    redirect(withNotice(back, "error", "unauthorized"));
+  }
+
+  const status = normalizeBuylistStatus(access.submission.status);
+  if (status !== "awaiting_shipment" && status !== "in_transit") {
+    redirect(withNotice(back, "error", "invalid-buylist-transition"));
+  }
+  if (method !== "mail" && method !== "pickup") {
+    redirect(withNotice(back, "error", "invalid-buylist"));
+  }
+  if (method === "mail" && !trackingCode) {
+    redirect(withNotice(back, "error", "tracking-required"));
+  }
+  if (method === "pickup" && !pickupAt) {
+    redirect(withNotice(back, "error", "pickup-required"));
+  }
+
+  if (!hasDatabase()) redirect(withNotice(back, "notice", "demo-no-db"));
+  const sql = getSql();
+  if (!sql) redirect(withNotice(back, "error", "no-db"));
+  await ensureBuylistSchema(sql);
+
+  const pickupValue = method === "pickup" ? new Date(pickupAt).toISOString() : null;
+
+  await sql`
+    update buylist_submissions
+    set
+      status = 'in_transit',
+      inbound_method = ${method},
+      tracking_code = ${method === "mail" ? trackingCode : null},
+      pickup_at = ${pickupValue},
+      updated_at = now()
+    where id = ${id}
+  `;
+
+  revalidatePath("/admin");
+  revalidatePath("/conta");
+  revalidatePath(`/buylist/${id}`);
+  redirect(withNotice(back, "notice", "inbound-saved"));
+}
+
+export async function markBuylistReceivedAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const id = readString(formData, "id");
+  const tab = adminTabFrom(formData, "pendencias");
+  if (!id) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  await ensureBuylistSchema(sql);
+
+  const existing = await getBuylistSubmissionById(id);
+  if (!existing) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  if (!canTransitionBuylistStatus(existing.status, "received")) {
+    redirect(`/admin?tab=${tab}&error=invalid-buylist-transition`);
+  }
+
+  await sql`
+    update buylist_submissions
+    set status = 'received', received_at = now(), updated_at = now()
+    where id = ${id}
+  `;
+
+  revalidatePath("/admin");
+  redirect(`/admin?tab=${tab}&notice=buylist-received&focus=${encodeURIComponent(id)}`);
+}
+
+export async function startBuylistCheckingAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const id = readString(formData, "id");
+  const tab = adminTabFrom(formData, "pendencias");
+  if (!id) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  await ensureBuylistSchema(sql);
+
+  const existing = await getBuylistSubmissionById(id);
+  if (!existing) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  if (!canTransitionBuylistStatus(existing.status, "checking") && existing.status !== "checking") {
+    redirect(`/admin?tab=${tab}&error=invalid-buylist-transition`);
+  }
+
+  await sql`
+    update buylist_submissions
+    set status = 'checking', updated_at = now()
+    where id = ${id}
+  `;
+
+  revalidatePath("/admin");
+  redirect(`/admin?tab=${tab}&notice=buylist-checking&focus=${encodeURIComponent(id)}`);
+}
+
+export async function upsertBuylistLineAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const submissionId = readString(formData, "submissionId");
+  const lineId = readString(formData, "lineId");
+  const name = readString(formData, "name");
+  const game = readString(formData, "game") as Game;
+  const setName = readString(formData, "setName");
+  const conditionReceived = readString(formData, "conditionReceived") as CardCondition;
+  const qtyAccepted = Math.max(0, Math.trunc(Number(readString(formData, "qtyAccepted") || "0")));
+  const unitOfferCents = readMoneyCents(formData, "unitOffer");
+  const lineStatus = readString(formData, "lineStatus") || "accepted";
+  const notes = readString(formData, "notes");
+  const tab = adminTabFrom(formData, "pendencias");
+
+  if (
+    !submissionId ||
+    !name ||
+    !validGames.includes(game as (typeof validGames)[number]) ||
+    !validConditions.includes(conditionReceived as (typeof validConditions)[number]) ||
+    !["pending", "accepted", "rejected", "adjusted"].includes(lineStatus) ||
+    !Number.isFinite(unitOfferCents) ||
+    unitOfferCents < 0
+  ) {
+    redirect(`/admin?tab=${tab}&error=invalid-buylist-line`);
+  }
+
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  await ensureBuylistSchema(sql);
+
+  if (lineId) {
+    await sql`
+      update buylist_lines
+      set
+        name = ${name},
+        game = ${game},
+        set_name = ${setName || null},
+        condition_received = ${conditionReceived},
+        qty_accepted = ${qtyAccepted},
+        qty_offered = ${Math.max(qtyAccepted, 1)},
+        unit_offer_cents = ${unitOfferCents},
+        line_status = ${lineStatus},
+        notes = ${notes || null},
+        updated_at = now()
+      where id = ${lineId} and submission_id = ${submissionId}
+    `;
+  } else {
+    await sql`
+      insert into buylist_lines (
+        submission_id, name, game, set_name, condition_received,
+        qty_offered, qty_accepted, unit_offer_cents, line_status, notes
+      )
+      values (
+        ${submissionId}, ${name}, ${game}, ${setName || null}, ${conditionReceived},
+        ${Math.max(qtyAccepted, 1)}, ${qtyAccepted}, ${unitOfferCents}, ${lineStatus}, ${notes || null}
+      )
+    `;
+  }
+
+  const submission = await getBuylistSubmissionById(submissionId);
+  if (submission) {
+    const payout = submission.lines
+      .filter((line) => line.lineStatus === "accepted" || line.lineStatus === "adjusted")
+      .reduce((sum, line) => sum + line.qtyAccepted * line.unitOfferCents, 0);
+    await sql`
+      update buylist_submissions
+      set payout_cents = ${payout}, updated_at = now()
+      where id = ${submissionId}
+    `;
+  }
+
+  revalidatePath("/admin");
+  redirect(`/admin?tab=${tab}&notice=buylist-line-saved&focus=${encodeURIComponent(submissionId)}`);
+}
+
+export async function deleteBuylistLineAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const submissionId = readString(formData, "submissionId");
+  const lineId = readString(formData, "lineId");
+  const tab = adminTabFrom(formData, "pendencias");
+  if (!submissionId || !lineId) redirect(`/admin?tab=${tab}&error=invalid-buylist-line`);
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  await ensureBuylistSchema(sql);
+
+  await sql`delete from buylist_lines where id = ${lineId} and submission_id = ${submissionId}`;
+
+  const refreshed = await getBuylistSubmissionById(submissionId);
+  if (refreshed) {
+    const payout = refreshed.lines
+      .filter((line) => line.lineStatus === "accepted" || line.lineStatus === "adjusted")
+      .reduce((sum, line) => sum + line.qtyAccepted * line.unitOfferCents, 0);
+    await sql`
+      update buylist_submissions
+      set payout_cents = ${payout}, updated_at = now()
+      where id = ${submissionId}
+    `;
+  }
+
+  revalidatePath("/admin");
+  redirect(`/admin?tab=${tab}&notice=buylist-line-deleted&focus=${encodeURIComponent(submissionId)}`);
+}
+
+export async function updateBuylistPayoutAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const id = readString(formData, "id");
+  const payoutCents = readMoneyCents(formData, "payout");
+  const tab = adminTabFrom(formData, "pendencias");
+  if (!id || !Number.isFinite(payoutCents) || payoutCents < 0) {
+    redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  }
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  await ensureBuylistSchema(sql);
+
+  await sql`
+    update buylist_submissions
+    set payout_cents = ${payoutCents}, updated_at = now()
+    where id = ${id}
+  `;
+
+  revalidatePath("/admin");
+  redirect(`/admin?tab=${tab}&notice=buylist-payout-saved&focus=${encodeURIComponent(id)}`);
+}
+
+export async function stockBuylistAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const id = readString(formData, "id");
+  const tab = adminTabFrom(formData, "pendencias");
+  if (!id) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  await ensureBuylistSchema(sql);
+
+  const submission = await getBuylistSubmissionById(id);
+  if (!submission) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  if (submission.status === "stocked" || submission.status === "paid") {
+    redirect(`/admin?tab=${tab}&notice=buylist-already-stocked&focus=${encodeURIComponent(id)}`);
+  }
+  if (submission.status !== "checking" && submission.status !== "received") {
+    redirect(`/admin?tab=${tab}&error=invalid-buylist-transition`);
+  }
+
+  const acceptedLines = submission.lines.filter(
+    (line) => (line.lineStatus === "accepted" || line.lineStatus === "adjusted") && line.qtyAccepted > 0
+  );
+  if (acceptedLines.length === 0) {
+    redirect(`/admin?tab=${tab}&error=buylist-no-lines`);
+  }
+
+  for (const line of acceptedLines) {
+    if (line.cardId) {
+      await sql`
+        update cards
+        set stock = stock + ${line.qtyAccepted}, active = true, updated_at = now()
+        where id = ${line.cardId}
+      `;
+      continue;
+    }
+
+    const name = line.name;
+    const game = line.game;
+    const setName = line.setName || "Buylist";
+    const condition = line.conditionReceived || "NM";
+    const priceCents = Math.max(line.unitOfferCents, 0);
+    const existing = await sql`
+      select id from cards
+      where name = ${name}
+        and game = ${game}
+        and set_name = ${setName}
+        and condition = ${condition}
+        and language = 'PT'
+        and finish = 'Normal'
+      limit 1
+    `;
+
+    if (existing.length > 0) {
+      const cardId = String((existing[0] as { id: string }).id);
+      await sql`
+        update cards
+        set stock = stock + ${line.qtyAccepted}, active = true, updated_at = now()
+        where id = ${cardId}
+      `;
+      await sql`
+        update buylist_lines
+        set card_id = ${cardId}, updated_at = now()
+        where id = ${line.id}
+      `;
+    } else {
+      const inserted = await sql`
+        insert into cards (
+          name, game, set_name, rarity, condition, language,
+          price_cents, market_price_cents, stock, image_url, tags, finish, featured
+        )
+        values (
+          ${name}, ${game}, ${setName}, 'Buylist', ${condition}, 'PT',
+          ${priceCents}, ${priceCents}, ${line.qtyAccepted},
+          ${"/card-backs/magic-back.png"}, ${["buylist"]}, 'Normal', false
+        )
+        returning id
+      `;
+      const cardId = String((inserted[0] as { id: string }).id);
+      await sql`
+        update buylist_lines
+        set card_id = ${cardId}, updated_at = now()
+        where id = ${line.id}
+      `;
+    }
+  }
+
+  const payout =
+    submission.payoutCents ??
+    acceptedLines.reduce((sum, line) => sum + line.qtyAccepted * line.unitOfferCents, 0);
+
+  await sql`
+    update buylist_submissions
+    set
+      status = 'stocked',
+      stocked_at = now(),
+      payout_cents = ${payout},
+      updated_at = now()
+    where id = ${id}
+  `;
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect(`/admin?tab=${tab}&notice=buylist-stocked&focus=${encodeURIComponent(id)}`);
+}
+
+export async function markBuylistPaidAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const id = readString(formData, "id");
+  const tab = adminTabFrom(formData, "pendencias");
+  if (!id) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  await ensureBuylistSchema(sql);
+
+  const existing = await getBuylistSubmissionById(id);
+  if (!existing) redirect(`/admin?tab=${tab}&error=invalid-buylist`);
+  if (existing.status !== "stocked") {
+    redirect(`/admin?tab=${tab}&error=invalid-buylist-transition`);
+  }
+
+  await sql`
+    update buylist_submissions
+    set status = 'paid', paid_at = now(), updated_at = now()
+    where id = ${id}
+  `;
+
+  revalidatePath("/admin");
+  revalidatePath("/conta");
+  redirect(`/admin?tab=${tab}&notice=buylist-paid&focus=${encodeURIComponent(id)}`);
 }
 
 export async function updateOrderStatusAction(formData: FormData) {
@@ -721,9 +1385,17 @@ export async function createBuylistAction(
   const sql = getSql();
   if (!sql) return { ok: false, message: "Banco indisponível." };
 
+  const sessionUser = await currentUser();
+
+  try {
+    await ensureBuylistSchema(sql);
+  } catch {
+    // schema heal best-effort
+  }
+
   const rows = await sql`
-    insert into buylist_submissions (customer_name, email, game, notes)
-    values (${customerName}, ${email}, ${game}, ${notes})
+    insert into buylist_submissions (customer_name, email, game, notes, user_id)
+    values (${customerName}, ${email}, ${game}, ${notes}, ${sessionUser?.id ?? null})
     returning id
   `;
   const submissionId = String(rows[0].id);

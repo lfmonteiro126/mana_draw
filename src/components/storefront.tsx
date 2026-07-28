@@ -731,7 +731,10 @@ export function Storefront({
               ))}
             </div>
           </div>
-          <BuylistForm />
+          <BuylistForm
+            defaultEmail={currentUser?.email ?? ""}
+            defaultName={currentUser?.name ?? ""}
+          />
         </div>
       </section>
 

@@ -70,6 +70,41 @@ export type BuylistItem = {
   turnaround: string;
 };
 
+export type BuylistStatus =
+  | "new"
+  | "reviewing"
+  | "offered"
+  | "declined"
+  | "awaiting_shipment"
+  | "in_transit"
+  | "received"
+  | "checking"
+  | "stocked"
+  | "paid"
+  | "cancelled"
+  | "approved";
+
+export type BuylistInboundMethod = "mail" | "pickup";
+
+export type BuylistLineStatus = "pending" | "accepted" | "rejected" | "adjusted";
+
+export type BuylistLine = {
+  id: string;
+  submissionId: string;
+  name: string;
+  game: Game;
+  setName: string | null;
+  conditionExpected: CardCondition | null;
+  conditionReceived: CardCondition | null;
+  qtyOffered: number;
+  qtyAccepted: number;
+  unitOfferCents: number;
+  lineStatus: BuylistLineStatus;
+  cardId: string | null;
+  externalId: string | null;
+  notes: string | null;
+};
+
 export type BuylistSubmission = {
   id: string;
   customerName: string;
@@ -79,8 +114,26 @@ export type BuylistSubmission = {
   notes: string;
   photoCount: number;
   offerCents: number | null;
+  offerNote: string | null;
+  offerExpiresAt: string | null;
+  payoutCents: number | null;
+  inboundMethod: BuylistInboundMethod | null;
+  trackingCode: string | null;
+  pickupAt: string | null;
+  customerAcceptedAt: string | null;
+  customerDeclinedAt: string | null;
+  receivedAt: string | null;
+  stockedAt: string | null;
+  paidAt: string | null;
+  userId: string | null;
+  hasAcceptToken: boolean;
+  acceptTokenExpiresAt: string | null;
   photoUrls: string[];
+  lines: BuylistLine[];
   createdAt: string;
+  /** Token em claro só quando acabou de ser gerado (não persiste). */
+  acceptToken?: string | null;
+  customerUrl?: string | null;
 };
 
 export type CardSuggestion = {

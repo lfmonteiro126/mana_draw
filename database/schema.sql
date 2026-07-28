@@ -164,6 +164,20 @@ create table if not exists buylist_submissions (
   game tcg_game not null,
   status text not null default 'new',
   offer_cents integer check (offer_cents is null or offer_cents >= 0),
+  offer_note text,
+  offer_expires_at timestamptz,
+  payout_cents integer check (payout_cents is null or payout_cents >= 0),
+  inbound_method text check (inbound_method is null or inbound_method in ('mail', 'pickup')),
+  tracking_code text,
+  pickup_at timestamptz,
+  customer_accepted_at timestamptz,
+  customer_declined_at timestamptz,
+  received_at timestamptz,
+  stocked_at timestamptz,
+  paid_at timestamptz,
+  accept_token_hash text,
+  accept_token_expires_at timestamptz,
+  user_id text references users (id) on delete set null,
   notes text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -171,6 +185,22 @@ create table if not exists buylist_submissions (
 
 alter table buylist_submissions
   add column if not exists offer_cents integer check (offer_cents is null or offer_cents >= 0);
+
+alter table buylist_submissions
+  add column if not exists offer_note text,
+  add column if not exists offer_expires_at timestamptz,
+  add column if not exists payout_cents integer,
+  add column if not exists inbound_method text,
+  add column if not exists tracking_code text,
+  add column if not exists pickup_at timestamptz,
+  add column if not exists customer_accepted_at timestamptz,
+  add column if not exists customer_declined_at timestamptz,
+  add column if not exists received_at timestamptz,
+  add column if not exists stocked_at timestamptz,
+  add column if not exists paid_at timestamptz,
+  add column if not exists accept_token_hash text,
+  add column if not exists accept_token_expires_at timestamptz,
+  add column if not exists user_id text;
 
 create table if not exists buylist_photos (
   id text primary key default gen_random_uuid()::text,
@@ -182,7 +212,28 @@ create table if not exists buylist_photos (
   created_at timestamptz not null default now()
 );
 
+create table if not exists buylist_lines (
+  id text primary key default gen_random_uuid()::text,
+  submission_id text not null references buylist_submissions (id) on delete cascade,
+  name text not null,
+  game tcg_game not null,
+  set_name text,
+  condition_expected text,
+  condition_received text,
+  qty_offered integer not null default 1 check (qty_offered > 0),
+  qty_accepted integer not null default 0 check (qty_accepted >= 0),
+  unit_offer_cents integer not null default 0 check (unit_offer_cents >= 0),
+  line_status text not null default 'pending',
+  card_id text references cards (id) on delete set null,
+  external_id text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists buylist_submissions_status_idx on buylist_submissions (status, created_at desc);
+create index if not exists buylist_submissions_email_idx on buylist_submissions (email, created_at desc);
+create index if not exists buylist_lines_submission_idx on buylist_lines (submission_id);
 
 create table if not exists external_card_cache (
   game tcg_game not null,
