@@ -12,6 +12,7 @@ import {
   Gauge,
   Inbox,
   Layers3,
+  LogOut,
   PackageCheck,
   Plus,
   Search,
@@ -21,6 +22,7 @@ import {
   Store,
   Trash2,
   TrendingUp,
+  UserRound,
   UsersRound
 } from "lucide-react";
 import Image from "next/image";
@@ -28,6 +30,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   deleteCardAction,
+  logoutAction,
   updateCardAction,
   updateOrderStatusAction
 } from "@/app/actions";
@@ -185,21 +188,28 @@ export default async function AdminPage({
             href="/"
           >
             <ChevronLeft size={16} />
-            Voltar para loja
+            Voltar para a loja
           </Link>
           <div className="surface-card mt-8 overflow-hidden">
-            <div className="border-b border-[var(--line)] bg-[var(--surface-soft)]/80 px-6 py-6 sm:px-8">
-              <span className="grid h-12 w-12 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white shadow-[0_8px_18px_rgba(15,159,144,0.28)]">
-                MD
+            <div className="border-b border-[var(--line)] bg-[#0b1220] px-6 py-6 text-slate-100 sm:px-8">
+              <span className="grid h-12 w-12 place-items-center rounded-[var(--radius-control)] bg-teal-400 text-sm font-bold text-slate-950">
+                OPS
               </span>
-              <p className="mt-4 text-2xl font-semibold tracking-tight">Mana Draw Admin</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Entre com uma conta admin para gerenciar estoque, preços, pedidos e cotações.
+              <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.18em] text-teal-300">Acesso restrito</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">Console operacional</p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                Área interna da loja. Não é a conta de cliente — use credenciais de operador.
               </p>
             </div>
             <div className="px-6 py-6 sm:px-8">
-              <AuthPanel redirectTo="/admin" />
+              <AuthPanel loginOnly redirectTo="/admin" />
               <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
+                Precisa da conta de cliente?{" "}
+                <Link className="font-semibold text-[var(--accent)]" href="/conta">
+                  Ir para Conta
+                </Link>
+              </p>
+              <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
                 Demo local sem Neon: <span className="font-medium text-[var(--ink)]">admin@manadraw.local</span> /{" "}
                 <span className="font-medium text-[var(--ink)]">admin123</span>
               </p>
@@ -252,15 +262,23 @@ export default async function AdminPage({
 
   return (
     <main className="admin-console min-h-screen overflow-x-hidden text-[var(--ink)]">
-      <div className="grid min-h-screen min-w-0 lg:grid-cols-[272px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-[var(--line)] bg-white/95 backdrop-blur-xl lg:flex lg:flex-col">
-          <div className="flex h-[76px] items-center gap-3 border-b border-[var(--line)] px-5">
-            <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white shadow-[0_8px_18px_rgba(15,159,144,0.28)]">
-              MD
+      <div className="grid min-h-screen min-w-0 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="admin-sidebar hidden border-r lg:flex lg:flex-col">
+          <div className="flex h-[84px] items-center gap-3 border-b border-[var(--line)] px-5">
+            <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-teal-400 text-xs font-extrabold text-slate-950">
+              OPS
             </span>
             <div className="min-w-0">
-              <p className="truncate text-lg font-semibold tracking-tight">Mana Draw</p>
-              <p className="text-xs text-[var(--muted)]">Console admin</p>
+              <p className="truncate text-lg font-semibold tracking-tight">Mana Draw Ops</p>
+              <p className="text-xs text-[var(--muted)]">Console operacional</p>
+            </div>
+          </div>
+
+          <div className="px-4 pt-4">
+            <div className="rounded-[var(--radius-control)] border border-teal-400/20 bg-teal-400/10 px-3 py-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-300">Sessão operador</p>
+              <p className="mt-1 truncate text-sm font-semibold text-[var(--ink)]">{user.name || "Admin"}</p>
+              <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
             </div>
           </div>
 
@@ -281,33 +299,44 @@ export default async function AdminPage({
             ))}
           </nav>
 
-          <div className="space-y-2 border-t border-[var(--line)] p-4">
-            <div className="flex items-center gap-3 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-xs font-bold text-white">
-                {initials}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{user.name || "Admin"}</p>
-                <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
-              </div>
-            </div>
+          <div className="space-y-1 border-t border-[var(--line)] p-4">
+            <p className="px-1 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+              Trocar sessão
+            </p>
             <Link
               className="flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
               href="/"
             >
               <Store size={18} />
-              Abrir loja
+              Loja (vitrine)
             </Link>
+            <Link
+              className="flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
+              href="/conta"
+            >
+              <UserRound size={18} />
+              Conta de cliente
+            </Link>
+            <form action={logoutAction}>
+              <button
+                className="flex w-full items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/10"
+                type="submit"
+              >
+                <LogOut size={18} />
+                Encerrar sessão
+              </button>
+            </form>
           </div>
         </aside>
 
-        <section className="min-w-0 overflow-x-hidden pb-[calc(4.75rem+var(--safe-bottom))] lg:pb-0">
+        <section className="min-w-0 overflow-x-hidden pb-[calc(5.25rem+var(--safe-bottom))] lg:pb-0">
           <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur-xl">
             <div className="flex min-h-[64px] items-center justify-between gap-3 px-3 py-2.5 sm:min-h-[76px] sm:gap-4 sm:px-6 sm:py-3 lg:px-7">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)] lg:hidden">
-                  Mana Draw Admin
-                </p>
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <span className="admin-mode-pill">Modo operador</span>
+                  <span className="hidden text-xs text-[var(--muted)] sm:inline">Separado da conta de cliente</span>
+                </div>
                 <h1 className="truncate text-lg font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
                 <p className="mt-1 hidden text-sm text-[var(--muted)] sm:block">{page.description}</p>
               </div>
@@ -324,7 +353,7 @@ export default async function AdminPage({
                   />
                 </form>
                 <Link
-                  className="hidden h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] sm:inline-flex"
+                  className="hidden h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[#0b1220] px-4 text-sm font-semibold text-white transition hover:bg-slate-800 sm:inline-flex"
                   href="/"
                 >
                   <Store size={16} />
@@ -338,12 +367,15 @@ export default async function AdminPage({
                 >
                   <Bell size={18} />
                   {alertCount > 0 ? (
-                    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white">
+                    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-teal-500 px-1 text-[10px] font-bold text-white">
                       {alertCount > 9 ? "9+" : alertCount}
                     </span>
                   ) : null}
                 </Link>
-                <span className="grid h-10 w-10 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white sm:h-11 sm:w-11 lg:hidden">
+                <span
+                  className="grid h-10 w-10 place-items-center rounded-[var(--radius-control)] bg-[#0b1220] text-xs font-bold text-teal-300 sm:h-11 sm:w-11 lg:hidden"
+                  title={`Operador ${user.name || user.email}`}
+                >
                   {initials}
                 </span>
               </div>
@@ -472,7 +504,11 @@ export default async function AdminPage({
           </div>
         </section>
       </div>
-      <AdminMobileNav activeTab={activeTab} alertCount={alertCount} />
+      <AdminMobileNav
+        activeTab={activeTab}
+        alertCount={alertCount}
+        operatorName={user.name || user.email}
+      />
     </main>
   );
 }

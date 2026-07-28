@@ -385,11 +385,13 @@ export function Storefront({
               <>
                 {currentUser.role === "admin" && (
                   <Link
-                    className="hidden h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)] sm:inline-flex"
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[#0b1220] px-3 text-sm font-semibold text-teal-300 transition hover:bg-slate-900"
                     href="/admin"
+                    title="Console operacional"
                   >
                     <LayoutDashboard size={16} />
-                    Admin
+                    <span className="hidden sm:inline">Console OPS</span>
+                    <span className="sm:hidden">OPS</span>
                   </Link>
                 )}
                 <Link
@@ -397,7 +399,7 @@ export function Storefront({
                   href="/conta"
                 >
                   <UserRound size={16} />
-                  {currentUser.name}
+                  Conta
                 </Link>
                 <form action={logoutAction} className="hidden sm:block">
                   <button
@@ -505,13 +507,23 @@ export function Storefront({
           </Link>
 
           {currentUser ? (
-            <Link
-              href="/conta"
-              className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
-            >
-              <UserRound size={20} strokeWidth={1.75} />
-              <span className="max-w-[3.25rem] truncate">{currentUser.name.split(" ")[0]}</span>
-            </Link>
+            currentUser.role === "admin" ? (
+              <Link
+                href="/admin"
+                className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold text-[#0b1220] transition-all duration-200 active:scale-95"
+              >
+                <LayoutDashboard size={20} strokeWidth={2.1} />
+                <span>OPS</span>
+              </Link>
+            ) : (
+              <Link
+                href="/conta"
+                className="relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] text-[10px] font-semibold text-[var(--muted)] transition-all duration-200 hover:text-[var(--ink)] active:scale-95"
+              >
+                <UserRound size={20} strokeWidth={1.75} />
+                <span className="max-w-[3.25rem] truncate">Conta</span>
+              </Link>
+            )
           ) : (
             <button
               type="button"
