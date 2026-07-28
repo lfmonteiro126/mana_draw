@@ -12,6 +12,7 @@ import {
   Gauge,
   Inbox,
   Layers3,
+  LogOut,
   PackageCheck,
   Plus,
   Search,
@@ -21,6 +22,7 @@ import {
   Store,
   Trash2,
   TrendingUp,
+  UserRound,
   UsersRound
 } from "lucide-react";
 import Image from "next/image";
@@ -28,13 +30,15 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   consumeOfferLinkFlash,
-  createCardAction,
   deleteCardAction,
+  logoutAction,
   updateCardAction,
   updateOrderStatusAction
 } from "@/app/actions";
 import { BuylistAdminCard } from "@/components/admin/buylist-admin-card";
 import { CopyLinkButton } from "@/components/admin/copy-link-button";
+import { AdminMobileNav } from "@/components/admin/mobile-nav";
+import { NewCardEntry } from "@/components/admin/new-card-entry";
 import { ShareOfferLinks } from "@/components/admin/share-offer-links";
 import {
   AlertBanner,
@@ -55,7 +59,6 @@ import {
   adminInputWithIconClass
 } from "@/components/admin/ui";
 import { AuthPanel } from "@/components/auth-panel";
-import { CardAutocomplete } from "@/components/card-autocomplete";
 import { OrderCard } from "@/components/order-card";
 import { allowDemoAuth, currentUser, DEMO_ADMIN } from "@/lib/auth";
 import {
@@ -63,7 +66,7 @@ import {
   isInboundPendingStatus,
   isOpenBuylistStatus
 } from "@/lib/buylist-flow";
-import { buylistStatusLabels, buylistStatusStyles } from "@/lib/buylist-ui";
+import { buylistStatusLabels } from "@/lib/buylist-ui";
 import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import {
   getAdminCards,
@@ -131,7 +134,7 @@ const tabLabels: Record<AdminTab, { title: string; description: string }> = {
   },
   "new-card": {
     title: "Nova carta",
-    description: "Cadastre singles com autocomplete, print selecionado e preço de mercado."
+    description: "Cadastre singles uma a uma ou importe lotes CSV/TXT do ManaBox."
   },
   buylists: {
     title: "Buylists",
@@ -186,22 +189,29 @@ export default async function AdminPage({
             href="/"
           >
             <ChevronLeft size={16} />
-            Voltar para loja
+            Voltar para a loja
           </Link>
           <div className="surface-card mt-8 overflow-hidden">
-            <div className="border-b border-[var(--line)] bg-[var(--surface-soft)]/80 px-6 py-6 sm:px-8">
-              <span className="grid h-12 w-12 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white shadow-[0_8px_18px_rgba(15,159,144,0.28)]">
-                MD
+            <div className="border-b border-[var(--line)] bg-[#0b1220] px-6 py-6 text-slate-100 sm:px-8">
+              <span className="grid h-12 w-12 place-items-center rounded-[var(--radius-control)] bg-teal-400 text-sm font-bold text-slate-950">
+                OPS
               </span>
-              <p className="mt-4 text-2xl font-semibold tracking-tight">Mana Draw Admin</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Entre com uma conta admin para gerenciar estoque, preços, pedidos e cotações.
+              <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.18em] text-teal-300">Acesso restrito</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">Console operacional</p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                Área interna da loja. Não é a conta de cliente — use credenciais de operador.
               </p>
             </div>
             <div className="px-6 py-6 sm:px-8">
-              <AuthPanel redirectTo="/admin" />
+              <AuthPanel loginOnly redirectTo="/admin" />
+              <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
+                Precisa da conta de cliente?{" "}
+                <Link className="font-semibold text-[var(--accent)]" href="/conta">
+                  Ir para Conta
+                </Link>
+              </p>
               {allowDemoAuth() ? (
-                <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
+                <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
                   Demo local sem Neon: <span className="font-medium text-[var(--ink)]">{DEMO_ADMIN.email}</span> /{" "}
                   <span className="font-medium text-[var(--ink)]">{DEMO_ADMIN.password}</span>
                 </p>
@@ -249,21 +259,29 @@ export default async function AdminPage({
     inboundPending.length +
     receiveQueue.filter((item) => item.status !== "stocked").length +
     pendingOrders.length;
-  const navGroups = getNavGroups(alertCount, pendingOrders.length);
+  const navGroups = getNavGroups(alertCount);
   const page = tabLabels[activeTab];
   const initials = userInitials(user.name || user.email);
 
   return (
-    <main className="admin-console min-h-screen text-[var(--ink)]">
-      <div className="grid min-h-screen lg:grid-cols-[272px_1fr]">
-        <aside className="hidden border-r border-[var(--line)] bg-white/95 backdrop-blur-xl lg:flex lg:flex-col">
-          <div className="flex h-[76px] items-center gap-3 border-b border-[var(--line)] px-5">
-            <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white shadow-[0_8px_18px_rgba(15,159,144,0.28)]">
-              MD
+    <main className="admin-console min-h-screen overflow-x-hidden text-[var(--ink)]">
+      <div className="grid min-h-screen min-w-0 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="admin-sidebar hidden border-r lg:flex lg:flex-col">
+          <div className="flex h-[84px] items-center gap-3 border-b border-[var(--line)] px-5">
+            <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-teal-400 text-xs font-extrabold text-slate-950">
+              OPS
             </span>
             <div className="min-w-0">
-              <p className="truncate text-lg font-semibold tracking-tight">Mana Draw</p>
-              <p className="text-xs text-[var(--muted)]">Console admin</p>
+              <p className="truncate text-lg font-semibold tracking-tight">Mana Draw Ops</p>
+              <p className="text-xs text-[var(--muted)]">Console operacional</p>
+            </div>
+          </div>
+
+          <div className="px-4 pt-4">
+            <div className="rounded-[var(--radius-control)] border border-teal-400/20 bg-teal-400/10 px-3 py-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-300">Sessão operador</p>
+              <p className="mt-1 truncate text-sm font-semibold text-[var(--ink)]">{user.name || "Admin"}</p>
+              <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
             </div>
           </div>
 
@@ -284,35 +302,49 @@ export default async function AdminPage({
             ))}
           </nav>
 
-          <div className="space-y-2 border-t border-[var(--line)] p-4">
-            <div className="flex items-center gap-3 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-xs font-bold text-white">
-                {initials}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{user.name || "Admin"}</p>
-                <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
-              </div>
-            </div>
+          <div className="space-y-1 border-t border-[var(--line)] p-4">
+            <p className="px-1 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+              Trocar sessão
+            </p>
             <Link
               className="flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
               href="/"
             >
               <Store size={18} />
-              Abrir loja
+              Loja (vitrine)
             </Link>
+            <Link
+              className="flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
+              href="/conta"
+            >
+              <UserRound size={18} />
+              Conta de cliente
+            </Link>
+            <form action={logoutAction}>
+              <button
+                className="flex w-full items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/10"
+                type="submit"
+              >
+                <LogOut size={18} />
+                Encerrar sessão
+              </button>
+            </form>
           </div>
         </aside>
 
-        <section className="min-w-0">
-          <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/90 backdrop-blur-xl">
-            <div className="flex min-h-[76px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-7">
-              <div className="min-w-0">
-                <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
+        <section className="min-w-0 overflow-x-hidden pb-[calc(5.25rem+var(--safe-bottom))] lg:pb-0">
+          <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur-xl">
+            <div className="flex min-h-[64px] items-center justify-between gap-3 px-3 py-2.5 sm:min-h-[76px] sm:gap-4 sm:px-6 sm:py-3 lg:px-7">
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <span className="admin-mode-pill">Modo operador</span>
+                  <span className="hidden text-xs text-[var(--muted)] sm:inline">Separado da conta de cliente</span>
+                </div>
+                <h1 className="truncate text-lg font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
                 <p className="mt-1 hidden text-sm text-[var(--muted)] sm:block">{page.description}</p>
               </div>
 
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                 <form action="/admin" className="relative hidden w-[260px] xl:block" method="get">
                   <input type="hidden" name="tab" value="inventory" />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
@@ -324,59 +356,36 @@ export default async function AdminPage({
                   />
                 </form>
                 <Link
-                  className="hidden h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition hover:border-[var(--accent)] hover:bg-[var(--surface-soft)] sm:inline-flex"
+                  className="hidden h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[#0b1220] px-4 text-sm font-semibold text-white transition hover:bg-slate-800 sm:inline-flex"
                   href="/"
                 >
                   <Store size={16} />
                   Loja
                 </Link>
                 <Link
-                  className="relative grid h-11 w-11 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-soft)]"
+                  className="relative grid h-10 w-10 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-soft)] sm:h-11 sm:w-11"
                   href="/admin?tab=pendencias"
                   aria-label={`${alertCount} pendências`}
                   title="Pendências"
                 >
                   <Bell size={18} />
                   {alertCount > 0 ? (
-                    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white">
+                    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-teal-500 px-1 text-[10px] font-bold text-white">
                       {alertCount > 9 ? "9+" : alertCount}
                     </span>
                   ) : null}
                 </Link>
-                <span className="grid h-11 w-11 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-bold text-white lg:hidden">
+                <span
+                  className="grid h-10 w-10 place-items-center rounded-[var(--radius-control)] bg-[#0b1220] text-xs font-bold text-teal-300 sm:h-11 sm:w-11 lg:hidden"
+                  title={`Operador ${user.name || user.email}`}
+                >
                   {initials}
                 </span>
               </div>
             </div>
-
-            <nav className="flex gap-2 overflow-x-auto border-t border-[var(--line)] px-4 py-3 scrollbar-none lg:hidden">
-              {navGroups.flatMap((group) => group.items).map((item) => (
-                <Link
-                  key={item.tab}
-                  className={`chip inline-flex h-10 shrink-0 items-center gap-2 px-3 text-sm ${
-                    activeTab === item.tab ? "chip-active" : "text-[var(--muted)]"
-                  }`}
-                  href={`/admin?tab=${item.tab}`}
-                >
-                  {item.icon}
-                  {item.label}
-                  {item.badge ? (
-                    <span
-                      className={`rounded px-1.5 text-xs ${
-                        activeTab === item.tab
-                          ? "bg-white/20 text-white"
-                          : "bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </Link>
-              ))}
-            </nav>
           </header>
 
-          <div className="px-4 py-6 sm:px-6 lg:px-7">
+          <div className="min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-7">
             {(notice || error) && (
               <AlertBanner tone={error ? "error" : "success"}>
                 <span className="inline-flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -498,6 +507,11 @@ export default async function AdminPage({
           </div>
         </section>
       </div>
+      <AdminMobileNav
+        activeTab={activeTab}
+        alertCount={alertCount}
+        operatorName={user.name || user.email}
+      />
     </main>
   );
 }
@@ -532,9 +546,9 @@ function OverviewTab({
   const priorityCount = lowStockCards.length + openSubmissions.length + pendingOrders.length;
 
   return (
-    <div className="grid gap-6">
-      <section className="surface-card overflow-hidden">
-        <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
+    <div className="grid min-w-0 gap-4 sm:gap-6">
+      <section className="surface-card min-w-0 overflow-hidden">
+        <div className="grid min-w-0 gap-4 p-4 sm:gap-5 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] lg:p-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)]">
@@ -544,14 +558,14 @@ function OverviewTab({
                 {cards.length} prints ativos
               </span>
             </div>
-            <h2 className="mt-5 max-w-3xl text-2xl font-semibold leading-tight tracking-tight text-[var(--ink)] sm:text-3xl">
+            <h2 className="mt-4 max-w-3xl text-xl font-semibold leading-tight tracking-tight text-[var(--ink)] sm:mt-5 sm:text-3xl">
               Estoque, compra e venda em uma leitura rápida.
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)] sm:mt-3">
               Priorize reposição, responda buylists e acompanhe pedidos sem perder o contexto do inventário.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-3">
             <HeroStat label="Estoque total" value={`${totalStock} un.`} />
             <HeroStat label="Valor parado" value={formatCurrency(inventoryValue)} />
             <HeroStat label="Cotações abertas" value={String(openSubmissions.length)} />
@@ -560,7 +574,7 @@ function OverviewTab({
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid min-w-0 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={<CircleDollarSign size={20} />}
           label="Valor em estoque"
@@ -899,12 +913,12 @@ function NewCardTab({
       <NewCardPanel />
       <div className="grid gap-6 self-start xl:sticky xl:top-24">
         <Panel>
-          <PanelHeader title="Como cadastrar melhor" text="Use a busca para escolher o print correto e evitar duplicatas." />
+          <PanelHeader title="Como cadastrar melhor" text="Use a busca unitária ou o lote ManaBox com prévia Scryfall." />
           <div className="grid gap-3 text-sm text-[var(--muted)]">
             {[
-              ["1. Escolha o jogo e busque pelo nome", "A integração preenche coleção, raridade, imagem e preço médio quando disponível."],
-              ["2. Selecione o print exato", "Prefira a versão com arte, acabamento e coleção corretos para reduzir retrabalho."],
-              ["3. Revise preço e estoque", "O preço sugerido é referência de mercado; ajuste antes de publicar na vitrine."]
+              ["1. Uma carta", "Busque o nome, escolha o print e revise preço BRL antes de publicar."],
+              ["2. Em lote (ManaBox)", "Exporte CSV/TXT no app, pré-visualize matches no Scryfall e importe só o que estiver OK."],
+              ["3. Preço de venda", "Mercado Scryfall fica em USD; venda é BRL — no lote pode deixar R$ 0 e ajustar no inventário."]
             ].map(([title, text]) => (
               <div key={title} className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
                 <p className="font-semibold text-[var(--ink)]">{title}</p>
@@ -1428,24 +1442,13 @@ function NewCardPanel() {
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Nova carta</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Cadastre uma carta direto no catálogo.</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Cadastro unitário ou importação em lote via ManaBox (CSV/TXT).
+          </p>
         </div>
         <Plus className="text-[var(--accent)]" size={20} />
       </div>
-      <form action={createCardAction} className="grid gap-3">
-        <input type="hidden" name="tab" value="new-card" />
-        <CardAutocomplete />
-        <label className="flex items-center gap-2 text-sm font-medium text-[var(--muted)]">
-          <input className="h-4 w-4 accent-[var(--accent)]" name="featured" type="checkbox" />
-          Destacar na vitrine
-        </label>
-        <button
-          className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]"
-          type="submit"
-        >
-          Cadastrar carta
-        </button>
-      </form>
+      <NewCardEntry />
     </Panel>
   );
 }
@@ -1754,7 +1757,7 @@ type NavItemConfig = {
   badge?: number;
 };
 
-function getNavGroups(alertCount: number, _pendingOrders: number): Array<{ label: string; items: NavItemConfig[] }> {
+function getNavGroups(alertCount: number): Array<{ label: string; items: NavItemConfig[] }> {
   return [
     {
       label: "Operação",

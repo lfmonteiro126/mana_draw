@@ -12,10 +12,12 @@ const inputClass =
 
 export function AuthPanel({
   redirectTo,
-  checkoutHint = false
+  checkoutHint = false,
+  loginOnly = false
 }: {
   redirectTo?: string;
   checkoutHint?: boolean;
+  loginOnly?: boolean;
 }) {
   const [loginState, loginFormAction, loginPending] = useActionState(
     loginAction,
@@ -38,7 +40,7 @@ export function AuthPanel({
   }, [loginState.ok, redirectTo, registerState.ok]);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className={`grid gap-4 ${loginOnly ? "" : "sm:grid-cols-2"}`}>
       {checkoutHint ? (
         <p className="rounded-[var(--radius-control)] bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--accent-strong)] sm:col-span-2">
           Entre para concluir sua compra. Seu carrinho será mantido nesta sessão.
@@ -48,7 +50,7 @@ export function AuthPanel({
       <form action={loginFormAction} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
         <div className="mb-4 flex items-center gap-2">
           <LogIn size={18} className="text-[var(--accent)]" />
-          <h3 className="font-semibold text-[var(--ink)]">Entrar</h3>
+          <h3 className="font-semibold text-[var(--ink)]">{loginOnly ? "Entrar no console" : "Entrar"}</h3>
         </div>
         <div className="grid gap-3">
           <label className="grid gap-1.5 text-sm">
@@ -78,7 +80,7 @@ export function AuthPanel({
             disabled={loginPending}
             type="submit"
           >
-            {loginPending ? "Entrando..." : "Entrar"}
+            {loginPending ? "Entrando..." : loginOnly ? "Acessar console" : "Entrar"}
           </button>
           {loginState.message ? (
             <p
@@ -91,6 +93,7 @@ export function AuthPanel({
         </div>
       </form>
 
+      {loginOnly ? null : (
       <form action={registerFormAction} className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[var(--shadow-soft)]">
         <div className="mb-4 flex items-center gap-2">
           <UserPlus size={18} className="text-[var(--accent)]" />
@@ -141,6 +144,7 @@ export function AuthPanel({
           ) : null}
         </div>
       </form>
+      )}
     </div>
   );
 }

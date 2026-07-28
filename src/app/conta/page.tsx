@@ -1,5 +1,6 @@
-import { Camera, PackageCheck } from "lucide-react";
+import { Camera, LayoutDashboard, LogOut, PackageCheck } from "lucide-react";
 import Link from "next/link";
+import { logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { StatusBadge } from "@/components/admin/ui";
 import { OrderCard } from "@/components/order-card";
@@ -23,15 +24,17 @@ function AccountChrome({ children }: { children: React.ReactNode }) {
               <span className="block text-lg font-semibold tracking-tight text-[var(--ink)] transition group-hover:text-[var(--accent)]">
                 Mana Draw
               </span>
-              <span className="text-xs text-[var(--muted)]">Voltar para a loja</span>
+              <span className="text-xs text-[var(--muted)]">Conta de cliente · voltar à loja</span>
             </span>
           </Link>
-          <Link
-            href="/#catalogo"
-            className="text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
-          >
-            Catálogo
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/#catalogo"
+              className="text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
+            >
+              Catálogo
+            </Link>
+          </div>
         </div>
       </header>
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">{children}</div>
@@ -81,7 +84,7 @@ export default async function AccountPage() {
     return (
       <AccountChrome>
         <section>
-          <h1 className="text-3xl font-semibold tracking-tight text-[var(--ink)]">Sua conta</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--ink)]">Conta de cliente</h1>
           <p className="mt-2 text-[var(--muted)]">Entre para acompanhar pedidos e cotações.</p>
           <div className="mt-6">
             <AuthPanel redirectTo="/conta" />
@@ -109,22 +112,47 @@ export default async function AccountPage() {
 
   return (
     <AccountChrome>
+      {user.role === "admin" ? (
+        <section className="mb-6 overflow-hidden rounded-[var(--radius-card)] border border-slate-800/20 bg-[#0b1220] text-slate-100 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-300">Sessões separadas</p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight">Você está na conta de cliente</h2>
+              <p className="mt-1 max-w-xl text-sm leading-6 text-slate-300">
+                Aqui ficam seus pedidos e buylists pessoais. Para operar estoque, cotações e pedidos da loja, use o
+                console operacional.
+              </p>
+            </div>
+            <Link
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-teal-400 px-4 text-sm font-bold text-slate-950 transition hover:bg-teal-300"
+              href="/admin"
+            >
+              <LayoutDashboard size={16} />
+              Abrir console OPS
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       <div className="flex flex-col justify-between gap-4 border-b border-[var(--line)] pb-6 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">Conta</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">Conta de cliente</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--ink)]">Seus pedidos e cotações</h1>
           <p className="mt-2 text-[var(--muted)]">
             {user.name} · {user.email}
           </p>
         </div>
-        {user.role === "admin" && (
-          <Link
-            className="inline-flex h-11 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-            href="/admin?tab=orders"
-          >
-            Abrir admin
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <form action={logoutAction}>
+            <button
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-soft)]"
+              type="submit"
+            >
+              <LogOut size={16} />
+              Sair
+            </button>
+          </form>
+        </div>
       </div>
 
       {pendingOffers.length > 0 ? (
