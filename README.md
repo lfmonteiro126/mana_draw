@@ -18,13 +18,13 @@ Rotas principais:
 - `/pedido/retorno`: retorno do Mercado Pago.
 - `/admin`: painel para estoque, preco, condicao e cotações de buylist.
 
-Sem Neon configurado, use `admin@manadraw.local` com senha `admin123` para testar o admin demo.
+Sem Neon configurado (apenas em desenvolvimento), use `admin@manadraw.local` com senha `admin123` para testar o admin demo.
 
 ## Banco de dados
 
 Execute `database/schema.sql` no SQL Editor do Neon (inclui colunas de frete/pagamento em `orders`).
 
-Para criar um admin real, defina `ADMIN_EMAIL` no `.env.local`; o primeiro cadastro com esse email recebera papel `admin`.
+Para criar um admin real, insira o usuário no Neon com `role = 'admin'` (o cadastro público nunca promove admin).
 
 Busca full-text:
 
@@ -35,7 +35,7 @@ Busca full-text:
 
 Configure no `.env.local` / Vercel (veja `.env.example`):
 
-- **Mercado Pago (Checkout Pro):** `MERCADOPAGO_ACCESS_TOKEN`, `NEXT_PUBLIC_APP_URL`, webhook em `/api/webhooks/mercadopago`
+- **Mercado Pago (Checkout Pro):** `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_URL`, webhook em `/api/webhooks/mercadopago`
 - **Melhor Envio:** `MELHOR_ENVIO_TOKEN`, `MELHOR_ENVIO_FROM_POSTAL_CODE`, `MELHOR_ENVIO_USER_AGENT`
 - **Vercel Blob:** crie um Blob Store no projeto (injeta `BLOB_READ_WRITE_TOKEN`)
 

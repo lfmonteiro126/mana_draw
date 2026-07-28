@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { quoteShipping } from "@/lib/shipping";
 
+const MAX_ITEM_COUNT = 200;
+const MAX_INSURANCE_CENTS = 5_000_000; // R$ 50.000
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
@@ -13,14 +16,18 @@ export async function POST(request: Request) {
     const itemCount = Number(body.itemCount ?? 1);
     const insuranceCents = Number(body.insuranceCents ?? 0);
 
-    if (!Number.isFinite(itemCount) || itemCount < 1) {
+    if (!Number.isFinite(itemCount) || itemCount < 1 || itemCount > MAX_ITEM_COUNT) {
       return NextResponse.json({ ok: false, message: "Carrinho inválido." }, { status: 400 });
+    }
+
+    if (!Number.isFinite(insuranceCents) || insuranceCents < 0 || insuranceCents > MAX_INSURANCE_CENTS) {
+      return NextResponse.json({ ok: false, message: "Valor de seguro inválido." }, { status: 400 });
     }
 
     const quotes = await quoteShipping({
       postalCode,
       itemCount: Math.floor(itemCount),
-      insuranceCents: Number.isFinite(insuranceCents) ? Math.max(0, Math.floor(insuranceCents)) : 0
+      insuranceCents: Math.floor(insuranceCents)
     });
 
     return NextResponse.json({ ok: true, quotes });

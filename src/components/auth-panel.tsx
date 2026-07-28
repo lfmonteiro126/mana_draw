@@ -120,7 +120,7 @@ export function AuthPanel({
               placeholder="Mínimo 6 caracteres"
               type="password"
               autoComplete="new-password"
-              minLength={6}
+              minLength={8}
               required
             />
           </label>

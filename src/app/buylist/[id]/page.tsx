@@ -8,9 +8,9 @@ import { BuylistPhotoGallery } from "@/components/admin/buylist-photo-gallery";
 import { StatusBadge, adminInputClass } from "@/components/admin/ui";
 import { currentUser } from "@/lib/auth";
 import {
-  hashAcceptToken,
   isOfferExpired,
-  normalizeBuylistStatus
+  normalizeBuylistStatus,
+  verifyAcceptToken
 } from "@/lib/buylist-flow";
 import {
   buylistStatusLabels,
@@ -60,7 +60,7 @@ export default async function BuylistOfferPage({
       const meta = await getBuylistAcceptTokenHash(id);
       if (
         meta?.hash &&
-        hashAcceptToken(token) === meta.hash &&
+        verifyAcceptToken(token, meta.hash) &&
         !(meta.expiresAt && new Date(meta.expiresAt).getTime() < Date.now())
       ) {
         allowed = true;

@@ -2,9 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import {
+  allowDemoAuth,
   createSession,
   currentUser,
+  DEMO_ADMIN,
   demoUserFor,
   hashPassword,
   signOut,
@@ -14,11 +17,11 @@ import {
   buylistCustomerUrl,
   canTransitionBuylistStatus,
   generateAcceptToken,
-  hashAcceptToken,
   isOfferExpired,
   isValidBuylistStatus,
   normalizeBuylistStatus,
-  offerExpiryDate
+  offerExpiryDate,
+  verifyAcceptToken
 } from "@/lib/buylist-flow";
 import {
   ensureBuylistSchema,
@@ -86,6 +89,24 @@ function withNotice(path: string, key: string, value: string) {
   return `${path}${join}${key}=${encodeURIComponent(value)}`;
 }
 
+const offerLinkFlashCookie = "mana_draw_offer_link";
+
+async function setOfferLinkFlash(url: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(offerLinkFlashCookie, url, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/admin",
+    maxAge: 120,
+    secure: process.env.NODE_ENV === "production" || process.env.FORCE_SECURE_COOKIES === "true"
+  });
+}
+
+export async function consumeOfferLinkFlash() {
+  const cookieStore = await cookies();
+  return cookieStore.get(offerLinkFlashCookie)?.value ?? "";
+}
+
 async function assertBuylistCustomerAccess(submissionId: string, token: string) {
   const user = await currentUser();
   const submission = await getBuylistSubmissionById(submissionId);
@@ -102,7 +123,7 @@ async function assertBuylistCustomerAccess(submissionId: string, token: string) 
   if (meta.expiresAt && new Date(meta.expiresAt).getTime() < Date.now()) {
     return { ok: false as const, reason: "expired" as const, submission };
   }
-  if (hashAcceptToken(token) !== meta.hash) {
+  if (!verifyAcceptToken(token, meta.hash)) {
     return { ok: false as const, reason: "unauthorized" as const, submission };
   }
   return { ok: true as const, submission, via: "token" as const };
@@ -114,11 +135,14 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
     const email = readString(formData, "email").toLowerCase();
     const password = readString(formData, "password");
 
-    if (!name || !email || password.length < 6) {
-      return { ok: false, message: "Informe nome, email e senha com pelo menos 6 caracteres." };
+    if (!name || !email || password.length < 8) {
+      return { ok: false, message: "Informe nome, email e senha com pelo menos 8 caracteres." };
     }
 
     if (!hasDatabase()) {
+      if (!allowDemoAuth()) {
+        return { ok: false, message: "Cadastro indisponivel. Configure DATABASE_URL." };
+      }
       await createSession(demoUserFor(email, name));
       revalidatePath("/");
       return { ok: true, message: "Conta demo criada. Configure o Neon para persistir usuarios." };
@@ -128,12 +152,14 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
     if (!sql) return { ok: false, message: "Banco indisponivel." };
 
     const existing = await sql`select id from users where email = ${email} limit 1`;
-    if (existing.length > 0) return { ok: false, message: "Este email ja esta cadastrado." };
+    if (existing.length > 0) {
+      return { ok: false, message: "Nao foi possivel criar a conta com estes dados." };
+    }
 
-    const role = email === process.env.ADMIN_EMAIL?.toLowerCase() ? "admin" : "customer";
+    // Never self-serve admin via public register — promote via SQL/ops only.
     const rows = await sql`
       insert into users (name, email, password_hash, role)
-      values (${name}, ${email}, ${hashPassword(password)}, ${role})
+      values (${name}, ${email}, ${hashPassword(password)}, 'customer')
       returning id, name, email, role
     `;
 
@@ -158,8 +184,11 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
     if (!email || !password) return { ok: false, message: "Informe email e senha." };
 
     if (!hasDatabase()) {
-      if (email === "admin@manadraw.local" && password !== "admin123") {
-        return { ok: false, message: "Senha demo do admin: admin123." };
+      if (!allowDemoAuth()) {
+        return { ok: false, message: "Login indisponivel. Configure DATABASE_URL." };
+      }
+      if (email === DEMO_ADMIN.email && password !== DEMO_ADMIN.password) {
+        return { ok: false, message: "Email ou senha invalidos." };
       }
       await createSession(demoUserFor(email));
       revalidatePath("/");
@@ -180,31 +209,6 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
 
     const [user] = rows as Array<StoreUser & { password_hash: string }>;
     if (!user || !verifyPassword(password, user.password_hash)) {
-      const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-
-      if (!user && adminEmail && email === adminEmail && password.length >= 6) {
-        const existingAdmins = await sql`
-          select id
-          from users
-          where role = 'admin'
-          limit 1
-        `;
-
-        if (existingAdmins.length === 0) {
-          const created = await sql`
-            insert into users (name, email, password_hash, role)
-            values ('Admin Mana Draw', ${email}, ${hashPassword(password)}, 'admin')
-            returning id, name, email, role
-          `;
-
-          await createSession(created[0] as StoreUser);
-          revalidatePath("/");
-          revalidatePath("/admin");
-          revalidatePath("/conta");
-          return { ok: true, message: "Admin inicial criado e login realizado." };
-        }
-      }
-
       return { ok: false, message: "Email ou senha invalidos." };
     }
 
@@ -374,19 +378,43 @@ export async function createOrderAction(
   }
   const orderId = String(orderRows[0].id);
 
-  for (const line of cleanCart) {
-    const card = inventory.get(line.cardId);
-    if (!card) continue;
+  const reserved: Array<{ cardId: string; quantity: number }> = [];
+  try {
+    for (const line of cleanCart) {
+      const card = inventory.get(line.cardId);
+      if (!card) throw new Error("Carta indisponível.");
 
-    await sql`
-      insert into order_items (order_id, card_id, quantity, unit_price_cents)
-      values (${orderId}, ${line.cardId}, ${line.quantity}, ${card.price_cents})
-    `;
-    await sql`
-      update cards
-      set stock = stock - ${line.quantity}, updated_at = now()
-      where id = ${line.cardId}
-    `;
+      await sql`
+        insert into order_items (order_id, card_id, quantity, unit_price_cents)
+        values (${orderId}, ${line.cardId}, ${line.quantity}, ${card.price_cents})
+      `;
+
+      const updated = await sql`
+        update cards
+        set stock = stock - ${line.quantity}, updated_at = now()
+        where id = ${line.cardId}
+          and stock >= ${line.quantity}
+        returning id
+      `;
+      if (updated.length === 0) {
+        throw new Error("Uma carta do carrinho ficou indisponível.");
+      }
+      reserved.push({ cardId: line.cardId, quantity: line.quantity });
+    }
+  } catch (error) {
+    for (const item of reserved) {
+      await sql`
+        update cards
+        set stock = stock + ${item.quantity}, updated_at = now()
+        where id = ${item.cardId}
+      `;
+    }
+    await sql`delete from order_items where order_id = ${orderId}`;
+    await sql`delete from orders where id = ${orderId}`;
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Não foi possível reservar o estoque."
+    };
   }
 
   revalidatePath("/");
@@ -431,9 +459,24 @@ export async function createOrderAction(
     };
   } catch (error) {
     console.error("Mercado Pago preference failed", error);
+    for (const item of reserved) {
+      await sql`
+        update cards
+        set stock = stock + ${item.quantity}, updated_at = now()
+        where id = ${item.cardId}
+      `;
+    }
+    await sql`
+      update orders
+      set status = 'cancelled', updated_at = now()
+      where id = ${orderId}
+    `;
+    revalidatePath("/");
+    revalidatePath("/conta");
+    revalidatePath("/admin");
     return {
-      ok: true,
-      message: `Pedido ${orderId.slice(0, 8)} criado, mas o checkout Mercado Pago falhou. Tente de novo ou pague com o admin.`
+      ok: false,
+      message: "Não foi possível abrir o checkout. O estoque foi liberado — tente novamente."
     };
   }
 }
@@ -814,9 +857,8 @@ export async function updateBuylistAction(formData: FormData) {
           ? "buylist-offered-manual"
           : "buylist-offered-email-failed";
 
-    redirect(
-      `/admin?tab=${tab}&notice=${notice}&tokenUrl=${encodeURIComponent(url)}&focus=${encodeURIComponent(id)}`
-    );
+    await setOfferLinkFlash(url);
+    redirect(`/admin?tab=${tab}&notice=${notice}&focus=${encodeURIComponent(id)}`);
   }
 
   redirect(`/admin?tab=${tab}&notice=buylist-updated&focus=${encodeURIComponent(id)}`);
@@ -872,9 +914,8 @@ export async function regenerateBuylistTokenAction(formData: FormData) {
   }
 
   revalidatePath("/admin");
-  redirect(
-    `/admin?tab=${tab}&notice=${notice}&tokenUrl=${encodeURIComponent(url)}&focus=${encodeURIComponent(id)}`
-  );
+  await setOfferLinkFlash(url);
+  redirect(`/admin?tab=${tab}&notice=${notice}&focus=${encodeURIComponent(id)}`);
 }
 
 export async function acceptBuylistOfferAction(formData: FormData) {

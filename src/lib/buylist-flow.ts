@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, timingSafeEqual } from "crypto";
 import type { BuylistStatus } from "./types";
 
 /** Status canônicos do ciclo de compra via buylist. */
@@ -82,6 +82,13 @@ export function generateAcceptToken() {
 
 export function hashAcceptToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+export function verifyAcceptToken(token: string, expectedHash: string) {
+  const candidate = Buffer.from(hashAcceptToken(token), "hex");
+  const expected = Buffer.from(expectedHash, "hex");
+  if (candidate.length !== expected.length) return false;
+  return timingSafeEqual(candidate, expected);
 }
 
 export function offerExpiryDate(days = 14) {

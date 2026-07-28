@@ -27,6 +27,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
+  consumeOfferLinkFlash,
   createCardAction,
   deleteCardAction,
   updateCardAction,
@@ -56,7 +57,7 @@ import {
 import { AuthPanel } from "@/components/auth-panel";
 import { CardAutocomplete } from "@/components/card-autocomplete";
 import { OrderCard } from "@/components/order-card";
-import { currentUser } from "@/lib/auth";
+import { allowDemoAuth, currentUser, DEMO_ADMIN } from "@/lib/auth";
 import {
   isAwaitingCustomerStatus,
   isInboundPendingStatus,
@@ -167,7 +168,7 @@ export default async function AdminPage({
   const params = await searchParams;
   const notice = typeof params.notice === "string" ? params.notice : "";
   const error = typeof params.error === "string" ? params.error : "";
-  const tokenUrl = typeof params.tokenUrl === "string" ? params.tokenUrl : "";
+  const tokenUrl = (await consumeOfferLinkFlash()) || "";
   const focusId = typeof params.focus === "string" ? params.focus : "";
   const query = typeof params.query === "string" ? params.query : "";
   const game = normalizeGame(params.game);
@@ -199,10 +200,12 @@ export default async function AdminPage({
             </div>
             <div className="px-6 py-6 sm:px-8">
               <AuthPanel redirectTo="/admin" />
-              <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
-                Demo local sem Neon: <span className="font-medium text-[var(--ink)]">admin@manadraw.local</span> /{" "}
-                <span className="font-medium text-[var(--ink)]">admin123</span>
-              </p>
+              {allowDemoAuth() ? (
+                <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
+                  Demo local sem Neon: <span className="font-medium text-[var(--ink)]">{DEMO_ADMIN.email}</span> /{" "}
+                  <span className="font-medium text-[var(--ink)]">{DEMO_ADMIN.password}</span>
+                </p>
+              ) : null}
             </div>
           </div>
         </section>
@@ -1407,7 +1410,7 @@ function SettingsTab({ cards, userEmail }: { cards: TcgCard[]; userEmail: string
           <Database className="text-[var(--accent)]" size={20} />
         </div>
         <div className="space-y-3 text-sm">
-          {["DATABASE_URL", "ADMIN_EMAIL", "RESEND_API_KEY", "EMAIL_FROM", "NEXT_PUBLIC_APP_URL"].map((item) => (
+          {["DATABASE_URL", "MERCADOPAGO_WEBHOOK_SECRET", "RESEND_API_KEY", "EMAIL_FROM", "NEXT_PUBLIC_APP_URL"].map((item) => (
             <div key={item} className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-3">
               <p className="font-semibold text-[var(--ink)]">{item}</p>
               <p className="mt-1 text-[var(--muted)]">Configure no painel do Vercel antes do deploy.</p>
