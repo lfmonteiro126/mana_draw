@@ -304,4 +304,74 @@ function cleanScryfallId(value?: string) {
   return trimmed;
 }
 
+export type ManaBoxValidation = {
+  ok: boolean;
+  format: "csv" | "txt";
+  message: string;
+  rowCount: number;
+  quantity: number;
+  withScryfallId: number;
+  withSetAndNumber: number;
+  nameOnly: number;
+  warnings: string[];
+  sample: Array<{
+    line: number;
+    name: string;
+    quantity: number;
+    setCode?: string;
+    collectorNumber?: string;
+    scryfallId?: string;
+    foil?: boolean;
+  }>;
+};
+
+/** Valida formato CSV/TXT localmente, sem chamar Scryfall. */
+export function validateManaBoxInput(raw: string): ManaBoxValidation {
+  const parsed = parseManaBoxInput(raw);
+  const quantity = parsed.rows.reduce((sum, row) => sum + row.quantity, 0);
+  const withScryfallId = parsed.rows.filter((row) => Boolean(row.scryfallId)).length;
+  const withSetAndNumber = parsed.rows.filter(
+    (row) => !row.scryfallId && Boolean(row.setCode && row.collectorNumber)
+  ).length;
+  const nameOnly = parsed.rows.filter(
+    (row) => !row.scryfallId && !(row.setCode && row.collectorNumber)
+  ).length;
+
+  if (parsed.rows.length === 0) {
+    return {
+      ok: false,
+      format: parsed.format,
+      message: parsed.warnings[0] || "Nenhuma carta reconhecida. Confira o formato ManaBox.",
+      rowCount: 0,
+      quantity: 0,
+      withScryfallId: 0,
+      withSetAndNumber: 0,
+      nameOnly: 0,
+      warnings: parsed.warnings,
+      sample: []
+    };
+  }
+
+  return {
+    ok: true,
+    format: parsed.format,
+    message: `Arquivo ${parsed.format.toUpperCase()} válido: ${parsed.rows.length} linha(s), ${quantity} unidade(s).`,
+    rowCount: parsed.rows.length,
+    quantity,
+    withScryfallId,
+    withSetAndNumber,
+    nameOnly,
+    warnings: parsed.warnings,
+    sample: parsed.rows.slice(0, 8).map((row) => ({
+      line: row.line,
+      name: row.name,
+      quantity: row.quantity,
+      setCode: row.setCode,
+      collectorNumber: row.collectorNumber,
+      scryfallId: row.scryfallId,
+      foil: row.foil
+    }))
+  };
+}
+
 export const MANABOX_MAX_ROWS = MAX_ROWS;

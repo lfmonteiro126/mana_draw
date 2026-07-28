@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   CheckCircle2,
+  FileCheck2,
   FileSpreadsheet,
   Loader2,
   Upload
@@ -10,7 +11,11 @@ import {
 import { useMemo, useState } from "react";
 import { FieldLabel, adminInputClass } from "@/components/admin/ui";
 import { formatCurrency, formatUsd } from "@/lib/format";
-import type { BulkPriceMode, ResolvedImportRow } from "@/lib/manabox";
+import {
+  validateManaBoxInput,
+  type ManaBoxValidation
+} from "@/lib/manabox/parse";
+import type { BulkPriceMode, ResolvedImportRow } from "@/lib/manabox/resolve";
 import type { CardCondition, TcgCard } from "@/lib/types";
 
 const conditions: CardCondition[] = ["NM", "SP", "MP", "HP"];
@@ -51,17 +56,26 @@ export function BulkCardImport() {
   const [loading, setLoading] = useState<"preview" | "import" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [validation, setValidation] = useState<ManaBoxValidation | null>(null);
   const [rows, setRows] = useState<ResolvedImportRow[]>([]);
   const [format, setFormat] = useState<"csv" | "txt" | null>(null);
   const [importResult, setImportResult] = useState<ImportResponse["summary"] | null>(null);
 
   const okRows = useMemo(() => rows.filter((row) => row.status === "ok"), [rows]);
   const errorRows = useMemo(() => rows.filter((row) => row.status === "error"), [rows]);
+  const canProcess = Boolean(validation?.ok);
 
-  async function onFileChange(file: File | null) {
+  function resetDownstream() {
+    setValidation(null);
     setImportResult(null);
     setRows([]);
+    setWarnings([]);
+    setFormat(null);
     setError(null);
+  }
+
+  async function onFileChange(file: File | null) {
+    resetDownstream();
     if (!file) {
       setFileName(null);
       return;
@@ -76,7 +90,28 @@ export function BulkCardImport() {
     setFileName(file.name);
   }
 
+  function validate() {
+    setError(null);
+    setImportResult(null);
+    setRows([]);
+    setFormat(null);
+
+    const result = validateManaBoxInput(content);
+    setValidation(result);
+    setWarnings(result.warnings);
+    setFormat(result.format);
+
+    if (!result.ok) {
+      setError(result.message);
+    }
+  }
+
   async function preview() {
+    if (!validation?.ok) {
+      setError("Valide o arquivo ou TXT antes de processar no Scryfall.");
+      return;
+    }
+
     setLoading("preview");
     setError(null);
     setImportResult(null);
@@ -96,14 +131,14 @@ export function BulkCardImport() {
       if (!payload.ok) {
         setRows([]);
         setWarnings(payload.warnings ?? []);
-        setError(payload.message || "Não foi possível ler o arquivo.");
+        setError(payload.message || "Não foi possível processar o arquivo.");
         return;
       }
       setFormat(payload.format ?? null);
       setWarnings(payload.warnings ?? []);
       setRows(payload.rows ?? []);
     } catch {
-      setError("Falha de rede ao pré-visualizar.");
+      setError("Falha de rede ao processar.");
     } finally {
       setLoading(null);
     }
@@ -142,7 +177,7 @@ export function BulkCardImport() {
               Importar ManaBox
             </p>
             <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-              Aceita CSV da coleção e TXT no formato Arena/ManaBox. Preferimos Scryfall ID quando existir.
+              Valide o CSV/TXT antes de processar no Scryfall. Preferimos Scryfall ID quando existir.
             </p>
           </div>
           <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--ink)] transition hover:border-[var(--accent)]">
@@ -165,8 +200,7 @@ export function BulkCardImport() {
           value={content}
           onChange={(event) => {
             setContent(event.target.value);
-            setImportResult(null);
-            setRows([]);
+            resetDownstream();
           }}
         />
       </div>
@@ -225,13 +259,23 @@ export function BulkCardImport() {
 
       <div className="flex flex-wrap gap-2">
         <button
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-60"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--ink)] transition hover:border-[var(--accent)] disabled:opacity-60"
           disabled={!content.trim() || loading !== null}
           type="button"
+          onClick={validate}
+        >
+          <FileCheck2 size={16} />
+          Validar arquivo
+        </button>
+        <button
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-60"
+          disabled={!canProcess || loading !== null}
+          type="button"
           onClick={() => void preview()}
+          title={canProcess ? undefined : "Valide o arquivo antes de processar"}
         >
           {loading === "preview" ? <Loader2 className="animate-spin" size={16} /> : null}
-          Pré-visualizar
+          Processar no Scryfall
         </button>
         <button
           className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--ink)] transition hover:border-[var(--accent)] disabled:opacity-60"
@@ -243,6 +287,63 @@ export function BulkCardImport() {
           Importar {okRows.length > 0 ? `${okRows.length} carta(s)` : ""}
         </button>
       </div>
+
+      {validation ? (
+        <div
+          className={`rounded-[var(--radius-control)] border px-3 py-3 text-sm ${
+            validation.ok
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "border-rose-200 bg-rose-50 text-rose-900"
+          }`}
+        >
+          <p className="flex items-center gap-2 font-semibold">
+            {validation.ok ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+            {validation.message}
+          </p>
+          {validation.ok ? (
+            <p className="mt-1 text-xs leading-5 opacity-90">
+              Formato {validation.format.toUpperCase()} · {validation.withScryfallId} com Scryfall ID ·{" "}
+              {validation.withSetAndNumber} com set+número · {validation.nameOnly} só nome
+            </p>
+          ) : null}
+          {validation.sample.length > 0 ? (
+            <div className="mt-3 overflow-hidden rounded-md border border-black/10 bg-white/70">
+              <table className="min-w-full text-left text-xs">
+                <thead className="text-[var(--muted)]">
+                  <tr>
+                    <th className="px-2 py-1.5 font-semibold">#</th>
+                    <th className="px-2 py-1.5 font-semibold">Carta</th>
+                    <th className="px-2 py-1.5 font-semibold">Qtd</th>
+                    <th className="px-2 py-1.5 font-semibold">Print</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {validation.sample.map((row) => (
+                    <tr key={`${row.line}-${row.name}`} className="border-t border-black/5">
+                      <td className="px-2 py-1.5">{row.line}</td>
+                      <td className="px-2 py-1.5 font-medium">
+                        {row.name}
+                        {row.foil ? " · Foil" : ""}
+                      </td>
+                      <td className="px-2 py-1.5">{row.quantity}</td>
+                      <td className="px-2 py-1.5 text-[var(--muted)]">
+                        {row.scryfallId
+                          ? `ID ${row.scryfallId.slice(0, 8)}…`
+                          : [row.setCode, row.collectorNumber].filter(Boolean).join(" · ") || "nome"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
+      ) : content.trim() ? (
+        <p className="text-xs text-[var(--muted)]">
+          Clique em <span className="font-semibold text-[var(--ink)]">Validar arquivo</span> antes de
+          processar no Scryfall.
+        </p>
+      ) : null}
 
       {error ? (
         <p className="flex items-start gap-2 text-sm text-rose-600">
@@ -330,14 +431,12 @@ export function BulkCardImport() {
       ) : null}
 
       <div className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-4 text-sm text-[var(--muted)]">
-        <p className="font-semibold text-[var(--ink)]">Melhorias sugeridas</p>
-        <ul className="mt-2 list-disc space-y-1 pl-5 leading-6">
-          <li>Marcar linhas na prévia e importar só a seleção.</li>
-          <li>Markup automático a partir do USD Scryfall + câmbio configurável.</li>
-          <li>Exportar CSV só com as linhas que falharam para corrigir no ManaBox.</li>
-          <li>Importar binders/listas com tag do nome da lista.</li>
-          <li>Fila assíncrona para lotes grandes (&gt;500) com progresso.</li>
-        </ul>
+        <p className="font-semibold text-[var(--ink)]">Fluxo</p>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 leading-6">
+          <li>Validar arquivo — confere formato CSV/TXT localmente, sem Scryfall.</li>
+          <li>Processar no Scryfall — só libera após validação OK.</li>
+          <li>Importar — grava no estoque as linhas resolvidas.</li>
+        </ol>
       </div>
     </div>
   );
