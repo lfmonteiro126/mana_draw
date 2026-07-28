@@ -96,8 +96,21 @@ create table if not exists users (
   email text not null unique,
   password_hash text not null,
   role user_role not null default 'customer',
+  email_verified_at timestamptz,
+  email_verify_token_hash text,
+  email_verify_expires_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table users
+  add column if not exists email_verified_at timestamptz,
+  add column if not exists email_verify_token_hash text,
+  add column if not exists email_verify_expires_at timestamptz;
+
+-- Contas já existentes são tratadas como verificadas.
+update users
+set email_verified_at = coalesce(email_verified_at, created_at)
+where email_verified_at is null;
 
 create table if not exists sessions (
   token text primary key,

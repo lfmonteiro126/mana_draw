@@ -42,6 +42,7 @@ type DbUser = {
   name: string;
   email: string;
   role: StoreUser["role"];
+  email_verified_at?: string | null;
 };
 
 type DbOrder = {
@@ -252,7 +253,8 @@ export function mapUser(user: DbUser): StoreUser {
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.role
+    role: user.role,
+    emailVerified: Boolean(user.email_verified_at)
   };
 }
 
@@ -621,6 +623,25 @@ export async function ensureOrderColumns(sql: NeonSql) {
   orderColumnsEnsured = true;
 }
 
+let userEmailColumnsEnsured = false;
+
+export async function ensureUserEmailSchema(sql: NeonSql) {
+  if (userEmailColumnsEnsured) return;
+  await sql`
+    alter table users
+      add column if not exists email_verified_at timestamptz,
+      add column if not exists email_verify_token_hash text,
+      add column if not exists email_verify_expires_at timestamptz
+  `;
+  await sql`
+    update users
+    set email_verified_at = coalesce(email_verified_at, created_at)
+    where email_verified_at is null
+      and email_verify_token_hash is null
+  `;
+  userEmailColumnsEnsured = true;
+}
+
 export async function getAdminOrders(): Promise<OrderSummary[]> {
   if (!hasDatabase()) return [];
   const sql = getSql();
@@ -899,84 +920,47 @@ export async function getBuylistSubmissionsForUser({
   if (!hasDatabase()) return [];
   const sql = getSql();
   if (!sql) return [];
-  const normalized = email.trim().toLowerCase();
-  if (!normalized && !userId) return [];
+  // List only by linked account — never by email alone (IDOR after fake registration).
+  if (!userId) return [];
+  void email;
 
   const run = async () => {
-    const rows = userId
-      ? await sql`
-          select
-            buylist_submissions.id,
-            buylist_submissions.customer_name,
-            buylist_submissions.email,
-            buylist_submissions.game,
-            buylist_submissions.status,
-            buylist_submissions.notes,
-            buylist_submissions.offer_cents,
-            buylist_submissions.offer_note,
-            buylist_submissions.offer_expires_at::text,
-            buylist_submissions.payout_cents,
-            buylist_submissions.inbound_method,
-            buylist_submissions.tracking_code,
-            buylist_submissions.pickup_at::text,
-            buylist_submissions.customer_accepted_at::text,
-            buylist_submissions.customer_declined_at::text,
-            buylist_submissions.received_at::text,
-            buylist_submissions.stocked_at::text,
-            buylist_submissions.paid_at::text,
-            buylist_submissions.user_id,
-            buylist_submissions.accept_token_hash,
-            buylist_submissions.accept_token_expires_at::text,
-            count(buylist_photos.id)::int as photo_count,
-            coalesce(
-              array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
-              '{}'
-            ) as photo_urls,
-            buylist_submissions.created_at::text
-          from buylist_submissions
-          left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
-          where lower(buylist_submissions.email) = ${normalized}
-             or buylist_submissions.user_id = ${userId}
-          group by buylist_submissions.id
-          order by buylist_submissions.created_at desc
-          limit 40
-        `
-      : await sql`
-          select
-            buylist_submissions.id,
-            buylist_submissions.customer_name,
-            buylist_submissions.email,
-            buylist_submissions.game,
-            buylist_submissions.status,
-            buylist_submissions.notes,
-            buylist_submissions.offer_cents,
-            buylist_submissions.offer_note,
-            buylist_submissions.offer_expires_at::text,
-            buylist_submissions.payout_cents,
-            buylist_submissions.inbound_method,
-            buylist_submissions.tracking_code,
-            buylist_submissions.pickup_at::text,
-            buylist_submissions.customer_accepted_at::text,
-            buylist_submissions.customer_declined_at::text,
-            buylist_submissions.received_at::text,
-            buylist_submissions.stocked_at::text,
-            buylist_submissions.paid_at::text,
-            buylist_submissions.user_id,
-            buylist_submissions.accept_token_hash,
-            buylist_submissions.accept_token_expires_at::text,
-            count(buylist_photos.id)::int as photo_count,
-            coalesce(
-              array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
-              '{}'
-            ) as photo_urls,
-            buylist_submissions.created_at::text
-          from buylist_submissions
-          left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
-          where lower(buylist_submissions.email) = ${normalized}
-          group by buylist_submissions.id
-          order by buylist_submissions.created_at desc
-          limit 40
-        `;
+    const rows = await sql`
+      select
+        buylist_submissions.id,
+        buylist_submissions.customer_name,
+        buylist_submissions.email,
+        buylist_submissions.game,
+        buylist_submissions.status,
+        buylist_submissions.notes,
+        buylist_submissions.offer_cents,
+        buylist_submissions.offer_note,
+        buylist_submissions.offer_expires_at::text,
+        buylist_submissions.payout_cents,
+        buylist_submissions.inbound_method,
+        buylist_submissions.tracking_code,
+        buylist_submissions.pickup_at::text,
+        buylist_submissions.customer_accepted_at::text,
+        buylist_submissions.customer_declined_at::text,
+        buylist_submissions.received_at::text,
+        buylist_submissions.stocked_at::text,
+        buylist_submissions.paid_at::text,
+        buylist_submissions.user_id,
+        buylist_submissions.accept_token_hash,
+        buylist_submissions.accept_token_expires_at::text,
+        count(buylist_photos.id)::int as photo_count,
+        coalesce(
+          array_remove(array_agg(buylist_photos.data_url order by buylist_photos.created_at), null),
+          '{}'
+        ) as photo_urls,
+        buylist_submissions.created_at::text
+      from buylist_submissions
+      left join buylist_photos on buylist_photos.submission_id = buylist_submissions.id
+      where buylist_submissions.user_id = ${userId}
+      group by buylist_submissions.id
+      order by buylist_submissions.created_at desc
+      limit 40
+    `;
     const submissions = rows as DbBuylistSubmission[];
     const linesMap = await loadBuylistLines(
       sql,

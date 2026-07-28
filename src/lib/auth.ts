@@ -2,7 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { createHmac, createHash, randomBytes, pbkdf2Sync, timingSafeEqual } from "node:crypto";
-import { getSql, hasDatabase, mapUser } from "./db";
+import { ensureUserEmailSchema, getSql, hasDatabase, mapUser } from "./db";
 import type { StoreUser, UserRole } from "./types";
 
 const sessionCookie = "mana_draw_session";
@@ -14,6 +14,7 @@ type DbSessionUser = {
   name: string;
   email: string;
   role: UserRole;
+  email_verified_at?: string | null;
 };
 
 function isProduction() {
@@ -76,7 +77,6 @@ function verifyDemoCookie(raw: string): StoreUser | null {
     if (!user?.id || !user?.email || (user.role !== "admin" && user.role !== "customer")) {
       return null;
     }
-    // Never honor a forged role: recompute from email for demo.
     return demoUserFor(user.email, user.name || "Cliente");
   } catch {
     return null;
@@ -85,6 +85,22 @@ function verifyDemoCookie(raw: string): StoreUser | null {
 
 export function hashSessionToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+export function hashEmailVerifyToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export function generateEmailVerifyToken() {
+  const token = randomBytes(32).toString("base64url");
+  return { token, hash: hashEmailVerifyToken(token) };
+}
+
+export function verifyEmailVerifyToken(token: string, expectedHash: string) {
+  const candidate = Buffer.from(hashEmailVerifyToken(token), "hex");
+  const expected = Buffer.from(expectedHash, "hex");
+  if (candidate.length !== expected.length) return false;
+  return timingSafeEqual(candidate, expected);
 }
 
 export async function currentUser(): Promise<StoreUser | null> {
@@ -104,17 +120,28 @@ export async function currentUser(): Promise<StoreUser | null> {
   if (!sql) return null;
 
   const tokenHash = hashSessionToken(token);
-  const rows = await sql`
-    select users.id, users.name, users.email, users.role
-    from sessions
-    join users on users.id = sessions.user_id
-    where (sessions.token = ${tokenHash} or sessions.token = ${token})
-      and sessions.expires_at > now()
-    limit 1
-  `;
 
-  const [user] = rows as DbSessionUser[];
-  return user ? mapUser(user) : null;
+  const load = async () => {
+    const rows = await sql`
+      select users.id, users.name, users.email, users.role, users.email_verified_at
+      from sessions
+      join users on users.id = sessions.user_id
+      where (sessions.token = ${tokenHash} or sessions.token = ${token})
+        and sessions.expires_at > now()
+      limit 1
+    `;
+    const [user] = rows as DbSessionUser[];
+    return user ? mapUser(user) : null;
+  };
+
+  try {
+    return await load();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("email_verified_at")) throw error;
+    await ensureUserEmailSchema(sql);
+    return load();
+  }
 }
 
 export async function signOut() {
@@ -180,7 +207,8 @@ export function demoUserFor(email: string, name = "Cliente") {
     id: isDemoAdmin ? "demo-admin" : "demo-customer",
     name: isDemoAdmin ? "Admin Demo" : name,
     email: normalized,
-    role: isDemoAdmin ? "admin" : "customer"
+    role: isDemoAdmin ? "admin" : "customer",
+    emailVerified: true
   } satisfies StoreUser;
 }
 

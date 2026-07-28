@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientKeyFromHeaders, rateLimit } from "@/lib/rate-limit";
 import { quoteShipping } from "@/lib/shipping";
 
 const MAX_ITEM_COUNT = 200;
@@ -6,6 +7,14 @@ const MAX_INSURANCE_CENTS = 5_000_000; // R$ 50.000
 
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(clientKeyFromHeaders(request.headers, "shipping-quote"), 60, 15 * 60_000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { ok: false, message: "Muitas cotações. Aguarde um momento." },
+        { status: 429 }
+      );
+    }
+
     const body = (await request.json()) as {
       postalCode?: string;
       itemCount?: number;

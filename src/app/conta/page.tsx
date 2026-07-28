@@ -4,6 +4,7 @@ import { logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { StatusBadge } from "@/components/admin/ui";
 import { OrderCard } from "@/components/order-card";
+import { ResendVerificationButton } from "@/components/resend-verification-button";
 import { currentUser } from "@/lib/auth";
 import { isOfferExpired, normalizeBuylistStatus } from "@/lib/buylist-flow";
 import { buylistStatusLabels, buylistStatusStyles } from "@/lib/buylist-ui";
@@ -112,6 +113,18 @@ export default async function AccountPage() {
 
   return (
     <AccountChrome>
+      {!user.emailVerified ? (
+        <section className="mb-6 rounded-[var(--radius-card)] border border-amber-300/60 bg-amber-50 px-5 py-4 text-sm text-amber-950">
+          <p className="font-semibold">Confirme seu e-mail</p>
+          <p className="mt-1 leading-6 text-amber-900/80">
+            Enquanto o e-mail não for verificado, cotações de buylist não aparecem automaticamente na conta.
+            Use o link do e-mail ou reenvie a verificação.
+          </p>
+          <div className="mt-3">
+            <ResendVerificationButton />
+          </div>
+        </section>
+      ) : null}
       {user.role === "admin" ? (
         <section className="mb-6 overflow-hidden rounded-[var(--radius-card)] border border-slate-800/20 bg-[#0b1220] text-slate-100 shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">

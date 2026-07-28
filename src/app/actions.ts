@@ -2,15 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import {
   allowDemoAuth,
   createSession,
   currentUser,
   DEMO_ADMIN,
   demoUserFor,
+  generateEmailVerifyToken,
   hashPassword,
   signOut,
+  verifyEmailVerifyToken,
   verifyPassword
 } from "@/lib/auth";
 import {
@@ -21,18 +23,22 @@ import {
   isValidBuylistStatus,
   normalizeBuylistStatus,
   offerExpiryDate,
+  siteOrigin,
   verifyAcceptToken
 } from "@/lib/buylist-flow";
 import {
   ensureBuylistSchema,
   ensureOrderColumns,
+  ensureUserEmailSchema,
   getBuylistAcceptTokenHash,
   getBuylistSubmissionById,
   getSql,
-  hasDatabase
+  hasDatabase,
+  mapUser
 } from "@/lib/db";
-import { sendBuylistOfferEmail } from "@/lib/email";
+import { hasEmailProvider, sendBuylistOfferEmail, sendEmailVerification } from "@/lib/email";
 import { createCheckoutPreference, hasMercadoPago } from "@/lib/payments/mercadopago";
+import { clientKeyFromHeaders, rateLimit } from "@/lib/rate-limit";
 import { findQuoteById, normalizePostalCode, quoteShipping } from "@/lib/shipping";
 import { storeBuylistPhoto } from "@/lib/storage/blob";
 import type { CardCondition, Game, StoreUser } from "@/lib/types";
@@ -112,7 +118,8 @@ async function assertBuylistCustomerAccess(submissionId: string, token: string) 
   const submission = await getBuylistSubmissionById(submissionId);
   if (!submission) return { ok: false as const, reason: "not-found" as const, submission: null };
 
-  if (user && user.email.toLowerCase() === submission.email.toLowerCase()) {
+  // Session access only when the submission is linked to this account — never by email alone.
+  if (user && submission.userId && submission.userId === user.id) {
     return { ok: true as const, submission, via: "session" as const };
   }
 
@@ -126,11 +133,39 @@ async function assertBuylistCustomerAccess(submissionId: string, token: string) 
   if (!verifyAcceptToken(token, meta.hash)) {
     return { ok: false as const, reason: "unauthorized" as const, submission };
   }
+
+  // Claim submission for a verified matching account (so it appears in /conta).
+  if (user?.emailVerified && user.email.toLowerCase() === submission.email.toLowerCase()) {
+    const sql = getSql();
+    if (sql && !submission.userId) {
+      try {
+        await sql`
+          update buylist_submissions
+          set user_id = ${user.id}, updated_at = now()
+          where id = ${submissionId}
+            and user_id is null
+        `;
+      } catch {
+        // best-effort
+      }
+    }
+  }
+
   return { ok: true as const, submission, via: "token" as const };
+}
+
+async function authClientKey(prefix: string) {
+  const h = await headers();
+  return clientKeyFromHeaders(h, prefix);
 }
 
 export async function registerAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
+    const limited = rateLimit(await authClientKey("register"), 8, 15 * 60_000);
+    if (!limited.ok) {
+      return { ok: false, message: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+    }
+
     const name = readString(formData, "name");
     const email = readString(formData, "email").toLowerCase();
     const password = readString(formData, "password");
@@ -150,24 +185,67 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
 
     const sql = getSql();
     if (!sql) return { ok: false, message: "Banco indisponivel." };
+    await ensureUserEmailSchema(sql);
 
     const existing = await sql`select id from users where email = ${email} limit 1`;
     if (existing.length > 0) {
       return { ok: false, message: "Nao foi possivel criar a conta com estes dados." };
     }
 
-    // Never self-serve admin via public register — promote via SQL/ops only.
+    const verify = generateEmailVerifyToken();
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString();
+    // Without email provider (local/dev), auto-verify so the app stays usable.
+    const autoVerify = !hasEmailProvider();
+
     const rows = await sql`
-      insert into users (name, email, password_hash, role)
-      values (${name}, ${email}, ${hashPassword(password)}, 'customer')
-      returning id, name, email, role
+      insert into users (
+        name,
+        email,
+        password_hash,
+        role,
+        email_verified_at,
+        email_verify_token_hash,
+        email_verify_expires_at
+      )
+      values (
+        ${name},
+        ${email},
+        ${hashPassword(password)},
+        'customer',
+        ${autoVerify ? new Date().toISOString() : null},
+        ${autoVerify ? null : verify.hash},
+        ${autoVerify ? null : expiresAt}
+      )
+      returning id, name, email, role, email_verified_at
     `;
 
-    await createSession(rows[0] as StoreUser);
+    const created = mapUser(rows[0] as Parameters<typeof mapUser>[0]);
+    await createSession(created);
+
+    if (!autoVerify) {
+      const sent = await sendEmailVerification({
+        to: email,
+        name,
+        verifyUrl: `${siteOrigin()}/verificar-email?uid=${encodeURIComponent(created.id)}&token=${encodeURIComponent(verify.token)}`
+      });
+      if (!sent.ok) {
+        return {
+          ok: true,
+          message:
+            "Conta criada, mas nao foi possivel enviar o e-mail de verificacao. Use reenviar em /conta."
+        };
+      }
+    }
+
     revalidatePath("/");
     revalidatePath("/admin");
     revalidatePath("/conta");
-    return { ok: true, message: "Conta criada com sucesso." };
+    return {
+      ok: true,
+      message: autoVerify
+        ? "Conta criada com sucesso."
+        : "Conta criada. Confirme seu e-mail para vincular cotações de buylist."
+    };
   } catch (error) {
     return {
       ok: false,
@@ -178,6 +256,11 @@ export async function registerAction(_: ActionState, formData: FormData): Promis
 
 export async function loginAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
+    const limited = rateLimit(await authClientKey("login"), 20, 15 * 60_000);
+    if (!limited.ok) {
+      return { ok: false, message: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+    }
+
     const email = readString(formData, "email").toLowerCase();
     const password = readString(formData, "password");
 
@@ -199,20 +282,28 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
 
     const sql = getSql();
     if (!sql) return { ok: false, message: "Banco indisponivel." };
+    await ensureUserEmailSchema(sql);
 
     const rows = await sql`
-      select id, name, email, role, password_hash
+      select id, name, email, role, password_hash, email_verified_at
       from users
       where email = ${email}
       limit 1
     `;
 
-    const [user] = rows as Array<StoreUser & { password_hash: string }>;
-    if (!user || !verifyPassword(password, user.password_hash)) {
+    const [row] = rows as Array<{
+      id: string;
+      name: string;
+      email: string;
+      role: StoreUser["role"];
+      password_hash: string;
+      email_verified_at: string | null;
+    }>;
+    if (!row || !verifyPassword(password, row.password_hash)) {
       return { ok: false, message: "Email ou senha invalidos." };
     }
 
-    await createSession(user);
+    await createSession(mapUser(row));
     revalidatePath("/");
     revalidatePath("/admin");
     revalidatePath("/conta");
@@ -223,6 +314,103 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
       message: authErrorMessage(error)
     };
   }
+}
+
+export async function resendVerificationAction(
+  _prev: ActionState,
+  _formData?: FormData
+): Promise<ActionState> {
+  const limited = rateLimit(await authClientKey("resend-verify"), 5, 15 * 60_000);
+  if (!limited.ok) {
+    return { ok: false, message: "Muitas tentativas. Aguarde alguns minutos." };
+  }
+
+  const user = await currentUser();
+  if (!user) return { ok: false, message: "Entre na conta para reenviar a verificacao." };
+  if (user.emailVerified) return { ok: true, message: "E-mail ja verificado." };
+  if (!hasEmailProvider()) {
+    return { ok: false, message: "Envio de e-mail nao configurado (RESEND_API_KEY)." };
+  }
+
+  const sql = getSql();
+  if (!sql) return { ok: false, message: "Banco indisponivel." };
+  await ensureUserEmailSchema(sql);
+
+  const verify = generateEmailVerifyToken();
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString();
+  await sql`
+    update users
+    set
+      email_verify_token_hash = ${verify.hash},
+      email_verify_expires_at = ${expiresAt}
+    where id = ${user.id}
+  `;
+
+  const sent = await sendEmailVerification({
+    to: user.email,
+    name: user.name,
+    verifyUrl: `${siteOrigin()}/verificar-email?uid=${encodeURIComponent(user.id)}&token=${encodeURIComponent(verify.token)}`
+  });
+
+  if (!sent.ok) return { ok: false, message: "Nao foi possivel enviar o e-mail agora." };
+  return { ok: true, message: "Enviamos um novo link de verificacao." };
+}
+
+export async function verifyEmailAction(
+  userId: string,
+  token: string
+): Promise<{ ok: boolean; message: string }> {
+  if (!userId || !token) return { ok: false, message: "Link invalido." };
+  if (!hasDatabase()) return { ok: false, message: "Banco indisponivel." };
+
+  const sql = getSql();
+  if (!sql) return { ok: false, message: "Banco indisponivel." };
+  await ensureUserEmailSchema(sql);
+
+  const rows = await sql`
+    select id, email_verify_token_hash, email_verify_expires_at::text, email_verified_at::text
+    from users
+    where id = ${userId}
+    limit 1
+  `;
+
+  const [row] = rows as Array<{
+    id: string;
+    email_verify_token_hash: string | null;
+    email_verify_expires_at: string | null;
+    email_verified_at: string | null;
+  }>;
+
+  if (!row) return { ok: false, message: "Link invalido." };
+  if (row.email_verified_at) return { ok: true, message: "E-mail ja verificado." };
+  if (!row.email_verify_token_hash || !verifyEmailVerifyToken(token, row.email_verify_token_hash)) {
+    return { ok: false, message: "Link invalido ou ja usado." };
+  }
+  if (row.email_verify_expires_at && new Date(row.email_verify_expires_at).getTime() < Date.now()) {
+    return { ok: false, message: "Link expirado. Reenvie a verificacao em /conta." };
+  }
+
+  await sql`
+    update users
+    set
+      email_verified_at = now(),
+      email_verify_token_hash = null,
+      email_verify_expires_at = null
+    where id = ${row.id}
+  `;
+
+  await sql`
+    update buylist_submissions
+    set user_id = ${row.id}, updated_at = now()
+    from users
+    where users.id = ${row.id}
+      and lower(buylist_submissions.email) = lower(users.email)
+      and buylist_submissions.user_id is null
+  `;
+
+  revalidatePath("/conta");
+  revalidatePath("/");
+  return { ok: true, message: "E-mail verificado com sucesso." };
 }
 
 function authErrorMessage(error: unknown) {
@@ -804,7 +992,7 @@ export async function updateBuylistAction(formData: FormData) {
       where id = ${id}
     `;
 
-    // Vincula à conta do mesmo e-mail, se existir (para aparecer em /conta).
+    // Vincula à conta verificada do mesmo e-mail, se existir (para aparecer em /conta).
     try {
       await sql`
         update buylist_submissions
@@ -812,10 +1000,16 @@ export async function updateBuylistAction(formData: FormData) {
         from users
         where buylist_submissions.id = ${id}
           and lower(users.email) = lower(buylist_submissions.email)
+          and users.email_verified_at is not null
           and buylist_submissions.user_id is null
       `;
     } catch {
-      // best-effort
+      // best-effort — column may be missing until ensureUserEmailSchema runs
+      try {
+        await ensureUserEmailSchema(sql);
+      } catch {
+        // ignore
+      }
     }
   } else {
     await sql`
@@ -1427,6 +1621,10 @@ export async function createBuylistAction(
   if (!sql) return { ok: false, message: "Banco indisponível." };
 
   const sessionUser = await currentUser();
+  const linkUserId =
+    sessionUser?.emailVerified && sessionUser.email.toLowerCase() === email
+      ? sessionUser.id
+      : null;
 
   try {
     await ensureBuylistSchema(sql);
@@ -1434,9 +1632,14 @@ export async function createBuylistAction(
     // schema heal best-effort
   }
 
+  const limited = rateLimit(await authClientKey("buylist-create"), 10, 60 * 60_000);
+  if (!limited.ok) {
+    return { ok: false, message: "Muitas cotações enviadas. Tente de novo mais tarde." };
+  }
+
   const rows = await sql`
     insert into buylist_submissions (customer_name, email, game, notes, user_id)
-    values (${customerName}, ${email}, ${game}, ${notes}, ${sessionUser?.id ?? null})
+    values (${customerName}, ${email}, ${game}, ${notes}, ${linkUserId})
     returning id
   `;
   const submissionId = String(rows[0].id);

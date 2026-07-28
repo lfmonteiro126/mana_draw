@@ -32,6 +32,7 @@ export type StoreUser = {
   name: string;
   email: string;
   role: UserRole;
+  emailVerified: boolean;
 };
 
 export type OrderLineItem = {

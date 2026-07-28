@@ -54,7 +54,7 @@ export default async function BuylistOfferPage({
 
   let allowed = false;
   if (submission) {
-    if (user && user.email.toLowerCase() === submission.email.toLowerCase()) {
+    if (user && submission.userId && submission.userId === user.id) {
       allowed = true;
     } else if (token) {
       const meta = await getBuylistAcceptTokenHash(id);
@@ -79,7 +79,7 @@ export default async function BuylistOfferPage({
           <section className="surface-card mt-6 p-6 sm:p-8">
             <h1 className="text-2xl font-semibold tracking-tight">Cotação indisponível</h1>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              {messageFor(error || "unauthorized")} Entre com o e-mail da cotação ou use o link enviado pela loja.
+              {messageFor(error || "unauthorized")} Use o link enviado pela loja ou entre na conta vinculada à cotação.
             </p>
             {!user ? (
               <Link

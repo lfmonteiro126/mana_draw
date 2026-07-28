@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import { analyzeCommanderDeck } from "@/lib/deck";
+import { clientKeyFromHeaders, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
+    const limited = rateLimit(clientKeyFromHeaders(request.headers, "deck-analyze"), 20, 60 * 60_000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { ok: false, message: "Limite de análises atingido. Tente mais tarde." },
+        { status: 429 }
+      );
+    }
+
     const body = (await request.json()) as {
       list?: string;
       commanderName?: string;
