@@ -60,14 +60,13 @@ body {
 
 .admin-console {
   --admin-sidebar: #0b1220;
-  --admin-sidebar-soft: #152033;
-  --admin-sidebar-line: rgba(148, 163, 184, 0.16);
-  --admin-sidebar-ink: #e2e8f0;
+  --admin-sidebar-soft: #121a2b;
+  --admin-sidebar-line: rgba(148, 163, 184, 0.14);
+  --admin-sidebar-ink: #e8eef7;
   --admin-sidebar-muted: #94a3b8;
   --admin-ops: #2dd4bf;
-  background:
-    radial-gradient(900px 420px at 8% -8%, rgba(45, 212, 191, 0.08), transparent 55%),
-    linear-gradient(180deg, #eef2f7 0%, #e8edf4 100%);
+  --admin-content-max: 1180px;
+  background: #e8edf4;
   max-width: 100vw;
   overflow-x: hidden;
 }
@@ -81,23 +80,52 @@ body {
   --line: var(--admin-sidebar-line);
   --surface: var(--admin-sidebar);
   --surface-soft: var(--admin-sidebar-soft);
-  --surface-hover: #1e293b;
+  --surface-hover: #1a2438;
   --accent: var(--admin-ops);
   --accent-strong: #5eead4;
+}
+
+.admin-sidebar .admin-nav-active {
+  background: rgba(45, 212, 191, 0.14);
+  color: #f8fafc;
+  box-shadow: inset 3px 0 0 #2dd4bf;
+}
+
+.admin-content {
+  max-width: var(--admin-content-max);
+}
+
+.admin-kpi {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.admin-kpi::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--kpi-accent, var(--accent));
 }
 
 .admin-mode-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border-radius: 999px;
-  border: 1px solid rgba(45, 212, 191, 0.28);
-  background: rgba(45, 212, 191, 0.12);
-  color: #0f766e;
-  padding: 0.2rem 0.65rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f1f5f9;
+  color: #475569;
+  padding: 0.2rem 0.55rem;
   font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 

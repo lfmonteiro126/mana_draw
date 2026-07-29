@@ -46,7 +46,6 @@ import {
   EmptyState,
   FieldLabel,
   FilterChip,
-  HeroStat,
   InfoValue,
   MetricCard,
   NavItem,
@@ -54,6 +53,8 @@ import {
   Panel,
   PanelHeader,
   PriorityCard,
+  QueueRow,
+  SignalRow,
   StatusBadge,
   adminInputClass,
   adminInputWithIconClass
@@ -333,42 +334,38 @@ export default async function AdminPage({
         </aside>
 
         <section className="min-w-0 overflow-x-hidden pb-[calc(5.25rem+var(--safe-bottom))] lg:pb-0">
-          <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur-xl">
-            <div className="flex min-h-[64px] items-center justify-between gap-3 px-3 py-2.5 sm:min-h-[76px] sm:gap-4 sm:px-6 sm:py-3 lg:px-7">
+          <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--surface)]/92 backdrop-blur-md">
+            <div className="flex min-h-[56px] items-center justify-between gap-3 px-3 py-2 sm:min-h-[64px] sm:gap-4 sm:px-6 lg:px-7">
               <div className="min-w-0 flex-1">
-                <div className="mb-1 flex flex-wrap items-center gap-2">
-                  <span className="admin-mode-pill">Modo operador</span>
-                  <span className="hidden text-xs text-[var(--muted)] sm:inline">Separado da conta de cliente</span>
+                <div className="mb-0.5 flex items-center gap-2">
+                  <span className="admin-mode-pill">Ops</span>
+                  {alertCount > 0 ? (
+                    <span className="hidden text-xs text-[var(--muted)] sm:inline">
+                      {alertCount} na fila
+                    </span>
+                  ) : null}
                 </div>
-                <h1 className="truncate text-lg font-semibold tracking-tight sm:text-2xl">{page.title}</h1>
-                <p className="mt-1 hidden text-sm text-[var(--muted)] sm:block">{page.description}</p>
+                <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">{page.title}</h1>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                <form action="/admin" className="relative hidden w-[260px] xl:block" method="get">
+              <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+                <form action="/admin" className="relative hidden w-[240px] xl:block" method="get">
                   <input type="hidden" name="tab" value="inventory" />
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={17} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
                   <input
                     className={adminInputWithIconClass}
                     name="query"
-                    placeholder="Buscar no inventário…"
+                    placeholder="Buscar inventário…"
                     defaultValue={activeTab === "inventory" ? query : ""}
                   />
                 </form>
                 <Link
-                  className="hidden h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[#0b1220] px-4 text-sm font-semibold text-white transition hover:bg-slate-800 sm:inline-flex"
-                  href="/"
-                >
-                  <Store size={16} />
-                  Loja
-                </Link>
-                <Link
-                  className="relative grid h-10 w-10 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition hover:bg-[var(--surface-soft)] sm:h-11 sm:w-11"
+                  className="relative grid h-10 w-10 place-items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition hover:border-teal-300/60 hover:text-teal-700 sm:h-10 sm:w-10"
                   href="/admin?tab=pendencias"
                   aria-label={`${alertCount} pendências`}
                   title="Pendências"
                 >
-                  <Bell size={18} />
+                  <Bell size={17} />
                   {alertCount > 0 ? (
                     <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-teal-500 px-1 text-[10px] font-bold text-white">
                       {alertCount > 9 ? "9+" : alertCount}
@@ -376,7 +373,7 @@ export default async function AdminPage({
                   ) : null}
                 </Link>
                 <span
-                  className="grid h-10 w-10 place-items-center rounded-[var(--radius-control)] bg-[#0b1220] text-xs font-bold text-teal-300 sm:h-11 sm:w-11 lg:hidden"
+                  className="grid h-10 w-10 place-items-center rounded-[var(--radius-control)] bg-[#0b1220] text-xs font-bold text-teal-300 lg:hidden"
                   title={`Operador ${user.name || user.email}`}
                 >
                   {initials}
@@ -385,7 +382,7 @@ export default async function AdminPage({
             </div>
           </header>
 
-          <div className="min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-7">
+          <div className="admin-content mx-auto min-w-0 w-full px-3 py-4 sm:px-6 sm:py-5 lg:px-7">
             {(notice || error) && (
               <AlertBanner tone={error ? "error" : "success"}>
                 <span className="inline-flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -439,8 +436,10 @@ export default async function AdminPage({
 
             {activeTab === "overview" && (
               <OverviewTab
+                awaitingCustomer={awaitingCustomer}
                 cards={allCards}
                 gameStats={gameStats}
+                inboundPending={inboundPending}
                 inventoryValue={inventoryValue}
                 lowStockCards={lowStockCards}
                 openSubmissions={openSubmissions}
@@ -448,6 +447,7 @@ export default async function AdminPage({
                 outOfStockCount={outOfStockCards.length}
                 paidRevenue={paidRevenue}
                 pendingOrders={pendingOrders}
+                receiveQueue={receiveQueue}
                 submissions={submissions}
                 topCards={topCards}
                 totalStock={totalStock}
@@ -517,8 +517,10 @@ export default async function AdminPage({
 }
 
 function OverviewTab({
+  awaitingCustomer,
   cards,
   gameStats,
+  inboundPending,
   inventoryValue,
   lowStockCards,
   openSubmissions,
@@ -526,12 +528,15 @@ function OverviewTab({
   outOfStockCount,
   paidRevenue,
   pendingOrders,
+  receiveQueue,
   submissions,
   topCards,
   totalStock
 }: {
+  awaitingCustomer: BuylistSubmission[];
   cards: TcgCard[];
   gameStats: ReturnType<typeof getGameStats>;
+  inboundPending: BuylistSubmission[];
   inventoryValue: number;
   lowStockCards: TcgCard[];
   openSubmissions: BuylistSubmission[];
@@ -539,114 +544,255 @@ function OverviewTab({
   outOfStockCount: number;
   paidRevenue: number;
   pendingOrders: OrderSummary[];
+  receiveQueue: BuylistSubmission[];
   submissions: BuylistSubmission[];
   topCards: TcgCard[];
   totalStock: number;
 }) {
-  const priorityCount = lowStockCards.length + openSubmissions.length + pendingOrders.length;
+  const qcQueue = receiveQueue.filter((item) => item.status !== "stocked");
+  const dayQueue = buildDayQueue({
+    awaitingCustomer,
+    inboundPending,
+    lowStockCards,
+    openSubmissions,
+    pendingOrders,
+    receiveQueue: qcQueue
+  });
 
   return (
-    <div className="grid min-w-0 gap-4 sm:gap-6">
-      <section className="surface-card min-w-0 overflow-hidden">
-        <div className="grid min-w-0 gap-4 p-4 sm:gap-5 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] lg:p-6">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)]">
-                Painel do dia
-              </span>
-              <span className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)]">
-                {cards.length} prints ativos
-              </span>
-            </div>
-            <h2 className="mt-4 max-w-3xl text-xl font-semibold leading-tight tracking-tight text-[var(--ink)] sm:mt-5 sm:text-3xl">
-              Estoque, compra e venda em uma leitura rápida.
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)] sm:mt-3">
-              Priorize reposição, responda buylists e acompanhe pedidos sem perder o contexto do inventário.
-            </p>
-          </div>
-          <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-3">
-            <HeroStat label="Estoque total" value={`${totalStock} un.`} />
-            <HeroStat label="Valor parado" value={formatCurrency(inventoryValue)} />
-            <HeroStat label="Cotações abertas" value={String(openSubmissions.length)} />
-            <HeroStat label="Pedidos pendentes" value={String(pendingOrders.length)} />
-          </div>
+    <div className="grid min-w-0 gap-4 sm:gap-5">
+      <section className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+            Visão operacional
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--ink)] sm:text-2xl">
+            O que precisa de ação agora
+          </h2>
         </div>
+        <p className="text-sm text-[var(--muted)]">
+          {cards.length} prints · {totalStock} un. · {submissions.length} cotações
+        </p>
       </section>
 
-      <section className="grid min-w-0 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={<CircleDollarSign size={20} />}
           label="Valor em estoque"
-          hint="Soma de preço × unidades"
+          hint="Preço × unidades"
           value={formatCurrency(inventoryValue)}
           tone="cyan"
         />
         <MetricCard
           icon={<Boxes size={20} />}
-          label="Cartas ativas"
-          hint={`${totalStock} unidades · ${outOfStockCount} sem estoque`}
+          label="Prints ativos"
+          hint={`${outOfStockCount} sem estoque`}
           value={String(cards.length)}
           tone="green"
         />
         <MetricCard
           icon={<Camera size={20} />}
           label="Cotações abertas"
-          hint={`${submissions.length} recebidas no total`}
+          hint={`${awaitingCustomer.length} aguardando cliente`}
           value={String(openSubmissions.length)}
           tone="orange"
         />
         <MetricCard
           icon={<ShoppingBag size={20} />}
-          label="Receita em pedidos"
-          hint={`${orders.length} pedidos recentes`}
-          value={formatCurrency(paidRevenue)}
+          label="Pedidos pendentes"
+          hint={`${formatCurrency(paidRevenue)} em pedidos recentes`}
+          value={String(pendingOrders.length)}
           tone="red"
         />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.8fr)]">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.85fr)]">
         <Panel>
           <PanelHeader
-            title="Prioridades de hoje"
-            text="Ações que impactam compra, cotação e reposição."
-            badge={`${priorityCount} pendências`}
-            tone={priorityCount > 0 ? "gold" : "muted"}
+            title="Fila do dia"
+            text="Pendências ordenadas por impacto operacional."
+            badge={`${dayQueue.length} itens`}
+            tone={dayQueue.length > 0 ? "gold" : "muted"}
+            action={
+              <Link className="text-sm font-semibold text-[var(--accent)]" href="/admin?tab=pendencias">
+                Abrir pendências
+              </Link>
+            }
           />
-          <div className="grid gap-3 md:grid-cols-3">
-            <PriorityCard
-              href="/admin?tab=inventory&stock=low"
-              label="Repor estoque baixo"
-              value={String(lowStockCards.length)}
-              text="Cartas com 1 a 3 unidades."
-              urgent={lowStockCards.length > 0}
+          {dayQueue.length === 0 ? (
+            <EmptyState
+              icon={<CheckCircle2 size={28} />}
+              title="Fila limpa"
+              text="Sem cotações, pedidos ou reposição urgente no momento."
             />
-            <PriorityCard
-              href="/admin?tab=pendencias"
-              label="Responder cotações"
-              value={String(openSubmissions.length)}
-              text="Lotes novos ou em análise."
-              urgent={openSubmissions.length > 0}
-            />
-            <PriorityCard
-              href="/admin?tab=pendencias"
-              label="Atualizar pedidos"
-              value={String(pendingOrders.length)}
-              text="Compras ainda pendentes de pagamento."
-              urgent={pendingOrders.length > 0}
-            />
-          </div>
+          ) : (
+            <div className="min-w-0">
+              <div className="mb-1 hidden grid-cols-[88px_minmax(0,1.2fr)_minmax(0,1fr)_72px] gap-3 px-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)] sm:grid">
+                <span>Tipo</span>
+                <span>Item</span>
+                <span>Detalhe</span>
+                <span className="text-right">Urgência</span>
+              </div>
+              {dayQueue.map((row) => (
+                <QueueRow
+                  key={row.id}
+                  href={row.href}
+                  type={row.type}
+                  title={row.title}
+                  detail={row.detail}
+                  urgency={row.urgency}
+                />
+              ))}
+            </div>
+          )}
         </Panel>
 
-        <DistributionPanel gameStats={gameStats} inventoryValue={inventoryValue} />
+        <div className="grid gap-4">
+          <DistributionPanel gameStats={gameStats} inventoryValue={inventoryValue} />
+          <Panel>
+            <PanelHeader title="Sinais rápidos" text="Atalhos da operação." />
+            <div className="divide-y divide-[var(--line)]">
+              <SignalRow label="Estoque baixo" value={lowStockCards.length} tone={lowStockCards.length > 0 ? "warn" : "muted"} />
+              <SignalRow label="Aguardando cliente" value={awaitingCustomer.length} tone={awaitingCustomer.length > 0 ? "info" : "muted"} />
+              <SignalRow label="Em trânsito" value={inboundPending.length} tone={inboundPending.length > 0 ? "info" : "muted"} />
+              <SignalRow label="Receber / QC" value={qcQueue.length} tone={qcQueue.length > 0 ? "danger" : "muted"} />
+              <SignalRow label="Sem estoque" value={outOfStockCount} tone={outOfStockCount > 0 ? "warn" : "muted"} />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                className="inline-flex h-9 items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 text-xs font-semibold text-[var(--ink)] transition hover:border-[var(--accent)]/40"
+                href="/admin?tab=inventory&stock=low"
+              >
+                Reposição
+              </Link>
+              <Link
+                className="inline-flex h-9 items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 text-xs font-semibold text-[var(--ink)] transition hover:border-[var(--accent)]/40"
+                href="/admin?tab=pendencias"
+              >
+                Fila completa
+              </Link>
+              <Link
+                className="inline-flex h-9 items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 text-xs font-semibold text-[var(--ink)] transition hover:border-[var(--accent)]/40"
+                href="/admin?tab=new-card"
+              >
+                Nova carta
+              </Link>
+            </div>
+          </Panel>
+        </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section className="grid gap-4 xl:grid-cols-2">
         <TopCardsPanel topCards={topCards} />
         <RecentOrdersPanel orders={orders.slice(0, 5)} />
       </section>
     </div>
   );
+}
+
+type DayQueueItem = {
+  id: string;
+  type: string;
+  title: string;
+  detail: string;
+  urgency: "Alta" | "Média" | "Baixa";
+  href: string;
+  rank: number;
+};
+
+function buildDayQueue({
+  awaitingCustomer,
+  inboundPending,
+  lowStockCards,
+  openSubmissions,
+  pendingOrders,
+  receiveQueue
+}: {
+  awaitingCustomer: BuylistSubmission[];
+  inboundPending: BuylistSubmission[];
+  lowStockCards: TcgCard[];
+  openSubmissions: BuylistSubmission[];
+  pendingOrders: OrderSummary[];
+  receiveQueue: BuylistSubmission[];
+}): DayQueueItem[] {
+  const items: DayQueueItem[] = [];
+
+  for (const submission of openSubmissions.slice(0, 4)) {
+    items.push({
+      id: `buy-open-${submission.id}`,
+      type: "Buylist",
+      title: `Lote ${submission.game} · ${submission.customerName}`,
+      detail: buylistStatusLabels[submission.status] ?? submission.status,
+      urgency: "Alta",
+      href: `/admin?tab=pendencias&focus=${submission.id}`,
+      rank: 1
+    });
+  }
+
+  for (const submission of receiveQueue.slice(0, 3)) {
+    items.push({
+      id: `buy-qc-${submission.id}`,
+      type: "QC",
+      title: `Lote recebido · ${submission.customerName}`,
+      detail: buylistStatusLabels[submission.status] ?? submission.status,
+      urgency: "Alta",
+      href: `/admin?tab=pendencias&focus=${submission.id}`,
+      rank: 1
+    });
+  }
+
+  for (const order of pendingOrders.slice(0, 3)) {
+    items.push({
+      id: `ord-${order.id}`,
+      type: "Pedido",
+      title: `Pedido ${order.id.slice(0, 8).toUpperCase()}`,
+      detail: `${formatCurrency(order.totalCents || order.subtotalCents)} · pagamento pendente`,
+      urgency: "Alta",
+      href: "/admin?tab=pendencias",
+      rank: 2
+    });
+  }
+
+  for (const submission of inboundPending.slice(0, 2)) {
+    items.push({
+      id: `buy-in-${submission.id}`,
+      type: "Buylist",
+      title: `Lote ${submission.game} · ${submission.customerName}`,
+      detail: buylistStatusLabels[submission.status] ?? "Em trânsito",
+      urgency: "Média",
+      href: `/admin?tab=pendencias&focus=${submission.id}`,
+      rank: 3
+    });
+  }
+
+  for (const submission of awaitingCustomer.slice(0, 2)) {
+    items.push({
+      id: `buy-wait-${submission.id}`,
+      type: "Buylist",
+      title: `Oferta · ${submission.customerName}`,
+      detail:
+        submission.offerCents != null
+          ? `Oferta ${formatCurrency(submission.offerCents)} · aguarda aceite`
+          : "Aguarda aceite do cliente",
+      urgency: "Média",
+      href: `/admin?tab=pendencias&focus=${submission.id}`,
+      rank: 3
+    });
+  }
+
+  for (const card of lowStockCards.slice(0, 3)) {
+    items.push({
+      id: `stock-${card.id}`,
+      type: "Estoque",
+      title: `${card.name} · ${card.condition}`,
+      detail: `${card.stock} un. · reposição`,
+      urgency: card.stock === 1 ? "Alta" : "Média",
+      href: "/admin?tab=inventory&stock=low",
+      rank: card.stock === 1 ? 2 : 4
+    });
+  }
+
+  return items.sort((a, b) => a.rank - b.rank || a.title.localeCompare(b.title)).slice(0, 8);
 }
 
 function PendenciasTab({
@@ -699,7 +845,19 @@ function PendenciasTab({
   const tokenFor = (id: string) => (focusId === id ? tokenUrl || null : null);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-5">
+      <section className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+            Fila operacional
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--ink)] sm:text-2xl">
+            Pendências
+          </h2>
+        </div>
+        <p className="text-sm text-[var(--muted)]">{total} itens na fila</p>
+      </section>
+
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard icon={<Camera size={20} />} label="Analisar" hint="Novas / em análise" value={String(openSubmissions.length)} tone="cyan" />
         <MetricCard icon={<Inbox size={20} />} label="Aguardando cliente" hint="Oferta enviada" value={String(awaitingCustomer.length)} tone="orange" />
@@ -1462,7 +1620,7 @@ function DistributionPanel({
 }) {
   return (
     <Panel>
-      <PanelHeader title="Cartas por jogo" text="Comparação de volume por jogo." />
+      <PanelHeader title="Mix de estoque" text="% de unidades por jogo." />
       {gameStats.every((item) => item.count === 0) ? (
         <EmptyState icon={<Boxes size={28} />} title="Sem estoque" text="Cadastre cartas para ver a distribuição." />
       ) : (
