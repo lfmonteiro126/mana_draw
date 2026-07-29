@@ -301,36 +301,33 @@ export default async function AdminPage({
                 ))}
               </NavSection>
             ))}
-          </nav>
 
-          <div className="space-y-1 border-t border-[var(--line)] p-4">
-            <p className="px-1 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-              Trocar sessão
-            </p>
-            <Link
-              className="flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
-              href="/"
-            >
-              <Store size={18} />
-              Loja (vitrine)
-            </Link>
-            <Link
-              className="flex items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
-              href="/conta"
-            >
-              <UserRound size={18} />
-              Conta de cliente
-            </Link>
-            <form action={logoutAction}>
-              <button
-                className="flex w-full items-center gap-3 rounded-[var(--radius-control)] px-3 py-2.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/10"
-                type="submit"
+            <NavSection label="Trocar sessão">
+              <Link
+                className="flex items-center gap-3 rounded-[0.55rem] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
+                href="/"
               >
-                <LogOut size={18} />
-                Encerrar sessão
-              </button>
-            </form>
-          </div>
+                <Store size={18} />
+                Loja (vitrine)
+              </Link>
+              <Link
+                className="flex items-center gap-3 rounded-[0.55rem] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
+                href="/conta"
+              >
+                <UserRound size={18} />
+                Conta de cliente
+              </Link>
+              <form action={logoutAction}>
+                <button
+                  className="flex w-full items-center gap-3 rounded-[0.55rem] px-3 py-2.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/10"
+                  type="submit"
+                >
+                  <LogOut size={18} />
+                  Encerrar sessão
+                </button>
+              </form>
+            </NavSection>
+          </nav>
         </aside>
 
         <section className="min-w-0 overflow-x-hidden pb-[calc(5.25rem+var(--safe-bottom))] lg:pb-0">
