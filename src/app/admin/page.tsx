@@ -6,6 +6,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
   ClipboardList,
   Database,
@@ -120,6 +121,8 @@ const tabs = [
 
 type AdminTab = (typeof tabs)[number];
 
+const INVENTORY_PAGE_SIZE = 10;
+
 const tabLabels: Record<AdminTab, { title: string; description: string }> = {
   overview: {
     title: "Visão geral",
@@ -178,6 +181,7 @@ export default async function AdminPage({
   const game = normalizeGame(params.game);
   const stock = normalizeStock(params.stock);
   const activeTab = normalizeTab(params.tab);
+  const inventoryPageRequested = normalizePage(params.page);
   const orderFilter = normalizeOrderFilter(params.status);
   const buylistFilter = normalizeBuylistFilter(params.status);
 
@@ -224,13 +228,23 @@ export default async function AdminPage({
     );
   }
 
-  const [allCards, cards, submissions, orders, customers] = await Promise.all([
+  const [allCards, inventoryMatches, submissions, orders, customers] = await Promise.all([
     getAdminCards({ limit: 10000 }),
-    getAdminCards({ query, game, stock }),
+    activeTab === "inventory"
+      ? getAdminCards({ query, game, stock, limit: 10000 })
+      : Promise.resolve([] as TcgCard[]),
     getBuylistSubmissions(),
     getAdminOrders(),
     getAdminCustomers()
   ]);
+
+  const inventoryTotal = inventoryMatches.length;
+  const inventoryTotalPages = Math.max(1, Math.ceil(inventoryTotal / INVENTORY_PAGE_SIZE));
+  const inventoryPage = Math.min(Math.max(inventoryPageRequested, 1), inventoryTotalPages);
+  const cards = inventoryMatches.slice(
+    (inventoryPage - 1) * INVENTORY_PAGE_SIZE,
+    inventoryPage * INVENTORY_PAGE_SIZE
+  );
 
   const totalStock = allCards.reduce((sum, card) => sum + card.stock, 0);
   const inventoryValue = allCards.reduce((sum, card) => sum + card.stock * card.priceCents, 0);
@@ -468,9 +482,12 @@ export default async function AdminPage({
                 game={game}
                 gameStats={gameStats}
                 inventoryValue={inventoryValue}
+                page={inventoryPage}
                 query={query}
                 stock={stock}
                 topCards={topCards}
+                totalCount={inventoryTotal}
+                totalPages={inventoryTotalPages}
               />
             )}
             {activeTab === "new-card" && (
@@ -969,25 +986,34 @@ function InventoryTab({
   game,
   gameStats,
   inventoryValue,
+  page,
   query,
   stock,
-  topCards
+  topCards,
+  totalCount,
+  totalPages
 }: {
   cards: TcgCard[];
   game: FilterGame;
   gameStats: ReturnType<typeof getGameStats>;
   inventoryValue: number;
+  page: number;
   query: string;
   stock: "all" | "low" | "out";
   topCards: TcgCard[];
+  totalCount: number;
+  totalPages: number;
 }) {
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * INVENTORY_PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * INVENTORY_PAGE_SIZE, totalCount);
+
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.85fr)]">
       <Panel>
         <PanelHeader
           title="Inventário"
           text="Cards consolidados por print, condição, idioma e acabamento."
-          badge={`${cards.length} itens`}
+          badge={`${totalCount} itens`}
         />
 
         <div className="mb-4 flex flex-wrap gap-2">
@@ -1041,9 +1067,31 @@ function InventoryTab({
               }
             />
           ) : (
-            cards.map((card) => <InventoryRow key={card.id} card={card} />)
+            cards.map((card) => (
+              <InventoryRow
+                key={card.id}
+                card={card}
+                game={game}
+                page={page}
+                query={query}
+                stock={stock}
+              />
+            ))
           )}
         </div>
+
+        {totalCount > 0 ? (
+          <InventoryPagination
+            game={game}
+            page={page}
+            query={query}
+            rangeEnd={rangeEnd}
+            rangeStart={rangeStart}
+            stock={stock}
+            totalCount={totalCount}
+            totalPages={totalPages}
+          />
+        ) : null}
       </Panel>
 
       <div className="grid gap-6 self-start xl:sticky xl:top-24">
@@ -1052,6 +1100,114 @@ function InventoryTab({
       </div>
     </section>
   );
+}
+
+function InventoryPagination({
+  game,
+  page,
+  query,
+  rangeEnd,
+  rangeStart,
+  stock,
+  totalCount,
+  totalPages
+}: {
+  game: FilterGame;
+  page: number;
+  query: string;
+  rangeEnd: number;
+  rangeStart: number;
+  stock: "all" | "low" | "out";
+  totalCount: number;
+  totalPages: number;
+}) {
+  const pages = visiblePageNumbers(page, totalPages);
+
+  return (
+    <div className="mt-5 flex flex-col gap-3 border-t border-[var(--line)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-[var(--muted)]">
+        {rangeStart}–{rangeEnd} de {totalCount}
+      </p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Link
+          aria-disabled={page <= 1}
+          className={`inline-flex h-9 items-center gap-1 rounded-[var(--radius-control)] border px-2.5 text-sm font-semibold transition ${
+            page <= 1
+              ? "pointer-events-none border-[var(--line)] text-[var(--muted)] opacity-45"
+              : "border-[var(--line)] text-[var(--ink)] hover:border-[var(--accent)]/50 hover:bg-[var(--surface-soft)]"
+          }`}
+          href={inventoryHref({ query, game, stock, page: page - 1 })}
+        >
+          <ChevronLeft size={16} />
+          Anterior
+        </Link>
+        {pages.map((item, index) =>
+          item === "…" ? (
+            <span key={`ellipsis-${index}`} className="px-1 text-sm text-[var(--muted)]">
+              …
+            </span>
+          ) : (
+            <Link
+              key={item}
+              aria-current={item === page ? "page" : undefined}
+              className={`grid h-9 min-w-9 place-items-center rounded-[var(--radius-control)] border px-2 text-sm font-semibold transition ${
+                item === page
+                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                  : "border-[var(--line)] text-[var(--ink)] hover:border-[var(--accent)]/50 hover:bg-[var(--surface-soft)]"
+              }`}
+              href={inventoryHref({ query, game, stock, page: item })}
+            >
+              {item}
+            </Link>
+          )
+        )}
+        <Link
+          aria-disabled={page >= totalPages}
+          className={`inline-flex h-9 items-center gap-1 rounded-[var(--radius-control)] border px-2.5 text-sm font-semibold transition ${
+            page >= totalPages
+              ? "pointer-events-none border-[var(--line)] text-[var(--muted)] opacity-45"
+              : "border-[var(--line)] text-[var(--ink)] hover:border-[var(--accent)]/50 hover:bg-[var(--surface-soft)]"
+          }`}
+          href={inventoryHref({ query, game, stock, page: page + 1 })}
+        >
+          Próxima
+          <ChevronRight size={16} />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function visiblePageNumbers(current: number, total: number): Array<number | "…"> {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, index) => index + 1);
+  }
+
+  const pages = new Set<number>([1, total, current, current - 1, current + 1]);
+  if (current <= 3) {
+    pages.add(2);
+    pages.add(3);
+    pages.add(4);
+  }
+  if (current >= total - 2) {
+    pages.add(total - 1);
+    pages.add(total - 2);
+    pages.add(total - 3);
+  }
+
+  const sorted = Array.from(pages)
+    .filter((page) => page >= 1 && page <= total)
+    .sort((a, b) => a - b);
+
+  const result: Array<number | "…"> = [];
+  for (const page of sorted) {
+    const previous = result[result.length - 1];
+    if (typeof previous === "number" && page - previous > 1) {
+      result.push("…");
+    }
+    result.push(page);
+  }
+  return result;
 }
 
 function NewCardTab({
@@ -1734,7 +1890,19 @@ function RecentOrdersPanel({ orders }: { orders: OrderSummary[] }) {
   );
 }
 
-function InventoryRow({ card }: { card: TcgCard }) {
+function InventoryRow({
+  card,
+  game,
+  page,
+  query,
+  stock
+}: {
+  card: TcgCard;
+  game: FilterGame;
+  page: number;
+  query: string;
+  stock: "all" | "low" | "out";
+}) {
   const secondFaceUrl = resolveCardBackImageUrl(card);
   const hasSecondFace = cardHasSecondFace(card);
   const zoomUrls = [card.imageUrl, secondFaceUrl].filter((url): url is string => Boolean(url));
@@ -1752,6 +1920,10 @@ function InventoryRow({ card }: { card: TcgCard }) {
     >
       <input type="hidden" name="id" value={card.id} />
       <input type="hidden" name="tab" value="inventory" />
+      <input type="hidden" name="inv_page" value={String(page)} />
+      <input type="hidden" name="inv_query" value={query} />
+      <input type="hidden" name="inv_game" value={game} />
+      <input type="hidden" name="inv_stock" value={stock} />
 
       <div className="grid min-w-0 gap-4 sm:grid-cols-[88px_minmax(0,1fr)] sm:items-center">
         <div
@@ -2000,17 +2172,26 @@ function getStatusStats(orders: Array<{ status: string }>) {
 function inventoryHref({
   query,
   game,
-  stock
+  stock,
+  page
 }: {
   query: string;
   game: FilterGame;
   stock: "all" | "low" | "out";
+  page?: number;
 }) {
   const params = new URLSearchParams({ tab: "inventory" });
   if (query) params.set("query", query);
   if (game !== "Todos") params.set("game", game);
   if (stock !== "all") params.set("stock", stock);
+  if (page && page > 1) params.set("page", String(page));
   return `/admin?${params.toString()}`;
+}
+
+function normalizePage(value: string | string[] | undefined) {
+  if (typeof value !== "string") return 1;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
 function normalizeTab(value: string | string[] | undefined): AdminTab {

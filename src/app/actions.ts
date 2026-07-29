@@ -90,6 +90,21 @@ function adminTabFrom(formData: FormData, fallback: string) {
   return ["inventory", "new-card", "buylists", "orders", "pendencias"].includes(tab) ? tab : fallback;
 }
 
+function adminInventoryPath(formData: FormData, flash: { notice?: string; error?: string }) {
+  const params = new URLSearchParams({ tab: adminTabFrom(formData, "inventory") });
+  const page = readString(formData, "inv_page");
+  const query = readString(formData, "inv_query");
+  const game = readString(formData, "inv_game");
+  const stock = readString(formData, "inv_stock");
+  if (page && page !== "1") params.set("page", page);
+  if (query) params.set("query", query);
+  if (game && game !== "Todos") params.set("game", game);
+  if (stock && stock !== "all") params.set("stock", stock);
+  if (flash.notice) params.set("notice", flash.notice);
+  if (flash.error) params.set("error", flash.error);
+  return `/admin?${params.toString()}`;
+}
+
 function withNotice(path: string, key: string, value: string) {
   const join = path.includes("?") ? "&" : "?";
   return `${path}${join}${key}=${encodeURIComponent(value)}`;
@@ -677,16 +692,15 @@ export async function updateCardAction(formData: FormData) {
   const priceCents = readMoneyCents(formData, "price");
   const stock = Number(readString(formData, "stock"));
   const condition = readString(formData, "condition") as CardCondition;
-  const tab = adminTabFrom(formData, "inventory");
 
   if (!id || !Number.isFinite(priceCents) || !Number.isInteger(stock)) {
-    redirect(`/admin?tab=${tab}&error=invalid-card`);
+    redirect(adminInventoryPath(formData, { error: "invalid-card" }));
   }
 
-  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+  if (!hasDatabase()) redirect(adminInventoryPath(formData, { notice: "demo-no-db" }));
 
   const sql = getSql();
-  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  if (!sql) redirect(adminInventoryPath(formData, { error: "no-db" }));
 
   await sql`
     update cards
@@ -700,7 +714,7 @@ export async function updateCardAction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/admin");
-  redirect(`/admin?tab=${tab}&notice=card-updated`);
+  redirect(adminInventoryPath(formData, { notice: "card-updated" }));
 }
 
 export async function deleteCardAction(formData: FormData) {
@@ -708,13 +722,12 @@ export async function deleteCardAction(formData: FormData) {
   if (user?.role !== "admin") redirect("/admin?error=unauthorized");
 
   const id = readString(formData, "id");
-  const tab = adminTabFrom(formData, "inventory");
 
-  if (!id) redirect(`/admin?tab=${tab}&error=invalid-card`);
-  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+  if (!id) redirect(adminInventoryPath(formData, { error: "invalid-card" }));
+  if (!hasDatabase()) redirect(adminInventoryPath(formData, { notice: "demo-no-db" }));
 
   const sql = getSql();
-  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+  if (!sql) redirect(adminInventoryPath(formData, { error: "no-db" }));
 
   await sql`
     update cards
@@ -724,7 +737,7 @@ export async function deleteCardAction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/admin");
-  redirect(`/admin?tab=${tab}&notice=card-deleted`);
+  redirect(adminInventoryPath(formData, { notice: "card-deleted" }));
 }
 
 export async function createCardAction(formData: FormData) {
