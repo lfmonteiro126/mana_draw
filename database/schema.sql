@@ -37,20 +37,38 @@ create table if not exists cards (
   layout text,
   tags text[] not null default '{}',
   finish card_finish not null default 'Normal',
+  product_kind text not null default 'single',
+  sealed_type text,
   active boolean not null default true,
   featured boolean not null default false,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint cards_product_kind_check check (product_kind in ('single', 'sealed'))
 );
 
 create index if not exists cards_game_idx on cards (game);
 create index if not exists cards_featured_idx on cards (featured, updated_at desc);
+create index if not exists cards_product_kind_idx on cards (product_kind, game);
 
 alter table cards
   add column if not exists search_vector tsvector,
   add column if not exists back_image_url text,
   add column if not exists is_double_sided boolean not null default false,
-  add column if not exists layout text;
+  add column if not exists layout text,
+  add column if not exists product_kind text not null default 'single',
+  add column if not exists sealed_type text;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'cards_product_kind_check'
+  ) then
+    alter table cards
+      add constraint cards_product_kind_check
+      check (product_kind in ('single', 'sealed'));
+  end if;
+end
+$$;
 
 create or replace function cards_search_vector_update()
 returns trigger
@@ -63,6 +81,8 @@ begin
       coalesce(new.name, '') || ' ' ||
       coalesce(new.set_name, '') || ' ' ||
       coalesce(new.rarity, '') || ' ' ||
+      coalesce(new.product_kind, '') || ' ' ||
+      coalesce(new.sealed_type, '') || ' ' ||
       coalesce(array_to_string(new.tags, ' '), '')
     );
   return new;
@@ -72,7 +92,7 @@ $$;
 drop trigger if exists cards_search_vector_trigger on cards;
 
 create trigger cards_search_vector_trigger
-before insert or update of name, set_name, rarity, tags
+before insert or update of name, set_name, rarity, tags, product_kind, sealed_type
 on cards
 for each row
 execute function cards_search_vector_update();
@@ -84,6 +104,8 @@ set search_vector =
     coalesce(name, '') || ' ' ||
     coalesce(set_name, '') || ' ' ||
     coalesce(rarity, '') || ' ' ||
+    coalesce(product_kind, '') || ' ' ||
+    coalesce(sealed_type, '') || ' ' ||
     coalesce(array_to_string(tags, ' '), '')
   )
 where search_vector is null;

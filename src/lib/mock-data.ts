@@ -15,7 +15,8 @@ export const cards: TcgCard[] = [
     imageUrl:
       "https://cards.scryfall.io/normal/front/4/6/46ca0b66-a000-4483-b916-f5b89e710244.jpg?1783915591",
     tags: ["Commander", "Artefato", "Staple"],
-    finish: "Normal"
+    finish: "Normal",
+    productKind: "single"
   },
   {
     id: "mtg-dfc-001",
@@ -35,7 +36,8 @@ export const cards: TcgCard[] = [
     isDoubleSided: true,
     layout: "transform",
     tags: ["Magic", "isd", "transform", "Blue"],
-    finish: "Normal"
+    finish: "Normal",
+    productKind: "single"
   },
   {
     id: "mtg-002",
@@ -51,7 +53,8 @@ export const cards: TcgCard[] = [
     imageUrl:
       "https://cards.scryfall.io/normal/front/7/7/77c6fa74-5543-42ac-9ead-0e890b188e99.jpg?1783912538",
     tags: ["Burn", "Modern", "Legacy"],
-    finish: "Foil"
+    finish: "Foil",
+    productKind: "single"
   },
   {
     id: "pkm-001",
@@ -66,7 +69,8 @@ export const cards: TcgCard[] = [
     stock: 1,
     imageUrl: "https://images.pokemontcg.io/sv3/223_hires.png",
     tags: ["Fire", "Chase", "ex"],
-    finish: "Holo"
+    finish: "Holo",
+    productKind: "single"
   },
   {
     id: "pkm-002",
@@ -81,7 +85,8 @@ export const cards: TcgCard[] = [
     stock: 12,
     imageUrl: "https://images.pokemontcg.io/svp/27_hires.png",
     tags: ["Promo", "Colecionavel", "Eletrico"],
-    finish: "Holo"
+    finish: "Holo",
+    productKind: "single"
   },
   {
     id: "ygo-001",
@@ -96,7 +101,8 @@ export const cards: TcgCard[] = [
     stock: 4,
     imageUrl: "https://images.ygoprodeck.com/images/cards/89631139.jpg",
     tags: ["Dragon", "Anime", "Classic"],
-    finish: "Secret"
+    finish: "Secret",
+    productKind: "single"
   },
   {
     id: "ygo-002",
@@ -111,7 +117,110 @@ export const cards: TcgCard[] = [
     stock: 6,
     imageUrl: "https://images.ygoprodeck.com/images/cards/14558127.jpg",
     tags: ["Hand Trap", "Meta", "Staple"],
-    finish: "Secret"
+    finish: "Secret",
+    productKind: "single"
+  },
+  {
+    id: "mtg-sealed-001",
+    name: "Modern Horizons 3 - Collector Booster Display",
+    game: "Magic",
+    setName: "Modern Horizons 3",
+    rarity: "Sealed",
+    condition: "NM",
+    language: "EN",
+    priceCents: 189900,
+    marketPriceCents: 210000,
+    stock: 2,
+    imageUrl: "https://product-images.tcgplayer.com/fit-in/400x400/541179.jpg",
+    tags: ["Selado", "Collector Booster Box", "Magic"],
+    finish: "Normal",
+    productKind: "sealed",
+    sealedType: "collector_booster_box"
+  },
+  {
+    id: "mtg-sealed-002",
+    name: "Modern Horizons 3 Bundle",
+    game: "Magic",
+    setName: "Modern Horizons 3",
+    rarity: "Sealed",
+    condition: "NM",
+    language: "EN",
+    priceCents: 44990,
+    marketPriceCents: 49900,
+    stock: 4,
+    imageUrl: "https://product-images.tcgplayer.com/fit-in/400x400/541185.jpg",
+    tags: ["Selado", "Bundle", "Magic"],
+    finish: "Normal",
+    productKind: "sealed",
+    sealedType: "bundle"
+  },
+  {
+    id: "pkm-sealed-001",
+    name: "Obsidian Flames Elite Trainer Box",
+    game: "Pokemon",
+    setName: "Obsidian Flames",
+    rarity: "Sealed",
+    condition: "NM",
+    language: "EN",
+    priceCents: 28990,
+    marketPriceCents: 32000,
+    stock: 5,
+    imageUrl: "https://product-images.tcgplayer.com/fit-in/400x400/501264.jpg",
+    tags: ["Selado", "Elite Trainer Box", "Pokemon"],
+    finish: "Normal",
+    productKind: "sealed",
+    sealedType: "elite_trainer_box"
+  },
+  {
+    id: "pkm-sealed-002",
+    name: "Obsidian Flames Booster Box",
+    game: "Pokemon",
+    setName: "Obsidian Flames",
+    rarity: "Sealed",
+    condition: "NM",
+    language: "EN",
+    priceCents: 54990,
+    marketPriceCents: 59900,
+    stock: 3,
+    imageUrl: "https://product-images.tcgplayer.com/fit-in/400x400/501257.jpg",
+    tags: ["Selado", "Booster Box", "Pokemon"],
+    finish: "Normal",
+    productKind: "sealed",
+    sealedType: "booster_box"
+  },
+  {
+    id: "ygo-sealed-001",
+    name: "Rage of the Abyss Booster Box [1st Edition]",
+    game: "Yu-Gi-Oh!",
+    setName: "Rage of the Abyss",
+    rarity: "Sealed",
+    condition: "NM",
+    language: "EN",
+    priceCents: 42990,
+    marketPriceCents: 47000,
+    stock: 3,
+    imageUrl: "https://product-images.tcgplayer.com/fit-in/400x400/555696.jpg",
+    tags: ["Selado", "Booster Box", "Yu-Gi-Oh!"],
+    finish: "Normal",
+    productKind: "sealed",
+    sealedType: "booster_box"
+  },
+  {
+    id: "ygo-sealed-002",
+    name: "Blue-Eyes White Destiny Structure Deck",
+    game: "Yu-Gi-Oh!",
+    setName: "Blue-Eyes White Destiny",
+    rarity: "Sealed",
+    condition: "NM",
+    language: "EN",
+    priceCents: 8990,
+    marketPriceCents: 9900,
+    stock: 6,
+    imageUrl: "https://product-images.tcgplayer.com/fit-in/400x400/588110.jpg",
+    tags: ["Selado", "Structure Deck", "Yu-Gi-Oh!"],
+    finish: "Normal",
+    productKind: "sealed",
+    sealedType: "structure_deck"
   }
 ];
 

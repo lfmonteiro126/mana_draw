@@ -1224,12 +1224,13 @@ function NewCardTab({
       <NewCardPanel />
       <div className="grid gap-6 self-start xl:sticky xl:top-24">
         <Panel>
-          <PanelHeader title="Como cadastrar melhor" text="Use a busca unitária ou o lote ManaBox com prévia Scryfall." />
+          <PanelHeader title="Como cadastrar melhor" text="Use a busca unitária, o lote ManaBox ou o cadastro de produtos selados." />
           <div className="grid gap-3 text-sm text-[var(--muted)]">
             {[
               ["1. Uma carta", "Busque o nome, escolha o print e revise preço BRL antes de publicar."],
               ["2. Em lote (ManaBox)", "Exporte CSV/TXT no app, pré-visualize matches no Scryfall e importe só o que estiver OK."],
-              ["3. Preço de venda", "Mercado Scryfall fica em USD; venda é BRL — no lote pode deixar R$ 0 e ajustar no inventário."]
+              ["3. Produto selado", "Busque boxes, ETBs e tins — a imagem vem automaticamente do catálogo TCGPlayer."],
+              ["4. Preço de venda", "Mercado Scryfall/TCGPlayer fica em USD; venda é BRL — no lote pode deixar R$ 0 e ajustar no inventário."]
             ].map(([title, text]) => (
               <div key={title} className="rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
                 <p className="font-semibold text-[var(--ink)]">{title}</p>
@@ -1966,11 +1967,17 @@ function InventoryRow({
               <span className="rounded-md bg-[var(--accent)]/15 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">
                 {card.game}
               </span>
+              {card.productKind === "sealed" ? (
+                <span className="rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">
+                  Selado
+                </span>
+              ) : (
+                <span className="rounded-md border border-[var(--line)] bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">
+                  {card.finish}
+                </span>
+              )}
               <span className="rounded-md border border-[var(--line)] bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">
                 {card.language}
-              </span>
-              <span className="rounded-md border border-[var(--line)] bg-[var(--surface)] px-2 py-1 text-[11px] font-bold text-[var(--muted)]">
-                {card.finish}
               </span>
               <span className={`rounded-md border px-2 py-1 text-[11px] font-bold ${stockTone}`}>
                 {card.stock === 0 ? "Sem estoque" : card.stock <= 3 ? "Baixo estoque" : `${card.stock} un.`}
@@ -2239,6 +2246,7 @@ function messageFor(code: string) {
   const messages: Record<string, string> = {
     "card-updated": "Carta atualizada com sucesso.",
     "card-created": "Carta cadastrada com sucesso.",
+    "sealed-created": "Produto selado cadastrado com sucesso.",
     "card-deleted": "Carta removida do estoque.",
     "buylist-updated": "Cotação atualizada com sucesso.",
     "buylist-offered": "Oferta salva. Envie o link ao cliente.",
@@ -2263,6 +2271,7 @@ function messageFor(code: string) {
     unauthorized: "Acesso restrito a administradores.",
     "invalid-card": "Dados da carta inválidos.",
     "invalid-new-card": "Selecione um print real retornado pela busca antes de cadastrar.",
+    "invalid-new-sealed": "Preencha nome, tipo, imagem e preço do produto selado.",
     "invalid-buylist": "Dados da cotação inválidos.",
     "invalid-order": "Status do pedido inválido.",
     "no-db": "Banco indisponível."
