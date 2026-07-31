@@ -38,6 +38,9 @@ export function SealedAutocomplete() {
   const [isOpen, setIsOpen] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const selectedRef = useRef<SealedSuggestion | null>(null);
+  const searchGenRef = useRef(0);
 
   const typeOptions = useMemo(() => sealedTypesForGame(game), [game]);
   const canSearch = query.trim().length >= 2;
@@ -69,13 +72,16 @@ export function SealedAutocomplete() {
       return;
     }
 
-    // Já selecionou exatamente este resultado — não reabrir a lista.
-    if (selected && selected.name === trimmed && selected.game === game) {
+    // Já selecionou este produto — não buscar de novo nem reabrir a lista.
+    if (selectedRef.current && selectedRef.current.name === trimmed) {
+      setSuggestions([]);
       setIsOpen(false);
+      setIsLoading(false);
       return;
     }
 
     const controller = new AbortController();
+    const gen = ++searchGenRef.current;
     const timer = window.setTimeout(async () => {
       setIsLoading(true);
       setLookupError(null);
@@ -84,6 +90,8 @@ export function SealedAutocomplete() {
           `/api/sealed-lookup?game=${encodeURIComponent(game)}&query=${encodeURIComponent(trimmed)}`,
           { signal: controller.signal }
         );
+        if (gen !== searchGenRef.current || selectedRef.current) return;
+
         if (response.status === 401) {
           setSuggestions([]);
           setLookupError("Faça login como admin para buscar produtos.");
@@ -97,17 +105,21 @@ export function SealedAutocomplete() {
           return;
         }
         const data = (await response.json()) as { suggestions?: SealedSuggestion[] };
+        if (gen !== searchGenRef.current || selectedRef.current) return;
+
         const next = data.suggestions ?? [];
         setSuggestions(next);
         setIsOpen(next.length > 0);
       } catch (error) {
-        if ((error as Error).name !== "AbortError") {
+        if ((error as Error).name !== "AbortError" && gen === searchGenRef.current && !selectedRef.current) {
           setSuggestions([]);
           setLookupError("Falha de rede ao buscar produtos.");
           setIsOpen(false);
         }
       } finally {
-        if (!controller.signal.aborted) setIsLoading(false);
+        if (gen === searchGenRef.current && !controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     }, 320);
 
@@ -115,7 +127,7 @@ export function SealedAutocomplete() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [game, query, selected]);
+  }, [game, query]);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -128,6 +140,8 @@ export function SealedAutocomplete() {
   }, []);
 
   function applySuggestion(suggestion: SealedSuggestion) {
+    selectedRef.current = suggestion;
+    searchGenRef.current += 1;
     setSelected(suggestion);
     setQuery(suggestion.name);
     setName(suggestion.name);
@@ -152,8 +166,11 @@ export function SealedAutocomplete() {
           : ""
       );
     }
+    setSuggestions([]);
     setIsOpen(false);
+    setIsLoading(false);
     setLookupError(null);
+    searchInputRef.current?.blur();
   }
 
   return (
@@ -171,6 +188,7 @@ export function SealedAutocomplete() {
                   : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--ink)]"
               }`}
               onClick={() => {
+                selectedRef.current = null;
                 setGame(item);
                 setSelected(null);
                 setSuggestions([]);
@@ -195,15 +213,17 @@ export function SealedAutocomplete() {
           />
           <input
             id="sealed-search"
+            ref={searchInputRef}
             className={`${inputClass} pl-9 pr-10`}
             placeholder="Ex.: Obsidian Flames Elite Trainer Box"
             value={query}
             onChange={(event) => {
-              setQuery(event.target.value);
+              selectedRef.current = null;
               setSelected(null);
+              setQuery(event.target.value);
             }}
             onFocus={() => {
-              if (suggestions.length > 0 && !selected) setIsOpen(true);
+              if (suggestions.length > 0 && !selectedRef.current) setIsOpen(true);
             }}
             autoComplete="off"
             enterKeyHint="search"
@@ -227,51 +247,44 @@ export function SealedAutocomplete() {
           </span>
         </div>
 
-        {isOpen && suggestions.length > 0 ? (
+        {!selected && isOpen && suggestions.length > 0 ? (
           <ul
             className="max-h-[min(24rem,55vh)] overflow-auto rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-1 shadow-lg"
             role="listbox"
             aria-label="Sugestões de produtos selados"
           >
-            {suggestions.map((suggestion) => {
-              const isActive = selected?.externalId === suggestion.externalId;
-              return (
-                <li key={suggestion.externalId} role="option" aria-selected={isActive}>
-                  <button
-                    type="button"
-                    className={`grid w-full grid-cols-[56px_1fr] gap-2 rounded-md px-2 py-2.5 text-left transition active:scale-[0.99] ${
-                      isActive
-                        ? "bg-[var(--accent)]/10 ring-1 ring-[var(--accent)]/40"
-                        : "hover:bg-[var(--surface-hover)]"
-                    }`}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => applySuggestion(suggestion)}
-                  >
-                    <span className="relative aspect-square overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
-                      <Image
-                        src={suggestion.imageUrl}
-                        alt=""
-                        fill
-                        unoptimized
-                        className="object-contain p-0.5"
-                        sizes="56px"
-                      />
+            {suggestions.map((suggestion) => (
+              <li key={suggestion.externalId} role="option">
+                <button
+                  type="button"
+                  className="grid w-full grid-cols-[56px_1fr] gap-2 rounded-md px-2 py-2.5 text-left transition hover:bg-[var(--surface-hover)] active:scale-[0.99]"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => applySuggestion(suggestion)}
+                >
+                  <span className="relative aspect-square overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
+                    <Image
+                      src={suggestion.imageUrl}
+                      alt=""
+                      fill
+                      unoptimized
+                      className="object-contain p-0.5"
+                      sizes="56px"
+                    />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]">
+                      {suggestion.name}
                     </span>
-                    <span className="min-w-0">
-                      <span className="block line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]">
-                        {suggestion.name}
-                      </span>
-                      <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
-                        {suggestion.setName} · {sealedTypeLabel(game, suggestion.sealedType)}
-                        {suggestion.marketPriceCents > 0
-                          ? ` · ${formatUsd(suggestion.marketPriceCents)}`
-                          : ""}
-                      </span>
+                    <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
+                      {suggestion.setName} · {sealedTypeLabel(game, suggestion.sealedType)}
+                      {suggestion.marketPriceCents > 0
+                        ? ` · ${formatUsd(suggestion.marketPriceCents)}`
+                        : ""}
                     </span>
-                  </button>
-                </li>
-              );
-            })}
+                  </span>
+                </button>
+              </li>
+            ))}
           </ul>
         ) : null}
       </div>
@@ -381,16 +394,7 @@ export function SealedAutocomplete() {
         </label>
       </div>
 
-      <label className={labelClass}>
-        URL da imagem
-        <input
-          className={inputClass}
-          name="imageUrl"
-          required
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-        />
-      </label>
+      <input type="hidden" name="imageUrl" value={imageUrl} />
 
       {imageUrl ? (
         <div className="relative mx-auto aspect-square w-40 overflow-hidden rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)]">
