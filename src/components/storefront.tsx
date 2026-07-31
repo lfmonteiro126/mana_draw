@@ -926,7 +926,8 @@ export function Storefront({
           <p className="mt-1">Marketplace TCG · comprar e vender singles</p>
         </div>
         <div className="flex flex-wrap gap-4">
-          <a className="transition hover:text-[var(--ink)]" href="#catalogo">Catálogo</a>
+          <a className="transition hover:text-[var(--ink)]" href="#catalogo">Singles</a>
+          <a className="transition hover:text-[var(--ink)]" href="#selados">Selados</a>
           <Link className="transition hover:text-[var(--ink)]" href="/analisar-deck">Analisar deck</Link>
           <a className="transition hover:text-[var(--ink)]" href="#venda">Buylist</a>
           <a className="transition hover:text-[var(--ink)]" href="#operacao">Operação</a>
