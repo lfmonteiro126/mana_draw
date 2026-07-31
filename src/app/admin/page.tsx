@@ -1753,9 +1753,9 @@ function NewCardPanel() {
     <Panel>
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Nova carta</h2>
+          <h2 className="text-lg font-semibold">Novo item</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Cadastro unitário ou importação em lote via ManaBox (CSV/TXT).
+            Carta unitária, lote ManaBox ou produto selado com busca de imagem.
           </p>
         </div>
         <Plus className="text-[var(--accent)]" size={20} />

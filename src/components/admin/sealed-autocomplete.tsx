@@ -2,7 +2,7 @@
 
 import { Check, Loader2, Package, Search } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUsd } from "@/lib/format";
 import {
   isValidSealedType,
@@ -36,8 +36,22 @@ export function SealedAutocomplete() {
   const [selected, setSelected] = useState<SealedSuggestion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const typeOptions = useMemo(() => sealedTypesForGame(game), [game]);
+  const canSearch = query.trim().length >= 2;
+
+  const helperText = useMemo(() => {
+    if (!canSearch) return "Digite pelo menos 2 letras para buscar o produto.";
+    if (isLoading) return "Buscando produtos selados no TCGPlayer...";
+    if (lookupError) return lookupError;
+    if (selected) return "Produto selecionado — revise preço e estoque antes de cadastrar.";
+    if (suggestions.length > 0) {
+      return `${suggestions.length} produto${suggestions.length === 1 ? "" : "s"} encontrado${suggestions.length === 1 ? "" : "s"}. Toque para preencher.`;
+    }
+    return "Nenhum produto selado encontrado para esta busca.";
+  }, [canSearch, isLoading, lookupError, selected, suggestions.length]);
 
   useEffect(() => {
     if (!typeOptions.some((item) => item.value === sealedType)) {
@@ -50,30 +64,50 @@ export function SealedAutocomplete() {
     if (trimmed.length < 2) {
       setSuggestions([]);
       setIsLoading(false);
+      setLookupError(null);
+      setIsOpen(false);
+      return;
+    }
+
+    // Já selecionou exatamente este resultado — não reabrir a lista.
+    if (selected && selected.name === trimmed && selected.game === game) {
+      setIsOpen(false);
       return;
     }
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setIsLoading(true);
+      setLookupError(null);
       try {
         const response = await fetch(
           `/api/sealed-lookup?game=${encodeURIComponent(game)}&query=${encodeURIComponent(trimmed)}`,
           { signal: controller.signal }
         );
+        if (response.status === 401) {
+          setSuggestions([]);
+          setLookupError("Faça login como admin para buscar produtos.");
+          setIsOpen(false);
+          return;
+        }
         if (!response.ok) {
           setSuggestions([]);
+          setLookupError("Falha ao buscar produtos. Tente de novo.");
+          setIsOpen(false);
           return;
         }
         const data = (await response.json()) as { suggestions?: SealedSuggestion[] };
-        setSuggestions(data.suggestions ?? []);
-        setIsOpen(true);
+        const next = data.suggestions ?? [];
+        setSuggestions(next);
+        setIsOpen(next.length > 0);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           setSuggestions([]);
+          setLookupError("Falha de rede ao buscar produtos.");
+          setIsOpen(false);
         }
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     }, 320);
 
@@ -81,7 +115,17 @@ export function SealedAutocomplete() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [game, query]);
+  }, [game, query, selected]);
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   function applySuggestion(suggestion: SealedSuggestion) {
     setSelected(suggestion);
@@ -109,35 +153,48 @@ export function SealedAutocomplete() {
       );
     }
     setIsOpen(false);
+    setLookupError(null);
   }
 
   return (
-    <div className="grid gap-3">
-      <label className={labelClass}>
-        Jogo
-        <select
-          className={inputClass}
-          name="game"
-          value={game}
-          onChange={(event) => {
-            setGame(event.target.value as Game);
-            setSelected(null);
-            setSuggestions([]);
-          }}
-        >
+    <div ref={rootRef} className="grid gap-3">
+      <div className="grid gap-1">
+        <span className="text-sm font-medium text-[var(--muted)]">Jogo</span>
+        <div className="grid grid-cols-3 gap-2">
           {games.map((item) => (
-            <option key={item} value={item}>
+            <button
+              key={item}
+              type="button"
+              className={`h-10 rounded-[var(--radius-control)] border px-2 text-xs font-bold transition sm:text-sm ${
+                game === item
+                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                  : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--ink)]"
+              }`}
+              onClick={() => {
+                setGame(item);
+                setSelected(null);
+                setSuggestions([]);
+                setIsOpen(false);
+              }}
+            >
               {item}
-            </option>
+            </button>
           ))}
-        </select>
-      </label>
+        </div>
+        <input type="hidden" name="game" value={game} />
+      </div>
 
-      <label className={`${labelClass} relative`}>
-        Buscar produto selado
+      <div className="grid gap-1">
+        <label className="text-sm font-medium text-[var(--muted)]" htmlFor="sealed-search">
+          Buscar produto selado
+        </label>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+            size={16}
+          />
           <input
+            id="sealed-search"
             className={`${inputClass} pl-9 pr-10`}
             placeholder="Ex.: Obsidian Flames Elite Trainer Box"
             value={query}
@@ -145,8 +202,11 @@ export function SealedAutocomplete() {
               setQuery(event.target.value);
               setSelected(null);
             }}
-            onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+            onFocus={() => {
+              if (suggestions.length > 0 && !selected) setIsOpen(true);
+            }}
             autoComplete="off"
+            enterKeyHint="search"
           />
           {isLoading ? (
             <Loader2
@@ -155,58 +215,76 @@ export function SealedAutocomplete() {
             />
           ) : null}
         </div>
+
+        <div className="flex items-start gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs text-[var(--muted)]">
+          {selected ? (
+            <Check className="mt-0.5 shrink-0 text-emerald-600" size={14} />
+          ) : (
+            <Package className="mt-0.5 shrink-0" size={14} />
+          )}
+          <span className={lookupError ? "font-semibold text-rose-700" : selected ? "font-semibold text-emerald-800" : ""}>
+            {helperText}
+          </span>
+        </div>
+
         {isOpen && suggestions.length > 0 ? (
-          <ul className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-1 shadow-lg">
-            {suggestions.map((suggestion) => (
-              <li key={suggestion.externalId}>
-                <button
-                  type="button"
-                  className="grid w-full grid-cols-[52px_1fr] gap-2 rounded-md px-2 py-2 text-left hover:bg-[var(--surface-hover)]"
-                  onClick={() => applySuggestion(suggestion)}
-                >
-                  <span className="relative aspect-square overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
-                    <Image
-                      src={suggestion.imageUrl}
-                      alt=""
-                      fill
-                      unoptimized
-                      className="object-contain p-0.5"
-                      sizes="52px"
-                    />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-[var(--ink)]">
-                      {suggestion.name}
+          <ul
+            className="max-h-[min(24rem,55vh)] overflow-auto rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-1 shadow-lg"
+            role="listbox"
+            aria-label="Sugestões de produtos selados"
+          >
+            {suggestions.map((suggestion) => {
+              const isActive = selected?.externalId === suggestion.externalId;
+              return (
+                <li key={suggestion.externalId} role="option" aria-selected={isActive}>
+                  <button
+                    type="button"
+                    className={`grid w-full grid-cols-[56px_1fr] gap-2 rounded-md px-2 py-2.5 text-left transition active:scale-[0.99] ${
+                      isActive
+                        ? "bg-[var(--accent)]/10 ring-1 ring-[var(--accent)]/40"
+                        : "hover:bg-[var(--surface-hover)]"
+                    }`}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applySuggestion(suggestion)}
+                  >
+                    <span className="relative aspect-square overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
+                      <Image
+                        src={suggestion.imageUrl}
+                        alt=""
+                        fill
+                        unoptimized
+                        className="object-contain p-0.5"
+                        sizes="56px"
+                      />
                     </span>
-                    <span className="block truncate text-xs text-[var(--muted)]">
-                      {suggestion.setName} · {sealedTypeLabel(game, suggestion.sealedType)}
-                      {suggestion.marketPriceCents > 0
-                        ? ` · ${formatUsd(suggestion.marketPriceCents)}`
-                        : ""}
+                    <span className="min-w-0">
+                      <span className="block line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]">
+                        {suggestion.name}
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
+                        {suggestion.setName} · {sealedTypeLabel(game, suggestion.sealedType)}
+                        {suggestion.marketPriceCents > 0
+                          ? ` · ${formatUsd(suggestion.marketPriceCents)}`
+                          : ""}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         ) : null}
-      </label>
-
-      {selected ? (
-        <div className="flex items-center gap-2 rounded-[var(--radius-control)] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
-          <Check size={14} />
-          Imagem e dados preenchidos via TCGPlayer
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs text-[var(--muted)]">
-          <Package size={14} />
-          Digite o nome do produto — a imagem é buscada automaticamente.
-        </div>
-      )}
+      </div>
 
       <label className={labelClass}>
         Nome do produto
-        <input className={inputClass} name="name" required value={name} onChange={(e) => setName(e.target.value)} />
+        <input
+          className={inputClass}
+          name="name"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
       </label>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -316,7 +394,14 @@ export function SealedAutocomplete() {
 
       {imageUrl ? (
         <div className="relative mx-auto aspect-square w-40 overflow-hidden rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)]">
-          <Image src={imageUrl} alt={name || "Produto selado"} fill unoptimized className="object-contain p-2" sizes="160px" />
+          <Image
+            src={imageUrl}
+            alt={name || "Produto selado"}
+            fill
+            unoptimized
+            className="object-contain p-2"
+            sizes="160px"
+          />
         </div>
       ) : null}
 
