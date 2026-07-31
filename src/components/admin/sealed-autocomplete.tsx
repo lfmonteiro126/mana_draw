@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, Loader2, Package, Search } from "lucide-react";
+import { Check, Loader2, Package, Search, X } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { formatUsd } from "@/lib/format";
 import {
   isValidSealedType,
@@ -21,6 +21,7 @@ const inputClass =
 const labelClass = "grid gap-1 text-sm font-medium text-[var(--muted)]";
 
 export function SealedAutocomplete() {
+  const searchId = useId();
   const [game, setGame] = useState<Game>("Magic");
   const [query, setQuery] = useState("");
   const [name, setName] = useState("");
@@ -35,21 +36,21 @@ export function SealedAutocomplete() {
   const [suggestions, setSuggestions] = useState<SealedSuggestion[]>([]);
   const [selected, setSelected] = useState<SealedSuggestion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const selectedRef = useRef<SealedSuggestion | null>(null);
-  const searchGenRef = useRef(0);
+  const selectedIdRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const typeOptions = useMemo(() => sealedTypesForGame(game), [game]);
   const canSearch = query.trim().length >= 2;
+  const showSuggestions = !selected && suggestions.length > 0;
 
   const helperText = useMemo(() => {
+    if (selected) return "Produto selecionado — revise preço e estoque antes de cadastrar.";
     if (!canSearch) return "Digite pelo menos 2 letras para buscar o produto.";
     if (isLoading) return "Buscando produtos selados no TCGPlayer...";
     if (lookupError) return lookupError;
-    if (selected) return "Produto selecionado — revise preço e estoque antes de cadastrar.";
     if (suggestions.length > 0) {
       return `${suggestions.length} produto${suggestions.length === 1 ? "" : "s"} encontrado${suggestions.length === 1 ? "" : "s"}. Toque para preencher.`;
     }
@@ -63,25 +64,19 @@ export function SealedAutocomplete() {
   }, [game, sealedType, typeOptions]);
 
   useEffect(() => {
+    if (selectedIdRef.current) return;
+
     const trimmed = query.trim();
     if (trimmed.length < 2) {
+      requestIdRef.current += 1;
       setSuggestions([]);
       setIsLoading(false);
       setLookupError(null);
-      setIsOpen(false);
       return;
     }
 
-    // Já selecionou este produto — não buscar de novo nem reabrir a lista.
-    if (selectedRef.current && selectedRef.current.name === trimmed) {
-      setSuggestions([]);
-      setIsOpen(false);
-      setIsLoading(false);
-      return;
-    }
-
+    const requestId = ++requestIdRef.current;
     const controller = new AbortController();
-    const gen = ++searchGenRef.current;
     const timer = window.setTimeout(async () => {
       setIsLoading(true);
       setLookupError(null);
@@ -90,38 +85,36 @@ export function SealedAutocomplete() {
           `/api/sealed-lookup?game=${encodeURIComponent(game)}&query=${encodeURIComponent(trimmed)}`,
           { signal: controller.signal }
         );
-        if (gen !== searchGenRef.current || selectedRef.current) return;
+
+        if (requestId !== requestIdRef.current || selectedIdRef.current) return;
 
         if (response.status === 401) {
           setSuggestions([]);
           setLookupError("Faça login como admin para buscar produtos.");
-          setIsOpen(false);
           return;
         }
         if (!response.ok) {
           setSuggestions([]);
           setLookupError("Falha ao buscar produtos. Tente de novo.");
-          setIsOpen(false);
           return;
         }
-        const data = (await response.json()) as { suggestions?: SealedSuggestion[] };
-        if (gen !== searchGenRef.current || selectedRef.current) return;
 
-        const next = data.suggestions ?? [];
-        setSuggestions(next);
-        setIsOpen(next.length > 0);
+        const data = (await response.json()) as { suggestions?: SealedSuggestion[] };
+        if (requestId !== requestIdRef.current || selectedIdRef.current) return;
+        setSuggestions(data.suggestions ?? []);
       } catch (error) {
-        if ((error as Error).name !== "AbortError" && gen === searchGenRef.current && !selectedRef.current) {
+        if (
+          (error as Error).name !== "AbortError" &&
+          requestId === requestIdRef.current &&
+          !selectedIdRef.current
+        ) {
           setSuggestions([]);
           setLookupError("Falha de rede ao buscar produtos.");
-          setIsOpen(false);
         }
       } finally {
-        if (gen === searchGenRef.current && !controller.signal.aborted) {
-          setIsLoading(false);
-        }
+        if (requestId === requestIdRef.current) setIsLoading(false);
       }
-    }, 320);
+    }, 280);
 
     return () => {
       controller.abort();
@@ -129,20 +122,34 @@ export function SealedAutocomplete() {
     };
   }, [game, query]);
 
-  useEffect(() => {
-    function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, []);
+  function clearSelection() {
+    selectedIdRef.current = null;
+    setSelected(null);
+    setSuggestions([]);
+    setLookupError(null);
+  }
+
+  function resetSearch() {
+    clearSelection();
+    setQuery("");
+    setName("");
+    setCollectionName("");
+    setImageUrl("");
+    setTags("Selado");
+    setMarketPrice("");
+    setPrice("");
+    searchInputRef.current?.focus();
+  }
 
   function applySuggestion(suggestion: SealedSuggestion) {
-    selectedRef.current = suggestion;
-    searchGenRef.current += 1;
+    // Trava imediata contra respostas atrasadas / toques duplicados.
+    selectedIdRef.current = suggestion.externalId;
+    requestIdRef.current += 1;
+
     setSelected(suggestion);
+    setSuggestions([]);
+    setIsLoading(false);
+    setLookupError(null);
     setQuery(suggestion.name);
     setName(suggestion.name);
     setCollectionName(suggestion.setName);
@@ -159,22 +166,20 @@ export function SealedAutocomplete() {
         ? (suggestion.marketPriceCents / 100).toFixed(2)
         : ""
     );
-    if (!price) {
-      setPrice(
-        suggestion.marketPriceCents > 0
+    setPrice((current) =>
+      current
+        ? current
+        : suggestion.marketPriceCents > 0
           ? (suggestion.marketPriceCents / 100).toFixed(2)
           : ""
-      );
-    }
-    setSuggestions([]);
-    setIsOpen(false);
-    setIsLoading(false);
-    setLookupError(null);
-    searchInputRef.current?.blur();
+    );
+
+    // Fecha teclado no mobile sem depender de blur→click.
+    window.setTimeout(() => searchInputRef.current?.blur(), 0);
   }
 
   return (
-    <div ref={rootRef} className="grid gap-3">
+    <div className="grid gap-3">
       <div className="grid gap-1">
         <span className="text-sm font-medium text-[var(--muted)]">Jogo</span>
         <div className="grid grid-cols-3 gap-2">
@@ -188,11 +193,12 @@ export function SealedAutocomplete() {
                   : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--ink)]"
               }`}
               onClick={() => {
-                selectedRef.current = null;
+                clearSelection();
                 setGame(item);
-                setSelected(null);
-                setSuggestions([]);
-                setIsOpen(false);
+                setQuery("");
+                setName("");
+                setCollectionName("");
+                setImageUrl("");
               }}
             >
               {item}
@@ -203,30 +209,41 @@ export function SealedAutocomplete() {
       </div>
 
       <div className="grid gap-1">
-        <label className="text-sm font-medium text-[var(--muted)]" htmlFor="sealed-search">
-          Buscar produto selado
-        </label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-sm font-medium text-[var(--muted)]" htmlFor={searchId}>
+            Buscar produto selado
+          </label>
+          {(query || selected) && (
+            <button
+              type="button"
+              className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--ink)]"
+              onClick={resetSearch}
+            >
+              <X size={14} />
+              Limpar
+            </button>
+          )}
+        </div>
+
         <div className="relative">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
             size={16}
           />
           <input
-            id="sealed-search"
+            id={searchId}
             ref={searchInputRef}
             className={`${inputClass} pl-9 pr-10`}
             placeholder="Ex.: Obsidian Flames Elite Trainer Box"
             value={query}
+            readOnly={Boolean(selected)}
             onChange={(event) => {
-              selectedRef.current = null;
-              setSelected(null);
+              if (selectedIdRef.current) clearSelection();
               setQuery(event.target.value);
-            }}
-            onFocus={() => {
-              if (suggestions.length > 0 && !selectedRef.current) setIsOpen(true);
             }}
             autoComplete="off"
             enterKeyHint="search"
+            inputMode="search"
           />
           {isLoading ? (
             <Loader2
@@ -236,20 +253,26 @@ export function SealedAutocomplete() {
           ) : null}
         </div>
 
-        <div className="flex items-start gap-2 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs text-[var(--muted)]">
+        <div
+          className={`flex items-start gap-2 rounded-[var(--radius-control)] border px-3 py-2 text-xs ${
+            selected
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : lookupError
+                ? "border-rose-200 bg-rose-50 text-rose-700"
+                : "border-[var(--line)] bg-[var(--surface-soft)] text-[var(--muted)]"
+          }`}
+        >
           {selected ? (
-            <Check className="mt-0.5 shrink-0 text-emerald-600" size={14} />
+            <Check className="mt-0.5 shrink-0" size={14} />
           ) : (
             <Package className="mt-0.5 shrink-0" size={14} />
           )}
-          <span className={lookupError ? "font-semibold text-rose-700" : selected ? "font-semibold text-emerald-800" : ""}>
-            {helperText}
-          </span>
+          <span className="font-medium">{helperText}</span>
         </div>
 
-        {!selected && isOpen && suggestions.length > 0 ? (
+        {showSuggestions ? (
           <ul
-            className="max-h-[min(24rem,55vh)] overflow-auto rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-1 shadow-lg"
+            className="max-h-[min(22rem,50vh)] touch-pan-y overflow-auto overscroll-contain rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] p-1 shadow-lg"
             role="listbox"
             aria-label="Sugestões de produtos selados"
           >
@@ -257,11 +280,16 @@ export function SealedAutocomplete() {
               <li key={suggestion.externalId} role="option">
                 <button
                   type="button"
-                  className="grid w-full grid-cols-[56px_1fr] gap-2 rounded-md px-2 py-2.5 text-left transition hover:bg-[var(--surface-hover)] active:scale-[0.99]"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applySuggestion(suggestion)}
+                  className="grid w-full grid-cols-[56px_1fr] gap-2 rounded-md px-2 py-3 text-left transition [-webkit-tap-highlight-color:transparent] hover:bg-[var(--surface-hover)] active:bg-[var(--accent)]/10"
+                  onPointerDown={(event) => {
+                    // Seleciona no toque/clique inicial — não depende de click (falha em alguns mobiles).
+                    if (event.button !== 0) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    applySuggestion(suggestion);
+                  }}
                 >
-                  <span className="relative aspect-square overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
+                  <span className="pointer-events-none relative aspect-square overflow-hidden rounded-md border border-[var(--line)] bg-[var(--surface-soft)]">
                     <Image
                       src={suggestion.imageUrl}
                       alt=""
@@ -271,7 +299,7 @@ export function SealedAutocomplete() {
                       sizes="56px"
                     />
                   </span>
-                  <span className="min-w-0">
+                  <span className="pointer-events-none min-w-0">
                     <span className="block line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]">
                       {suggestion.name}
                     </span>
