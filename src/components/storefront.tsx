@@ -105,6 +105,7 @@ export function Storefront({
   const filteredCards = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     const visible = cards.filter((card) => {
+      if (card.productKind === "sealed") return false;
       const isAvailable = card.stock > 0;
       const matchesGame = game === "Todos" || card.game === game;
       const matchesQuery =
@@ -756,67 +757,11 @@ export function Storefront({
 
           <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filteredSealed.map((product) => (
-              <article
+              <SealedProductCard
                 key={product.id}
-                className="surface-card grid grid-cols-[104px_1fr] gap-3 p-3 transition duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:shadow-[var(--shadow-lift)] active:scale-[0.995] sm:grid-cols-[128px_1fr] sm:gap-4 sm:p-3.5"
-              >
-                <div className="relative aspect-square overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface-soft)]">
-                  <Image
-                    src={product.imageUrl}
-                    alt={product.name}
-                    fill
-                    unoptimized
-                    sizes="(min-width: 640px) 128px, 104px"
-                    className="object-contain p-2"
-                  />
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col justify-between">
-                  <div>
-                    <div className="mb-1.5 flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p
-                          className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]"
-                          title={product.name}
-                        >
-                          {product.name}
-                        </p>
-                        <p className="truncate text-xs text-[var(--muted)]" title={product.setName}>
-                          {product.setName}
-                        </p>
-                      </div>
-                      <span className="shrink-0 rounded-[0.45rem] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2 py-1 text-[10px] font-bold tracking-wide text-[var(--accent)]">
-                        Selado
-                      </span>
-                    </div>
-                    <div className="mb-2 flex flex-wrap gap-1">
-                      <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
-                        {product.game}
-                      </span>
-                      <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
-                        {sealedTypeLabel(product.game, product.sealedType)}
-                      </span>
-                      <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
-                        {product.language}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
-                      {formatCurrency(product.priceCents)}
-                    </p>
-                    <p className="truncate text-xs text-[var(--muted)]">{formatStock(product.stock)}</p>
-                    <button
-                      className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:bg-[var(--line)] disabled:text-[var(--muted)] sm:mt-3"
-                      type="button"
-                      disabled={product.stock <= 0}
-                      onClick={() => addToCart(product)}
-                    >
-                      <ShoppingBag size={14} />
-                      Adicionar
-                    </button>
-                  </div>
-                </div>
-              </article>
+                product={product}
+                onAddToCart={addToCart}
+              />
             ))}
             {filteredSealed.length === 0 && (
               <div className="surface-card border-dashed p-8 text-center sm:col-span-2 xl:col-span-3">
@@ -1428,6 +1373,95 @@ function WeeklyDropPanel({
 }
 
 
+function SealedProductCard({
+  product,
+  onAddToCart
+}: {
+  product: TcgCard;
+  onAddToCart: (card: TcgCard) => void;
+}) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  return (
+    <article className="surface-card grid grid-cols-[104px_1fr] gap-3 p-3 transition duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:shadow-[var(--shadow-lift)] active:scale-[0.995] sm:grid-cols-[128px_1fr] sm:gap-4 sm:p-3.5">
+      <button
+        type="button"
+        className="relative aspect-square overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
+        aria-label={`Ver detalhes de ${product.name}`}
+        onClick={() => setDetailsOpen(true)}
+      >
+        <Image
+          src={product.imageUrl}
+          alt={product.name}
+          fill
+          unoptimized
+          sizes="(min-width: 640px) 128px, 104px"
+          className="object-contain p-2"
+        />
+      </button>
+      <div className="flex min-w-0 flex-1 flex-col justify-between">
+        <div>
+          <div className="mb-1.5 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <button
+                type="button"
+                className="line-clamp-2 text-left text-sm font-semibold leading-5 text-[var(--ink)] hover:text-[var(--accent)]"
+                title={product.name}
+                onClick={() => setDetailsOpen(true)}
+              >
+                {product.name}
+              </button>
+              <p className="truncate text-xs text-[var(--muted)]" title={product.setName}>
+                {product.setName}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-[0.45rem] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2 py-1 text-[10px] font-bold tracking-wide text-[var(--accent)]">
+              Selado
+            </span>
+          </div>
+          <div className="mb-2 flex flex-wrap gap-1">
+            <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+              {product.game}
+            </span>
+            <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+              {sealedTypeLabel(product.game, product.sealedType)}
+            </span>
+            <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+              {product.language}
+            </span>
+          </div>
+        </div>
+        <div>
+          <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
+            {formatCurrency(product.priceCents)}
+          </p>
+          <p className="truncate text-xs text-[var(--muted)]">{formatStock(product.stock)}</p>
+          <button
+            className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:bg-[var(--line)] disabled:text-[var(--muted)] sm:mt-3"
+            type="button"
+            disabled={product.stock <= 0}
+            onClick={() => onAddToCart(product)}
+          >
+            <ShoppingBag size={14} />
+            Adicionar
+          </button>
+        </div>
+      </div>
+
+      <CardDetailsModal
+        card={product}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        onAddToCart={(selected) => {
+          onAddToCart(selected);
+          setDetailsOpen(false);
+        }}
+      />
+    </article>
+  );
+}
+
+
 function CardThumb({
   card,
   priority = false,
@@ -1443,9 +1477,14 @@ function CardThumb({
   const [flipped, setFlipped] = useState(false);
   const longPressTimer = useRef<number | null>(null);
   const longPressTriggered = useRef(false);
+  const sealed =
+    card.productKind === "sealed" ||
+    Boolean(card.sealedType) ||
+    card.rarity === "Sealed" ||
+    card.tags.some((tag) => tag.toLowerCase() === "selado");
   const back = getCardBack(card.game);
   const secondFaceUrl = resolveCardBackImageUrl(card);
-  const hasSecondFace = cardHasSecondFace(card);
+  const hasSecondFace = !sealed && cardHasSecondFace(card);
   const flipBackUrl = secondFaceUrl ?? back.imageUrl;
 
   function clearLongPress() {
@@ -1456,6 +1495,7 @@ function CardThumb({
   }
 
   function startLongPress() {
+    if (sealed) return;
     longPressTriggered.current = false;
     clearLongPress();
     longPressTimer.current = window.setTimeout(() => {
@@ -1468,11 +1508,15 @@ function CardThumb({
     <>
       <button
         type="button"
-        className="group relative z-0 aspect-[5/7] w-full shrink-0 overflow-visible rounded-lg outline-none [perspective:1200px] hover:z-20 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
+        className={`group relative z-0 w-full shrink-0 overflow-visible rounded-lg outline-none hover:z-20 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40 ${
+          sealed ? "aspect-square" : "aspect-[5/7] [perspective:1200px]"
+        }`}
         aria-label={
-          hasSecondFace
-            ? `${card.name}. Toque para detalhes. Segure para ver a segunda face.`
-            : `${card.name}. Toque para detalhes. Segure para ver o verso.`
+          sealed
+            ? `${card.name}. Toque para detalhes do produto selado.`
+            : hasSecondFace
+              ? `${card.name}. Toque para detalhes. Segure para ver a segunda face.`
+              : `${card.name}. Toque para detalhes. Segure para ver o verso.`
         }
         onClick={() => {
           if (longPressTriggered.current) {
@@ -1491,50 +1535,67 @@ function CardThumb({
         onPointerLeave={clearLongPress}
         onContextMenu={(event) => event.preventDefault()}
       >
-        <div
-          className={`absolute inset-0 rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition duration-500 ease-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus-visible:[transform:rotateY(180deg)] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.14)] ${
-            flipped ? "[transform:rotateY(180deg)] shadow-[0_8px_20px_rgba(15,23,42,0.14)]" : ""
-          }`}
-        >
-          <div className="absolute inset-0 overflow-hidden rounded-lg [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
+        {sealed ? (
+          <div className="absolute inset-0 overflow-hidden rounded-lg border border-slate-900/15 bg-[var(--surface-soft)] shadow-[0_2px_8px_rgba(15,23,42,0.08)]">
             <Image
               src={card.imageUrl}
               alt={card.name}
               fill
               unoptimized
               sizes={sizes}
-              className="object-cover"
+              className="object-contain p-1.5"
               priority={priority}
             />
-            {hasSecondFace ? (
-              <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
-                2 faces
-              </span>
-            ) : null}
+            <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+              Selado
+            </span>
           </div>
-
+        ) : (
           <div
-            className={`absolute inset-0 overflow-hidden rounded-lg border [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] ${
-              hasSecondFace ? "border-[var(--line)] bg-slate-100" : back.frame
+            className={`absolute inset-0 rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition duration-500 ease-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus-visible:[transform:rotateY(180deg)] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.14)] ${
+              flipped ? "[transform:rotateY(180deg)] shadow-[0_8px_20px_rgba(15,23,42,0.14)]" : ""
             }`}
           >
-            <Image
-              src={flipBackUrl}
-              alt={hasSecondFace ? `${card.name} segunda face` : `Verso de carta ${card.game}`}
-              fill
-              unoptimized
-              sizes={sizes}
-              className="object-cover"
-            />
-            {hasSecondFace ? (
-              <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
-                Face 2
-              </span>
-            ) : (
-              <div className="absolute inset-0 rounded-lg shadow-[inset_0_0_24px_rgba(0,0,0,0.35)]" />
-            )}
+            <div className="absolute inset-0 overflow-hidden rounded-lg [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
+              <Image
+                src={card.imageUrl}
+                alt={card.name}
+                fill
+                unoptimized
+                sizes={sizes}
+                className="object-cover"
+                priority={priority}
+              />
+              {hasSecondFace ? (
+                <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+                  2 faces
+                </span>
+              ) : null}
+            </div>
+
+            <div
+              className={`absolute inset-0 overflow-hidden rounded-lg border [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] ${
+                hasSecondFace ? "border-[var(--line)] bg-slate-100" : back.frame
+              }`}
+            >
+              <Image
+                src={flipBackUrl}
+                alt={hasSecondFace ? `${card.name} segunda face` : `Verso de carta ${card.game}`}
+                fill
+                unoptimized
+                sizes={sizes}
+                className="object-cover"
+              />
+              {hasSecondFace ? (
+                <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+                  Face 2
+                </span>
+              ) : (
+                <div className="absolute inset-0 rounded-lg shadow-[inset_0_0_24px_rgba(0,0,0,0.35)]" />
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </button>
 
       <CardDetailsModal

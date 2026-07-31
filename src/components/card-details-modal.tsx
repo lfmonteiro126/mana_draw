@@ -1,11 +1,12 @@
 "use client";
 
-import { Loader2, Sparkles, X } from "lucide-react";
+import { Loader2, Package, Sparkles, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CardDetailsPayload, CardLegality } from "@/lib/card-details";
-import { formatCurrency, formatUsd } from "@/lib/format";
+import { formatCurrency, formatStock, formatUsd } from "@/lib/format";
+import { sealedTypeLabel } from "@/lib/sealed";
 import type { TcgCard } from "@/lib/types";
 
 type Props = {
@@ -15,12 +16,22 @@ type Props = {
   onAddToCart?: (card: TcgCard) => void;
 };
 
+function isSealedProduct(card: TcgCard) {
+  return (
+    card.productKind === "sealed" ||
+    Boolean(card.sealedType) ||
+    card.rarity === "Sealed" ||
+    card.tags.some((tag) => tag.toLowerCase() === "selado")
+  );
+}
+
 export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [details, setDetails] = useState<CardDetailsPayload | null>(null);
   const [activeImage, setActiveImage] = useState<"front" | "back">("front");
+  const sealed = isSealedProduct(card);
 
   useEffect(() => {
     setMounted(true);
@@ -46,10 +57,20 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
   useEffect(() => {
     if (!open) return;
 
+    // Produtos selados não existem no Scryfall / APIs de singles.
+    if (sealed) {
+      setLoading(false);
+      setError("");
+      setDetails(null);
+      setActiveImage("front");
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError("");
     setActiveImage("front");
+    setDetails(null);
 
     const params = new URLSearchParams({
       game: card.game,
@@ -85,7 +106,7 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, card]);
+  }, [open, card, sealed]);
 
   if (!mounted || !open) return null;
 
@@ -93,6 +114,10 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
     activeImage === "back" && details?.backImageUrl
       ? details.backImageUrl
       : details?.imageUrl || card.imageUrl;
+
+  const subtitle = sealed
+    ? `${card.setName} · Selado · ${formatCurrency(card.priceCents)}`
+    : `${card.setName} · ${card.condition} · ${formatCurrency(card.priceCents)}`;
 
   return createPortal(
     <div className="fixed inset-0 z-[140] flex items-end justify-center sm:items-center sm:p-4">
@@ -112,9 +137,7 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
         <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] bg-white px-4 py-3 sm:px-5">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-[var(--ink)]">{card.name}</p>
-            <p className="truncate text-xs text-[var(--muted)]">
-              {card.setName} · {card.condition} · {formatCurrency(card.priceCents)}
-            </p>
+            <p className="truncate text-xs text-[var(--muted)]">{subtitle}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {onAddToCart ? (
@@ -139,7 +162,9 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
         </div>
 
         <div className="overflow-y-auto p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-5">
-          {loading ? (
+          {sealed ? (
+            <SealedDetailsBody card={card} />
+          ) : loading ? (
             <div className="grid min-h-[320px] place-items-center text-[var(--muted)]">
               <p className="inline-flex items-center gap-2 text-sm">
                 <Loader2 size={18} className="animate-spin text-[var(--accent)]" />
@@ -289,7 +314,11 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
                     ) : null}
                     {details.store ? (
                       <>
-                        <p className={`text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)] ${details.marketUsdCents ? "mt-3" : ""}`}>
+                        <p
+                          className={`text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)] ${
+                            details.marketUsdCents ? "mt-3" : ""
+                          }`}
+                        >
                           Na Mana Draw
                         </p>
                         <p className="mt-1 text-lg font-semibold text-[var(--ink)]">
@@ -371,6 +400,73 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
       </div>
     </div>,
     document.body
+  );
+}
+
+function SealedDetailsBody({ card }: { card: TcgCard }) {
+  return (
+    <div className="mx-auto grid w-full max-w-3xl gap-4 sm:grid-cols-[minmax(180px,240px)_minmax(0,1fr)] sm:items-start">
+      <div className="relative mx-auto aspect-square w-full max-w-[240px] overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-sm">
+        <Image
+          src={card.imageUrl}
+          alt={card.name}
+          fill
+          unoptimized
+          priority
+          sizes="240px"
+          className="object-contain p-3"
+        />
+      </div>
+
+      <section className="overflow-hidden rounded-xl border border-[var(--line)] bg-white shadow-sm">
+        <div className="border-b border-[var(--line)] bg-[var(--accent)] px-4 py-3 text-white">
+          <p className="inline-flex items-center gap-2 text-sm font-semibold">
+            <Package size={15} />
+            Produto selado
+          </p>
+          <p className="mt-1 text-xs text-teal-50/90">
+            {card.game} · {sealedTypeLabel(card.game, card.sealedType)} · {card.language}
+          </p>
+        </div>
+
+        <div className="space-y-3 px-4 py-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-[var(--ink)]">{card.name}</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">{card.setName}</p>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            <span className="rounded-md border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2 py-1 text-[11px] font-bold text-[var(--accent)]">
+              Selado
+            </span>
+            <span className="rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
+              {sealedTypeLabel(card.game, card.sealedType)}
+            </span>
+            <span className="rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
+              {card.game}
+            </span>
+            <span className="rounded-md border border-[var(--line)] bg-[var(--surface-soft)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">
+              {card.language}
+            </span>
+          </div>
+
+          <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+              Preço na Mana Draw
+            </p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+              {formatCurrency(card.priceCents)}
+            </p>
+            <p className="mt-1 text-xs text-[var(--muted)]">{formatStock(card.stock)}</p>
+          </div>
+
+          <p className="text-sm leading-6 text-[var(--muted)]">
+            Item lacrado de fábrica. Sem consulta a bases de singles (Scryfall / Pokémon TCG /
+            YGOPRODeck).
+          </p>
+        </div>
+      </section>
+    </div>
   );
 }
 
