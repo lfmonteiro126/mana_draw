@@ -13,10 +13,12 @@ import type {
   Game,
   OrderLineItem,
   OrderSummary,
+  ProductKind,
   SortMode,
   StoreUser,
   TcgCard
 } from "./types";
+import type { SealedType } from "./sealed";
 
 type DbCard = {
   id: string;
@@ -35,6 +37,8 @@ type DbCard = {
   layout: string | null;
   tags: string[];
   finish: TcgCard["finish"];
+  product_kind?: string | null;
+  sealed_type?: string | null;
 };
 
 type DbUser = {
@@ -228,6 +232,9 @@ export function getSql() {
 }
 
 export function mapCard(card: DbCard): TcgCard {
+  const productKind: ProductKind =
+    card.product_kind === "sealed" ? "sealed" : "single";
+
   return {
     id: card.id,
     name: card.name,
@@ -244,7 +251,9 @@ export function mapCard(card: DbCard): TcgCard {
     isDoubleSided: card.is_double_sided,
     layout: card.layout ?? undefined,
     tags: card.tags,
-    finish: card.finish
+    finish: card.finish,
+    productKind,
+    sealedType: (card.sealed_type as SealedType | null | undefined) ?? null
   };
 }
 
@@ -261,11 +270,13 @@ export function mapUser(user: DbUser): StoreUser {
 export async function getCatalogCards({
   query = "",
   game = "Todos",
-  sort = "relevance"
+  sort = "relevance",
+  kind = "single"
 }: {
   query?: string;
   game?: FilterGame;
   sort?: SortMode;
+  kind?: ProductKind | "all";
 } = {}): Promise<TcgCard[]> {
   const normalizedQuery = query.trim();
 
@@ -273,19 +284,199 @@ export async function getCatalogCards({
     const visible = fallbackCards.filter((card) => {
       const isAvailable = card.stock > 0;
       const matchesGame = game === "Todos" || card.game === game;
+      const matchesKind = kind === "all" || card.productKind === kind;
       const matchesQuery =
         normalizedQuery.length === 0 ||
-        [card.name, card.setName, card.rarity, card.game, ...card.tags]
+        [
+          card.name,
+          card.setName,
+          card.rarity,
+          card.game,
+          card.productKind,
+          card.sealedType ?? "",
+          ...card.tags
+        ]
           .join(" ")
           .toLowerCase()
           .includes(normalizedQuery.toLowerCase());
 
-      return isAvailable && matchesGame && matchesQuery;
+      return isAvailable && matchesGame && matchesKind && matchesQuery;
     });
 
     return sortCards(visible, sort);
   }
 
+  const sql = getSql();
+  if (!sql) return fallbackCards;
+
+  try {
+    await ensureSealedColumns(sql);
+    const rows = await sql`
+      select
+        id,
+        name,
+        game,
+        set_name,
+        rarity,
+        condition,
+        language,
+        price_cents,
+        market_price_cents,
+        stock,
+        image_url,
+        back_image_url,
+        is_double_sided,
+        layout,
+        tags,
+        finish,
+        product_kind,
+        sealed_type
+      from cards
+      where
+        active = true
+        and stock > 0
+        and (${game} = 'Todos' or game::text = ${game})
+        and (${kind} = 'all' or coalesce(product_kind, 'single') = ${kind})
+        and (
+          ${normalizedQuery} = ''
+          or search_vector @@ websearch_to_tsquery('simple', ${normalizedQuery})
+        )
+      order by
+        case when ${sort} = 'price-asc' then price_cents end asc,
+        case when ${sort} = 'price-desc' then price_cents end desc,
+        case when ${sort} = 'relevance' and ${normalizedQuery} <> ''
+          then ts_rank(
+            search_vector,
+            websearch_to_tsquery('simple', ${normalizedQuery})
+          )
+        end desc,
+        featured desc,
+        updated_at desc
+      limit 24
+    `;
+
+    return (rows as DbCard[]).map(mapCard);
+  } catch (error) {
+    if (isMissingSealedColumns(error)) {
+      if (kind === "sealed") return [];
+      return getCatalogCardsWithoutSealed({ game, normalizedQuery, sort });
+    }
+    if (!isMissingDoubleSideColumns(error)) throw error;
+    if (kind === "sealed") return [];
+    return getLegacyCatalogCards({ game, normalizedQuery, sort });
+  }
+}
+
+export async function getFeaturedCards(): Promise<TcgCard[]> {
+  return getCatalogCards();
+}
+
+export async function getAdminCards({
+  query = "",
+  game = "Todos",
+  stock = "all",
+  limit = 100
+}: {
+  query?: string;
+  game?: FilterGame;
+  stock?: "all" | "low" | "out";
+  limit?: number;
+} = {}): Promise<TcgCard[]> {
+  const normalizedQuery = query.trim();
+  const normalizedLimit = Math.min(Math.max(Math.trunc(limit), 1), 10000);
+
+  if (!hasDatabase()) {
+    return fallbackCards.filter((card) => {
+      const matchesGame = game === "Todos" || card.game === game;
+      const matchesStock =
+        stock === "all" ||
+        (stock === "low" && card.stock > 0 && card.stock <= 3) ||
+        (stock === "out" && card.stock === 0);
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        [
+          card.name,
+          card.setName,
+          card.rarity,
+          card.game,
+          card.productKind,
+          card.sealedType ?? "",
+          ...card.tags
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery.toLowerCase());
+
+      return matchesGame && matchesStock && matchesQuery;
+    });
+  }
+  const sql = getSql();
+  if (!sql) return fallbackCards;
+
+  try {
+    await ensureSealedColumns(sql);
+    const rows = await sql`
+      select
+        id,
+        name,
+        game,
+        set_name,
+        rarity,
+        condition,
+        language,
+        price_cents,
+        market_price_cents,
+        stock,
+        image_url,
+        back_image_url,
+        is_double_sided,
+        layout,
+        tags,
+        finish,
+        product_kind,
+        sealed_type
+      from cards
+      where
+        active = true
+        and
+        (${game} = 'Todos' or game::text = ${game})
+        and (
+          ${stock} = 'all'
+          or (${stock} = 'low' and stock > 0 and stock <= 3)
+          or (${stock} = 'out' and stock = 0)
+        )
+        and (
+          ${normalizedQuery} = ''
+          or search_vector @@ websearch_to_tsquery('simple', ${normalizedQuery})
+        )
+      order by updated_at desc
+      limit ${normalizedLimit}
+    `;
+
+    return dedupeCards((rows as DbCard[]).map(mapCard));
+  } catch (error) {
+    if (isMissingSealedColumns(error)) {
+      return getAdminCardsWithoutSealed({
+        game,
+        normalizedLimit,
+        normalizedQuery,
+        stock
+      });
+    }
+    if (!isMissingDoubleSideColumns(error)) throw error;
+    return getLegacyAdminCards({ game, normalizedLimit, normalizedQuery, stock });
+  }
+}
+
+async function getCatalogCardsWithoutSealed({
+  game,
+  normalizedQuery,
+  sort
+}: {
+  game: FilterGame;
+  normalizedQuery: string;
+  sort: SortMode;
+}) {
   const sql = getSql();
   if (!sql) return fallbackCards;
 
@@ -338,41 +529,17 @@ export async function getCatalogCards({
   }
 }
 
-export async function getFeaturedCards(): Promise<TcgCard[]> {
-  return getCatalogCards();
-}
-
-export async function getAdminCards({
-  query = "",
-  game = "Todos",
-  stock = "all",
-  limit = 100
+async function getAdminCardsWithoutSealed({
+  game,
+  normalizedLimit,
+  normalizedQuery,
+  stock
 }: {
-  query?: string;
-  game?: FilterGame;
-  stock?: "all" | "low" | "out";
-  limit?: number;
-} = {}): Promise<TcgCard[]> {
-  const normalizedQuery = query.trim();
-  const normalizedLimit = Math.min(Math.max(Math.trunc(limit), 1), 10000);
-
-  if (!hasDatabase()) {
-    return fallbackCards.filter((card) => {
-      const matchesGame = game === "Todos" || card.game === game;
-      const matchesStock =
-        stock === "all" ||
-        (stock === "low" && card.stock > 0 && card.stock <= 3) ||
-        (stock === "out" && card.stock === 0);
-      const matchesQuery =
-        normalizedQuery.length === 0 ||
-        [card.name, card.setName, card.rarity, card.game, ...card.tags]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalizedQuery.toLowerCase());
-
-      return matchesGame && matchesStock && matchesQuery;
-    });
-  }
+  game: FilterGame;
+  normalizedLimit: number;
+  normalizedQuery: string;
+  stock: "all" | "low" | "out";
+}) {
   const sql = getSql();
   if (!sql) return fallbackCards;
 
@@ -548,11 +715,30 @@ function isMissingDoubleSideColumns(error: unknown) {
   );
 }
 
+function isMissingSealedColumns(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("product_kind") || message.includes("sealed_type");
+}
+
+let sealedColumnsEnsured = false;
+
+export async function ensureSealedColumns(sql: NeonSql) {
+  if (sealedColumnsEnsured) return;
+  await sql`
+    alter table cards
+      add column if not exists product_kind text not null default 'single',
+      add column if not exists sealed_type text
+  `;
+  sealedColumnsEnsured = true;
+}
+
 function dedupeCards(cards: TcgCard[]) {
   const merged = new Map<string, TcgCard>();
 
   for (const card of cards) {
     const key = [
+      card.productKind,
+      card.sealedType ?? "",
       card.game,
       card.name.trim().toLowerCase(),
       card.setName.trim().toLowerCase(),

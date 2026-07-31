@@ -1,6 +1,10 @@
+import type { SealedType } from "@/lib/sealed";
+
 export type Game = "Magic" | "Yu-Gi-Oh!" | "Pokemon";
 
 export type CardCondition = "NM" | "SP" | "MP" | "HP";
+
+export type ProductKind = "single" | "sealed";
 
 export type TcgCard = {
   id: string;
@@ -19,6 +23,8 @@ export type TcgCard = {
   layout?: string;
   tags: string[];
   finish: "Normal" | "Foil" | "Holo" | "Secret";
+  productKind: ProductKind;
+  sealedType?: SealedType | null;
 };
 
 export type SortMode = "relevance" | "price-asc" | "price-desc";

@@ -29,6 +29,7 @@ import {
 import {
   ensureBuylistSchema,
   ensureOrderColumns,
+  ensureSealedColumns,
   ensureUserEmailSchema,
   getBuylistAcceptTokenHash,
   getBuylistSubmissionById,
@@ -39,6 +40,7 @@ import {
 import { hasEmailProvider, sendBuylistOfferEmail, sendEmailVerification } from "@/lib/email";
 import { createCheckoutPreference, hasMercadoPago } from "@/lib/payments/mercadopago";
 import { clientKeyFromHeaders, rateLimit } from "@/lib/rate-limit";
+import { isValidSealedType, sealedTypeLabel } from "@/lib/sealed";
 import { findQuoteById, normalizePostalCode, quoteShipping } from "@/lib/shipping";
 import { storeBuylistPhoto } from "@/lib/storage/blob";
 import type { CardCondition, Game, StoreUser } from "@/lib/types";
@@ -923,6 +925,129 @@ export async function createCardAction(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/admin");
   redirect(`/admin?tab=${tab}&notice=card-created`);
+}
+
+export async function createSealedProductAction(formData: FormData) {
+  const user = await currentUser();
+  if (user?.role !== "admin") redirect("/admin?error=unauthorized");
+
+  const name = readString(formData, "name");
+  const game = readString(formData, "game") as Game;
+  const setName = readString(formData, "setName");
+  const sealedType = readString(formData, "sealedType");
+  const language = readString(formData, "language");
+  const imageUrl = readString(formData, "imageUrl");
+  const tags = readString(formData, "tags")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  const priceCents = readMoneyCents(formData, "price");
+  const marketRaw = readString(formData, "marketPrice");
+  const marketPriceCents = marketRaw ? readMoneyCents(formData, "marketPrice") : 0;
+  const stock = Number(readString(formData, "stock"));
+  const featured = formData.get("featured") === "on";
+  const tab = adminTabFrom(formData, "new-card");
+
+  const hasInvalidEnum =
+    !validGames.includes(game) ||
+    !isValidSealedType(game, sealedType) ||
+    !validLanguages.includes(language as (typeof validLanguages)[number]);
+
+  if (
+    !name ||
+    !setName ||
+    !imageUrl ||
+    hasInvalidEnum ||
+    !Number.isFinite(priceCents) ||
+    !Number.isFinite(marketPriceCents) ||
+    !Number.isInteger(stock) ||
+    priceCents < 0 ||
+    marketPriceCents < 0 ||
+    stock < 0
+  ) {
+    redirect(`/admin?tab=${tab}&error=invalid-new-sealed`);
+  }
+
+  if (!hasDatabase()) redirect(`/admin?tab=${tab}&notice=demo-no-db`);
+
+  const sql = getSql();
+  if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
+
+  await ensureSealedColumns(sql);
+
+  const rarity = sealedTypeLabel(game, sealedType);
+  const mergedTags = Array.from(new Set(["Selado", rarity, ...tags]));
+
+  const existing = await sql`
+    select id
+    from cards
+    where game = ${game}
+      and active = true
+      and coalesce(product_kind, 'single') = 'sealed'
+      and lower(name) = lower(${name})
+      and lower(set_name) = lower(${setName})
+      and language = ${language}
+      and sealed_type = ${sealedType}
+      and image_url = ${imageUrl}
+    limit 1
+  `;
+
+  if (existing.length > 0) {
+    await sql`
+      update cards
+      set
+        stock = stock + ${stock},
+        price_cents = ${priceCents},
+        market_price_cents = ${marketPriceCents},
+        rarity = ${rarity},
+        tags = ${mergedTags},
+        featured = ${featured},
+        active = true,
+        updated_at = now()
+      where id = ${(existing[0] as { id: string }).id}
+    `;
+  } else {
+    await sql`
+      insert into cards (
+        name,
+        game,
+        set_name,
+        rarity,
+        condition,
+        language,
+        price_cents,
+        market_price_cents,
+        stock,
+        image_url,
+        tags,
+        finish,
+        featured,
+        product_kind,
+        sealed_type
+      )
+      values (
+        ${name},
+        ${game},
+        ${setName},
+        ${rarity},
+        ${"NM"},
+        ${language},
+        ${priceCents},
+        ${marketPriceCents},
+        ${stock},
+        ${imageUrl},
+        ${mergedTags},
+        ${"Normal"},
+        ${featured},
+        ${"sealed"},
+        ${sealedType}
+      )
+    `;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirect(`/admin?tab=${tab}&notice=sealed-created`);
 }
 
 function isMissingDoubleSideColumns(error: unknown) {

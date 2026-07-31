@@ -34,6 +34,7 @@ import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
 import { buylist } from "@/lib/mock-data";
 import { formatCurrency, formatStock } from "@/lib/format";
 import type { FilterGame, SortMode, StoreUser, TcgCard } from "@/lib/types";
+import { sealedTypeLabel } from "@/lib/sealed";
 import type { ShippingQuote } from "@/lib/shipping";
 
 type CartLine = {
@@ -61,12 +62,14 @@ const conditionLabels: Record<string, string> = {
 
 export function Storefront({
   cards,
+  sealedProducts = [],
   currentUser,
   initialQuery = "",
   initialGame = "Todos",
   initialSort = "relevance"
 }: {
   cards: TcgCard[];
+  sealedProducts?: TcgCard[];
   currentUser: StoreUser | null;
   initialQuery?: string;
   initialGame?: FilterGame;
@@ -86,12 +89,17 @@ export function Storefront({
   const [selectedShippingId, setSelectedShippingId] = useState<string>("pickup");
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<"catalogo" | "venda" | "conta">(
+  const [activeSection, setActiveSection] = useState<"catalogo" | "selados" | "venda" | "conta">(
     "catalogo"
   );
   const [orderState, orderFormAction, orderPending] = useActionState(
     createOrderAction,
     orderInitialState
+  );
+
+  const catalogInventory = useMemo(
+    () => [...cards, ...sealedProducts],
+    [cards, sealedProducts]
   );
 
   const filteredCards = useMemo(() => {
@@ -115,6 +123,35 @@ export function Storefront({
       return b.marketPriceCents - b.priceCents - (a.marketPriceCents - a.priceCents);
     });
   }, [cards, game, query, sort]);
+
+  const filteredSealed = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const visible = sealedProducts.filter((card) => {
+      const isAvailable = card.stock > 0;
+      const matchesGame = game === "Todos" || card.game === game;
+      const matchesQuery =
+        normalized.length === 0 ||
+        [
+          card.name,
+          card.setName,
+          card.rarity,
+          card.game,
+          card.sealedType ?? "",
+          ...card.tags
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalized);
+
+      return isAvailable && matchesGame && matchesQuery;
+    });
+
+    return [...visible].sort((a, b) => {
+      if (sort === "price-asc") return a.priceCents - b.priceCents;
+      if (sort === "price-desc") return b.priceCents - a.priceCents;
+      return b.marketPriceCents - b.priceCents - (a.marketPriceCents - a.priceCents);
+    });
+  }, [sealedProducts, game, query, sort]);
 
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const subtotal = cart.reduce(
@@ -147,7 +184,7 @@ export function Storefront({
       const saved = JSON.parse(raw) as Array<{ cardId: string; quantity: number }>;
       const restored = saved
         .map((line) => {
-          const card = cards.find((item) => item.id === line.cardId);
+          const card = catalogInventory.find((item) => item.id === line.cardId);
           if (!card || card.stock <= 0) return null;
           return {
             card,
@@ -161,7 +198,7 @@ export function Storefront({
     } finally {
       setCartHydrated(true);
     }
-  }, [cards]);
+  }, [catalogInventory]);
 
   useEffect(() => {
     if (!cartHydrated) return;
@@ -270,21 +307,23 @@ export function Storefront({
   }, [addedToast]);
 
   useEffect(() => {
-    const sectionIds = ["catalogo", "venda"] as const;
+    const sectionIds = ["catalogo", "selados", "venda"] as const;
     const elements = sectionIds
       .map((id) => document.getElementById(id))
       .filter((el): el is HTMLElement => Boolean(el));
 
     if (elements.length === 0) return;
 
+    const ratios = new Map<string, number>();
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-
-        if (visible[0]?.target.id === "catalogo" || visible[0]?.target.id === "venda") {
-          setActiveSection(visible[0].target.id as "catalogo" | "venda");
+        for (const entry of entries) {
+          ratios.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0);
+        }
+        const ranked = [...ratios.entries()].sort((a, b) => b[1] - a[1]);
+        const top = ranked[0]?.[0];
+        if (top === "catalogo" || top === "selados" || top === "venda") {
+          setActiveSection(top);
         }
       },
       {
@@ -364,7 +403,10 @@ export function Storefront({
 
           <nav className="hidden items-center gap-6 text-sm text-[var(--muted)] md:flex">
             <a className="transition hover:text-[var(--ink)]" href="#catalogo">
-              Catálogo
+              Singles
+            </a>
+            <a className="transition hover:text-[var(--ink)]" href="#selados">
+              Selados
             </a>
             <Link className="transition hover:text-[var(--ink)]" href="/analisar-deck">
               Analisar deck
@@ -548,7 +590,7 @@ export function Storefront({
                   Catálogo de singles
                 </h2>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">
-                  Filtre por jogo, busque por nome ou coleção e adicione ao carrinho.
+                  Cartas avulsas — filtre por jogo, busque por nome ou coleção e adicione ao carrinho.
                 </p>
               </div>
               <form
@@ -691,6 +733,107 @@ export function Storefront({
           </div>
 
           <WeeklyDropPanel cards={cards.slice(0, 4)} onAddToCart={addToCart} />
+        </div>
+      </section>
+
+      <section id="selados" className="border-b border-[var(--line)] bg-[var(--surface-soft)]/50">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="mb-1 text-sm font-semibold text-[var(--accent)]">Produtos selados</p>
+              <h2 className="text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-3xl">
+                Boxes, ETBs, tins e decks
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">
+                Magic, Pokémon e Yu-Gi-Oh! — produtos fechados prontos para envio.
+              </p>
+            </div>
+            <p className="text-sm text-[var(--muted)]">
+              {filteredSealed.length}{" "}
+              {filteredSealed.length === 1 ? "produto" : "produtos"}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filteredSealed.map((product) => (
+              <article
+                key={product.id}
+                className="surface-card grid grid-cols-[104px_1fr] gap-3 p-3 transition duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:shadow-[var(--shadow-lift)] active:scale-[0.995] sm:grid-cols-[128px_1fr] sm:gap-4 sm:p-3.5"
+              >
+                <div className="relative aspect-square overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface-soft)]">
+                  <Image
+                    src={product.imageUrl}
+                    alt={product.name}
+                    fill
+                    unoptimized
+                    sizes="(min-width: 640px) 128px, 104px"
+                    className="object-contain p-2"
+                  />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col justify-between">
+                  <div>
+                    <div className="mb-1.5 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p
+                          className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]"
+                          title={product.name}
+                        >
+                          {product.name}
+                        </p>
+                        <p className="truncate text-xs text-[var(--muted)]" title={product.setName}>
+                          {product.setName}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-[0.45rem] border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-2 py-1 text-[10px] font-bold tracking-wide text-[var(--accent)]">
+                        Selado
+                      </span>
+                    </div>
+                    <div className="mb-2 flex flex-wrap gap-1">
+                      <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+                        {product.game}
+                      </span>
+                      <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+                        {sealedTypeLabel(product.game, product.sealedType)}
+                      </span>
+                      <span className="rounded-[0.4rem] border border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+                        {product.language}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
+                      {formatCurrency(product.priceCents)}
+                    </p>
+                    <p className="truncate text-xs text-[var(--muted)]">{formatStock(product.stock)}</p>
+                    <button
+                      className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:bg-[var(--line)] disabled:text-[var(--muted)] sm:mt-3"
+                      type="button"
+                      disabled={product.stock <= 0}
+                      onClick={() => addToCart(product)}
+                    >
+                      <ShoppingBag size={14} />
+                      Adicionar
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+            {filteredSealed.length === 0 && (
+              <div className="surface-card border-dashed p-8 text-center sm:col-span-2 xl:col-span-3">
+                <p className="text-sm font-semibold text-[var(--ink)]">Nenhum produto selado encontrado</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Tente outro nome, coleção ou jogo — ou limpe os filtros.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearCatalogFilters}
+                  className="mt-4 inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                >
+                  Limpar filtros
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -887,7 +1030,9 @@ export function Storefront({
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-[var(--ink)]">{line.card.name}</p>
                             <p className="truncate text-xs text-[var(--muted)]">
-                              {line.card.game} · {line.card.condition}
+                              {line.card.productKind === "sealed"
+                                ? `${line.card.game} · Selado`
+                                : `${line.card.game} · ${line.card.condition}`}
                             </p>
                           </div>
                           <p className="text-sm font-semibold text-[var(--ink)]">

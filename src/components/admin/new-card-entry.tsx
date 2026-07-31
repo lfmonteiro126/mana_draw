@@ -1,12 +1,13 @@
 "use client";
 
-import { Plus, Rows3 } from "lucide-react";
+import { Package, Plus, Rows3 } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { createCardAction } from "@/app/actions";
+import { createCardAction, createSealedProductAction } from "@/app/actions";
 import { BulkCardImport } from "@/components/admin/bulk-card-import";
 import { CardAutocomplete } from "@/components/card-autocomplete";
+import { SealedAutocomplete } from "@/components/admin/sealed-autocomplete";
 
-type Mode = "single" | "bulk";
+type Mode = "single" | "bulk" | "sealed";
 
 export function NewCardEntry() {
   const [mode, setMode] = useState<Mode>("single");
@@ -26,6 +27,12 @@ export function NewCardEntry() {
           label="Em lote (ManaBox)"
           onClick={() => setMode("bulk")}
         />
+        <ModeButton
+          active={mode === "sealed"}
+          icon={<Package size={15} />}
+          label="Produto selado"
+          onClick={() => setMode("sealed")}
+        />
       </div>
 
       {mode === "single" ? (
@@ -43,8 +50,23 @@ export function NewCardEntry() {
             Cadastrar carta
           </button>
         </form>
-      ) : (
+      ) : mode === "bulk" ? (
         <BulkCardImport />
+      ) : (
+        <form action={createSealedProductAction} className="grid gap-3">
+          <input type="hidden" name="tab" value="new-card" />
+          <SealedAutocomplete />
+          <label className="flex items-center gap-2 text-sm font-medium text-[var(--muted)]">
+            <input className="h-4 w-4 accent-[var(--accent)]" name="featured" type="checkbox" />
+            Destacar na vitrine
+          </label>
+          <button
+            className="h-11 rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:bg-[var(--accent-strong)]"
+            type="submit"
+          >
+            Cadastrar produto selado
+          </button>
+        </form>
       )}
     </div>
   );

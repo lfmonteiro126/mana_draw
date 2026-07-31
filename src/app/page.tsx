@@ -22,14 +22,16 @@ export default async function Home({
     ? (requestedSort as SortMode)
     : "relevance";
 
-  const [cards, user] = await Promise.all([
-    getCatalogCards({ query, game, sort }),
+  const [cards, sealedProducts, user] = await Promise.all([
+    getCatalogCards({ query, game, sort, kind: "single" }),
+    getCatalogCards({ query, game, sort, kind: "sealed" }),
     currentUser()
   ]);
 
   return (
     <Storefront
       cards={cards}
+      sealedProducts={sealedProducts}
       currentUser={user}
       initialQuery={query}
       initialGame={game}
