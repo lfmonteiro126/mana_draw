@@ -732,6 +732,34 @@ export async function ensureSealedColumns(sql: NeonSql) {
   sealedColumnsEnsured = true;
 }
 
+let externalIdColumnEnsured = false;
+
+export async function ensureExternalIdColumn(sql: NeonSql) {
+  if (externalIdColumnEnsured) return;
+  await sql`
+    alter table cards
+      add column if not exists external_id text
+  `;
+  await sql`
+    create index if not exists cards_external_id_idx
+      on cards (game, external_id)
+      where external_id is not null
+  `;
+  try {
+    await sql`
+      create unique index if not exists cards_external_variant_uidx
+        on cards (game, external_id, condition, language, finish)
+        where external_id is not null
+          and product_kind = 'single'
+          and active = true
+    `;
+  } catch (error) {
+    // Duplicates legacy may block the unique index; non-unique lookup still works.
+    console.warn("cards_external_variant_uidx not created", error);
+  }
+  externalIdColumnEnsured = true;
+}
+
 function dedupeCards(cards: TcgCard[]) {
   const merged = new Map<string, TcgCard>();
 

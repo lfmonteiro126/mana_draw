@@ -39,6 +39,7 @@ create table if not exists cards (
   finish card_finish not null default 'Normal',
   product_kind text not null default 'single',
   sealed_type text,
+  external_id text,
   active boolean not null default true,
   featured boolean not null default false,
   created_at timestamptz not null default now(),
@@ -49,6 +50,13 @@ create table if not exists cards (
 create index if not exists cards_game_idx on cards (game);
 create index if not exists cards_featured_idx on cards (featured, updated_at desc);
 create index if not exists cards_product_kind_idx on cards (product_kind, game);
+create index if not exists cards_external_id_idx on cards (game, external_id)
+  where external_id is not null;
+create unique index if not exists cards_external_variant_uidx
+  on cards (game, external_id, condition, language, finish)
+  where external_id is not null
+    and product_kind = 'single'
+    and active = true;
 
 alter table cards
   add column if not exists search_vector tsvector,
@@ -56,7 +64,8 @@ alter table cards
   add column if not exists is_double_sided boolean not null default false,
   add column if not exists layout text,
   add column if not exists product_kind text not null default 'single',
-  add column if not exists sealed_type text;
+  add column if not exists sealed_type text,
+  add column if not exists external_id text;
 
 do $$
 begin

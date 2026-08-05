@@ -28,6 +28,7 @@ import {
 } from "@/lib/buylist-flow";
 import {
   ensureBuylistSchema,
+  ensureExternalIdColumn,
   ensureOrderColumns,
   ensureSealedColumns,
   ensureUserEmailSchema,
@@ -798,20 +799,39 @@ export async function createCardAction(formData: FormData) {
   const sql = getSql();
   if (!sql) redirect(`/admin?tab=${tab}&error=no-db`);
 
-  const existing = await sql`
+  await ensureSealedColumns(sql);
+  await ensureExternalIdColumn(sql);
+
+  let existing = await sql`
     select id
     from cards
     where game = ${game}
+      and coalesce(product_kind, 'single') = 'single'
       and active = true
-      and lower(name) = lower(${name})
-      and lower(set_name) = lower(${setName})
-      and lower(rarity) = lower(${rarity})
+      and external_id = ${externalId}
       and condition = ${condition}
       and language = ${language}
       and finish = ${finish}
-      and image_url = ${imageUrl}
     limit 1
   `;
+
+  if (existing.length === 0) {
+    existing = await sql`
+      select id
+      from cards
+      where game = ${game}
+        and coalesce(product_kind, 'single') = 'single'
+        and active = true
+        and lower(name) = lower(${name})
+        and lower(set_name) = lower(${setName})
+        and lower(rarity) = lower(${rarity})
+        and condition = ${condition}
+        and language = ${language}
+        and finish = ${finish}
+        and image_url = ${imageUrl}
+      limit 1
+    `;
+  }
 
   if (existing.length > 0) {
     try {
@@ -826,6 +846,7 @@ export async function createCardAction(formData: FormData) {
           layout = ${layout || null},
           tags = ${tags},
           featured = ${featured},
+          external_id = ${externalId},
           active = true,
           updated_at = now()
         where id = ${(existing[0] as { id: string }).id}
@@ -864,7 +885,9 @@ export async function createCardAction(formData: FormData) {
           layout,
           tags,
           finish,
-          featured
+          featured,
+          product_kind,
+          external_id
         )
         values (
           ${name},
@@ -882,7 +905,9 @@ export async function createCardAction(formData: FormData) {
           ${layout || null},
           ${tags},
           ${finish},
-          ${featured}
+          ${featured},
+          'single',
+          ${externalId}
         )
       `;
     } catch (error) {
