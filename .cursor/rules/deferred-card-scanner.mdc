@@ -1,0 +1,12 @@
+---
+description: Scanner de cartas (YOLO/embeddings Magic) está adiado — não implementar sem pedido explícito
+alwaysApply: false
+---
+
+# Deferred: Admin card scanner (Magic)
+
+Do **not** implement Ultralytics/YOLO card detection, embedding index, or admin “Escanear” UI unless the user explicitly asks to resume it.
+
+Canonical plan: `docs/deferred/card-scanner-magic.md`
+
+Locked summary: Magic-only admin scanner; hybrid (YOLO OBB in browser + vector search); prefer index on existing VPS; Ultralytics offline only; Pokémon/YGO and storefront later.
