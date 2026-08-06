@@ -9,8 +9,9 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Mana Draw | TCG Store",
-  description: "Marketplace minimalista para cartas Magic, Yu-Gi-Oh! e Pokemon."
+  title: "Mana Draw | Marketplace TCG",
+  description:
+    "Compre singles e produtos selados de Magic, Pokémon e Yu-Gi-Oh!. Condição auditada, Pix e cartão, frete ou retirada."
 };
 
 export default function RootLayout({

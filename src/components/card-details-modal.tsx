@@ -2,6 +2,7 @@
 
 import { Loader2, Sparkles, X } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CardDetailsPayload, CardLegality } from "@/lib/card-details";
@@ -117,6 +118,13 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href={`/carta/${card.id}`}
+              className="hidden h-9 items-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 text-xs font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)] sm:inline-flex"
+              onClick={onClose}
+            >
+              Página do produto
+            </Link>
             {onAddToCart ? (
               <button
                 type="button"
@@ -358,14 +366,23 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
               <span className="text-sm text-[var(--muted)]">Preço</span>
               <strong className="text-base text-[var(--ink)]">{formatCurrency(card.priceCents)}</strong>
             </div>
-            <button
-              type="button"
-              disabled={card.stock <= 0}
-              onClick={() => onAddToCart(card)}
-              className="flex h-11 w-full items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-40"
-            >
-              {card.stock <= 0 ? "Sem estoque" : "Adicionar ao carrinho"}
-            </button>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <button
+                type="button"
+                disabled={card.stock <= 0}
+                onClick={() => onAddToCart(card)}
+                className="flex h-11 w-full items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:opacity-40"
+              >
+                {card.stock <= 0 ? "Sem estoque" : "Adicionar ao carrinho"}
+              </button>
+              <Link
+                href={`/carta/${card.id}`}
+                onClick={onClose}
+                className="inline-flex h-11 items-center justify-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--ink)]"
+              >
+                Ver
+              </Link>
+            </div>
           </div>
         ) : null}
       </div>
