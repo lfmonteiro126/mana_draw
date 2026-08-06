@@ -77,6 +77,47 @@ export function sealedTypeLabel(game: Game, value: string | null | undefined) {
   return found?.label ?? value;
 }
 
+/** True for sealed catalog products (kind, type, Selado tag, TCGPlayer image, or name cues). */
+export function isSealedProduct(card: {
+  productKind?: string | null;
+  sealedType?: string | null;
+  tags?: string[] | null;
+  name?: string | null;
+  imageUrl?: string | null;
+}) {
+  if (card.productKind === "sealed") return true;
+  if (card.sealedType) return true;
+  if ((card.tags ?? []).some((tag) => tag.trim().toLowerCase() === "selado")) return true;
+  if (isTcgPlayerProductImage(card.imageUrl)) return true;
+  if (looksLikeSealedProductName(card.name)) return true;
+  return false;
+}
+
+export function isTcgPlayerProductImage(imageUrl?: string | null) {
+  if (!imageUrl) return false;
+  try {
+    const host = new URL(imageUrl).hostname.toLowerCase();
+    return host === "product-images.tcgplayer.com" || host.endsWith(".tcgplayer.com");
+  } catch {
+    return /product-images\.tcgplayer\.com/i.test(imageUrl);
+  }
+}
+
+/** Heurística de nome para boxes, decks, ETBs, etc. */
+export function looksLikeSealedProductName(name?: string | null) {
+  if (!name) return false;
+  const n = name.toLowerCase();
+  return (
+    /\b(booster\s*(box|display|pack)|collector\s*booster|set\s*booster|play\s*booster|draft\s*booster)\b/.test(
+      n
+    ) ||
+    /\b(commander\s*deck|precon|structure\s*deck|starter\s*(deck|kit)|theme\s*deck)\b/.test(n) ||
+    /\b(elite\s*trainer|etb\b|ultra[-\s]?premium|collection\s*box|bundle|gift\s*bundle)\b/.test(n) ||
+    /\b(secret\s*lair|blister|collector'?s?\s*tin|mega\s*tin|\btin\b)\b/.test(n) ||
+    /\b(display|case)\b/.test(n)
+  );
+}
+
 /** Infere o tipo selado a partir do nome do produto (heurística por jogo). */
 export function inferSealedType(game: Game, productName: string): SealedType {
   const n = productName.toLowerCase();
