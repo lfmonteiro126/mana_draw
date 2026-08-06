@@ -24,7 +24,8 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
   const [error, setError] = useState("");
   const [details, setDetails] = useState<CardDetailsPayload | null>(null);
   const [activeImage, setActiveImage] = useState<"front" | "back">("front");
-  const sealed = isSealedProduct(card);
+  const [apiSaysSealed, setApiSaysSealed] = useState(false);
+  const sealed = apiSaysSealed || isSealedProduct(card);
 
   useEffect(() => {
     setMounted(true);
@@ -50,8 +51,10 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
   useEffect(() => {
     if (!open) return;
 
+    setApiSaysSealed(false);
+
     // Produtos selados não existem no Scryfall — usa os dados da loja.
-    if (sealed) {
+    if (isSealedProduct(card)) {
       setLoading(false);
       setError("");
       setDetails(null);
@@ -73,16 +76,25 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
       priceCents: String(card.priceCents),
       marketPriceCents: String(card.marketPriceCents),
       stock: String(card.stock),
-      condition: card.condition
+      condition: card.condition,
+      productKind: card.productKind ?? "single"
     });
+    if (card.sealedType) params.set("sealedType", card.sealedType);
+    if (card.tags?.length) params.set("tags", card.tags.join(","));
 
     fetch(`/api/card-details?${params}`)
       .then(async (response) => {
         const payload = (await response.json()) as
           | { ok: true; details: CardDetailsPayload }
-          | { ok: false; message: string };
+          | { ok: false; message: string; code?: string };
         if (cancelled) return;
         if (!payload.ok) {
+          if (payload.code === "sealed_product") {
+            setApiSaysSealed(true);
+            setError("");
+            setDetails(null);
+            return;
+          }
           setError(payload.message);
           setDetails(null);
           return;
@@ -99,7 +111,7 @@ export function CardDetailsModal({ card, open, onClose, onAddToCart }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, card, sealed]);
+  }, [open, card]);
 
   if (!mounted || !open) return null;
 

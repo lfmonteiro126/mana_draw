@@ -10,6 +10,7 @@ import {
   scryfallUsdPrice,
   usdToCents
 } from "@/lib/scryfall-price";
+import { isSealedProduct } from "@/lib/sealed";
 import type { Game } from "@/lib/types";
 
 type ScryfallCard = {
@@ -95,6 +96,26 @@ export async function GET(request: Request) {
 
   if (!name && !imageUrl) {
     return NextResponse.json({ ok: false, message: "Informe name ou imageUrl." }, { status: 400 });
+  }
+
+  // Produtos selados (TCGPlayer / boxes / decks) não existem no Scryfall.
+  if (
+    isSealedProduct({
+      name,
+      imageUrl,
+      productKind: searchParams.get("productKind"),
+      sealedType: searchParams.get("sealedType"),
+      tags: searchParams.get("tags")?.split(",").map((tag) => tag.trim()).filter(Boolean)
+    })
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "sealed_product",
+        message: "Produto selado — detalhes vêm do catálogo da loja, não do Scryfall."
+      },
+      { status: 400 }
+    );
   }
 
   try {
