@@ -371,6 +371,88 @@ export async function getFeaturedCards(): Promise<TcgCard[]> {
   return getCatalogCards();
 }
 
+export async function getCardById(id: string): Promise<TcgCard | null> {
+  const normalizedId = id.trim();
+  if (!normalizedId) return null;
+
+  if (!hasDatabase()) {
+    return fallbackCards.find((card) => card.id === normalizedId) ?? null;
+  }
+
+  const sql = getSql();
+  if (!sql) return fallbackCards.find((card) => card.id === normalizedId) ?? null;
+
+  try {
+    await ensureSealedColumns(sql);
+    const rows = await sql`
+      select
+        id,
+        name,
+        game,
+        set_name,
+        rarity,
+        condition,
+        language,
+        price_cents,
+        market_price_cents,
+        stock,
+        image_url,
+        back_image_url,
+        is_double_sided,
+        layout,
+        tags,
+        finish,
+        product_kind,
+        sealed_type
+      from cards
+      where id = ${normalizedId}
+        and active = true
+      limit 1
+    `;
+    const [row] = rows as DbCard[];
+    return row ? mapCard(row) : null;
+  } catch (error) {
+    if (isMissingSealedColumns(error) || isMissingDoubleSideColumns(error)) {
+      try {
+        const rows = await sql`
+          select
+            id,
+            name,
+            game,
+            set_name,
+            rarity,
+            condition,
+            language,
+            price_cents,
+            market_price_cents,
+            stock,
+            image_url,
+            tags,
+            finish
+          from cards
+          where id = ${normalizedId}
+            and active = true
+          limit 1
+        `;
+        const [row] = rows as Array<Omit<DbCard, "back_image_url" | "is_double_sided" | "layout">>;
+        return row ? mapCard(withoutDoubleSideColumns(row)) : null;
+      } catch {
+        return null;
+      }
+    }
+    throw error;
+  }
+}
+
+export async function getRelatedCatalogCards(card: TcgCard, limit = 4): Promise<TcgCard[]> {
+  const related = await getCatalogCards({
+    game: card.game,
+    sort: "relevance",
+    kind: card.productKind === "sealed" ? "sealed" : "single"
+  });
+  return related.filter((item) => item.id !== card.id).slice(0, limit);
+}
+
 export async function getAdminCards({
   query = "",
   game = "Todos",

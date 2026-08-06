@@ -30,7 +30,14 @@ import { createOrderAction, logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { BuylistForm } from "@/components/buylist-form";
 import { CardDetailsModal } from "@/components/card-details-modal";
+import { ProductPrice } from "@/components/product-price";
+import { TrustStrip } from "@/components/trust-strip";
 import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
+import {
+  clearStoredCart,
+  readStoredCart,
+  writeStoredCart
+} from "@/lib/cart-storage";
 import { buylist } from "@/lib/mock-data";
 import { formatCurrency, formatStock } from "@/lib/format";
 import type { FilterGame, SortMode, StoreUser, TcgCard } from "@/lib/types";
@@ -42,9 +49,10 @@ type CartLine = {
   quantity: number;
 };
 
+type CheckoutStep = "items" | "shipping" | "pay";
+
 const games: FilterGame[] = ["Todos", "Magic", "Yu-Gi-Oh!", "Pokemon"];
 const orderInitialState = { ok: false, message: "", checkoutUrl: null as string | null };
-const CART_STORAGE_KEY = "mana-draw-cart-v1";
 
 const conditionColors: Record<string, string> = {
   NM: "bg-emerald-50 text-emerald-700 border border-emerald-200",
@@ -89,6 +97,7 @@ export function Storefront({
   const [selectedShippingId, setSelectedShippingId] = useState<string>("pickup");
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
+  const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>("items");
   const [activeSection, setActiveSection] = useState<"catalogo" | "selados" | "venda" | "conta">(
     "catalogo"
   );
@@ -176,12 +185,7 @@ export function Storefront({
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(CART_STORAGE_KEY);
-      if (!raw) {
-        setCartHydrated(true);
-        return;
-      }
-      const saved = JSON.parse(raw) as Array<{ cardId: string; quantity: number }>;
+      const saved = readStoredCart();
       const restored = saved
         .map((line) => {
           const card = catalogInventory.find((item) => item.id === line.cardId);
@@ -198,28 +202,46 @@ export function Storefront({
     } finally {
       setCartHydrated(true);
     }
+
+    try {
+      if (sessionStorage.getItem("mana-draw-open-cart") === "1") {
+        sessionStorage.removeItem("mana-draw-open-cart");
+        setCartOpen(true);
+        setCheckoutStep("items");
+      }
+    } catch {
+      // ignore
+    }
   }, [catalogInventory]);
 
   useEffect(() => {
     if (!cartHydrated) return;
-    sessionStorage.setItem(
-      CART_STORAGE_KEY,
-      JSON.stringify(cart.map((line) => ({ cardId: line.card.id, quantity: line.quantity })))
-    );
+    writeStoredCart(cart.map((line) => ({ cardId: line.card.id, quantity: line.quantity })));
   }, [cart, cartHydrated]);
 
   useEffect(() => {
     if (orderState.ok && orderState.checkoutUrl) {
       setCart([]);
-      sessionStorage.removeItem(CART_STORAGE_KEY);
+      clearStoredCart();
       window.location.href = orderState.checkoutUrl;
       return;
     }
     if (orderState.ok) {
       setCart([]);
-      sessionStorage.removeItem(CART_STORAGE_KEY);
+      clearStoredCart();
     }
   }, [orderState.ok, orderState.checkoutUrl]);
+
+  useEffect(() => {
+    if (!cartOpen) return;
+    if (cart.length === 0) {
+      setCheckoutStep("items");
+      return;
+    }
+    if (checkoutStep === "pay" && !currentUser) {
+      setCheckoutStep("shipping");
+    }
+  }, [cartOpen, cart.length, checkoutStep, currentUser]);
 
   useEffect(() => {
     setShippingQuotes([
@@ -580,8 +602,9 @@ export function Storefront({
       </nav>
 
       <HeroGameShowcase />
+      <TrustStrip />
 
-      <section id="catalogo" className="border-y border-[var(--line)] bg-[var(--surface)]/40 backdrop-blur-md">
+      <section id="catalogo" className="border-b border-[var(--line)] bg-[var(--surface)]/40 backdrop-blur-md">
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8 lg:py-10">
           <div className="min-w-0">
             <div className="mb-5 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
@@ -667,9 +690,13 @@ export function Storefront({
                     <div>
                       <div className="mb-1.5 flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]" title={card.name}>
+                          <Link
+                            href={`/carta/${card.id}`}
+                            className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)] transition hover:text-[var(--accent-strong)]"
+                            title={card.name}
+                          >
                             {card.name}
-                          </p>
+                          </Link>
                           <p className="truncate text-xs text-[var(--muted)]" title={card.setName}>
                             {card.setName}
                           </p>
@@ -697,19 +724,30 @@ export function Storefront({
                       </div>
                     </div>
                     <div>
-                      <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
-                        {formatCurrency(card.priceCents)}
-                      </p>
-                      <p className="truncate text-xs text-[var(--muted)]">{formatStock(card.stock)}</p>
-                      <button
-                        className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:bg-[var(--line)] disabled:text-[var(--muted)] sm:mt-3"
-                        type="button"
-                        disabled={card.stock <= 0}
-                        onClick={() => addToCart(card)}
-                      >
-                        <ShoppingBag size={14} />
-                        Adicionar
-                      </button>
+                      <ProductPrice
+                        priceCents={card.priceCents}
+                        marketPriceCents={card.marketPriceCents}
+                        size="md"
+                      />
+                      <p className="mt-0.5 truncate text-xs text-[var(--muted)]">{formatStock(card.stock)}</p>
+                      <div className="mt-2 grid grid-cols-[1fr_auto] gap-2 sm:mt-3">
+                        <button
+                          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:bg-[var(--line)] disabled:text-[var(--muted)]"
+                          type="button"
+                          disabled={card.stock <= 0}
+                          onClick={() => addToCart(card)}
+                        >
+                          <ShoppingBag size={14} />
+                          Adicionar
+                        </button>
+                        <Link
+                          href={`/carta/${card.id}`}
+                          className="inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)]"
+                          aria-label={`Ver ${card.name}`}
+                        >
+                          Ver
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -760,7 +798,10 @@ export function Storefront({
                 key={product.id}
                 className="surface-card grid grid-cols-[104px_1fr] gap-3 p-3 transition duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:shadow-[var(--shadow-lift)] active:scale-[0.995] sm:grid-cols-[128px_1fr] sm:gap-4 sm:p-3.5"
               >
-                <div className="relative aspect-square overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface-soft)]">
+                <Link
+                  href={`/carta/${product.id}`}
+                  className="relative block aspect-square overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface-soft)]"
+                >
                   <Image
                     src={product.imageUrl}
                     alt={product.name}
@@ -769,17 +810,18 @@ export function Storefront({
                     sizes="(min-width: 640px) 128px, 104px"
                     className="object-contain p-2"
                   />
-                </div>
+                </Link>
                 <div className="flex min-w-0 flex-1 flex-col justify-between">
                   <div>
                     <div className="mb-1.5 flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p
-                          className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)]"
+                        <Link
+                          href={`/carta/${product.id}`}
+                          className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--ink)] transition hover:text-[var(--accent-strong)]"
                           title={product.name}
                         >
                           {product.name}
-                        </p>
+                        </Link>
                         <p className="truncate text-xs text-[var(--muted)]" title={product.setName}>
                           {product.setName}
                         </p>
@@ -801,19 +843,30 @@ export function Storefront({
                     </div>
                   </div>
                   <div>
-                    <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
-                      {formatCurrency(product.priceCents)}
-                    </p>
-                    <p className="truncate text-xs text-[var(--muted)]">{formatStock(product.stock)}</p>
-                    <button
-                      className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:bg-[var(--line)] disabled:text-[var(--muted)] sm:mt-3"
-                      type="button"
-                      disabled={product.stock <= 0}
-                      onClick={() => addToCart(product)}
-                    >
-                      <ShoppingBag size={14} />
-                      Adicionar
-                    </button>
+                    <ProductPrice
+                      priceCents={product.priceCents}
+                      marketPriceCents={product.marketPriceCents}
+                      size="md"
+                    />
+                    <p className="mt-0.5 truncate text-xs text-[var(--muted)]">{formatStock(product.stock)}</p>
+                    <div className="mt-2 grid grid-cols-[1fr_auto] gap-2 sm:mt-3">
+                      <button
+                        className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--accent)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:bg-[var(--line)] disabled:text-[var(--muted)]"
+                        type="button"
+                        disabled={product.stock <= 0}
+                        onClick={() => addToCart(product)}
+                      >
+                        <ShoppingBag size={14} />
+                        Adicionar
+                      </button>
+                      <Link
+                        href={`/carta/${product.id}`}
+                        className="inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)]"
+                        aria-label={`Ver ${product.name}`}
+                      >
+                        Ver
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </article>
@@ -948,6 +1001,7 @@ export function Storefront({
             className="shrink-0 text-sm font-semibold text-[var(--accent)]"
             onClick={() => {
               setAddedToast(null);
+              setCheckoutStep("items");
               setCartOpen(true);
             }}
           >
@@ -978,7 +1032,7 @@ export function Storefront({
                 <p className="text-xs text-[var(--muted)]">
                   {cartCount === 0
                     ? "Nenhum item ainda"
-                    : `${cartCount} ${cartCount === 1 ? "item" : "itens"} selecionados`}
+                    : `${cartCount} ${cartCount === 1 ? "item" : "itens"} · checkout em 3 passos`}
                 </p>
               </div>
               <button
@@ -991,6 +1045,45 @@ export function Storefront({
               </button>
             </div>
 
+            {cart.length > 0 ? (
+              <div className="grid grid-cols-3 gap-1 border-b border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2.5">
+                {(
+                  [
+                    ["items", "1 · Itens"],
+                    ["shipping", "2 · Frete"],
+                    ["pay", "3 · Pagar"]
+                  ] as const
+                ).map(([step, label]) => {
+                  const active = checkoutStep === step;
+                  const done =
+                    (step === "items" && (checkoutStep === "shipping" || checkoutStep === "pay")) ||
+                    (step === "shipping" && checkoutStep === "pay");
+                  return (
+                    <button
+                      key={step}
+                      type="button"
+                      onClick={() => {
+                        if (step === "pay" && !currentUser) {
+                          setCheckoutStep("shipping");
+                          return;
+                        }
+                        setCheckoutStep(step);
+                      }}
+                      className={`rounded-[0.55rem] px-2 py-2 text-[11px] font-semibold transition ${
+                        active
+                          ? "bg-[var(--accent)] text-white shadow-sm"
+                          : done
+                            ? "bg-white text-[var(--accent-strong)]"
+                            : "text-[var(--muted)] hover:bg-white/70"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
             <div className="flex-1 overflow-auto p-4 scrollbar-none">
               {cart.length === 0 ? (
                 <div className="grid h-full place-items-center text-center">
@@ -999,7 +1092,7 @@ export function Storefront({
                       <PackageCheck size={28} />
                     </span>
                     <p className="font-semibold text-[var(--ink)]">Seu carrinho está vazio</p>
-                    <p className="mt-1 text-sm text-[var(--muted)]">Adicione singles do catálogo.</p>
+                    <p className="mt-1 text-sm text-[var(--muted)]">Adicione singles ou selados do catálogo.</p>
                     <button
                       type="button"
                       className="mt-4 inline-flex h-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--accent)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
@@ -1009,14 +1102,18 @@ export function Storefront({
                     </button>
                   </div>
                 </div>
-              ) : (
+              ) : checkoutStep === "items" ? (
                 <div className="grid gap-3">
                   {cart.map((line) => (
                     <div
                       key={line.card.id}
                       className="grid grid-cols-[64px_1fr] gap-3 rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-soft)] p-3"
                     >
-                      <div className="relative aspect-[5/7] overflow-hidden rounded-[0.45rem] bg-slate-100">
+                      <Link
+                        href={`/carta/${line.card.id}`}
+                        className="relative aspect-[5/7] overflow-hidden rounded-[0.45rem] bg-slate-100"
+                        onClick={() => setCartOpen(false)}
+                      >
                         <Image
                           src={line.card.imageUrl}
                           alt={line.card.name}
@@ -1025,11 +1122,17 @@ export function Storefront({
                           sizes="64px"
                           className="object-cover"
                         />
-                      </div>
+                      </Link>
                       <div>
                         <div className="flex justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-[var(--ink)]">{line.card.name}</p>
+                            <Link
+                              href={`/carta/${line.card.id}`}
+                              className="truncate text-sm font-semibold text-[var(--ink)] hover:text-[var(--accent-strong)]"
+                              onClick={() => setCartOpen(false)}
+                            >
+                              {line.card.name}
+                            </Link>
                             <p className="truncate text-xs text-[var(--muted)]">
                               {line.card.productKind === "sealed"
                                 ? `${line.card.game} · Selado`
@@ -1078,12 +1181,14 @@ export function Storefront({
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-
-            <div className="border-t border-[var(--line)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {cart.length > 0 ? (
-                <div className="mb-4 space-y-3">
+              ) : checkoutStep === "shipping" ? (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--ink)]">Entrega</p>
+                    <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                      Retirada na loja é gratuita. Para envio, informe o CEP.
+                    </p>
+                  </div>
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-[var(--ink)]" htmlFor="checkout-cep">
                       CEP de entrega
@@ -1091,7 +1196,7 @@ export function Storefront({
                     <div className="flex gap-2">
                       <input
                         id="checkout-cep"
-                        className="field-input h-10 flex-1 rounded-[var(--radius-control)] px-3 text-sm"
+                        className="field-input h-11 flex-1 rounded-[var(--radius-control)] px-3 text-sm"
                         inputMode="numeric"
                         autoComplete="postal-code"
                         placeholder="00000-000"
@@ -1100,7 +1205,7 @@ export function Storefront({
                       />
                       <button
                         type="button"
-                        className="h-10 shrink-0 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)] disabled:opacity-45"
+                        className="h-11 shrink-0 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-3 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--surface-hover)] disabled:opacity-45"
                         disabled={shippingLoading}
                         onClick={() => void fetchShippingQuotes()}
                       >
@@ -1111,7 +1216,7 @@ export function Storefront({
                   </div>
 
                   <fieldset className="space-y-2">
-                    <legend className="text-xs font-semibold text-[var(--ink)]">Frete</legend>
+                    <legend className="text-xs font-semibold text-[var(--ink)]">Opções de frete</legend>
                     {shippingQuotes.map((quote) => (
                       <label
                         key={quote.id}
@@ -1149,46 +1254,123 @@ export function Storefront({
                     ))}
                   </fieldset>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-[var(--radius-card)] border border-[var(--line)] bg-[var(--surface-soft)] p-4">
+                    <p className="text-sm font-semibold text-[var(--ink)]">Resumo</p>
+                    <div className="mt-3 space-y-1.5 text-sm">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-[var(--muted)]">{cartCount} item(ns)</span>
+                        <span className="font-medium text-[var(--ink)]">{formatCurrency(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-[var(--muted)]">
+                          {selectedShipping?.service ?? "Frete"}
+                        </span>
+                        <span className="font-medium text-[var(--ink)]">
+                          {shippingCents === 0 ? "Grátis" : formatCurrency(shippingCents)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3 border-t border-[var(--line)] pt-2">
+                        <span className="font-semibold text-[var(--ink)]">Total</span>
+                        <strong className="text-lg tracking-tight text-[var(--ink)]">
+                          {formatCurrency(total)}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-[var(--radius-card)] border border-[var(--accent)]/20 bg-[var(--accent)]/5 px-4 py-3 text-xs leading-5 text-[var(--ink)]">
+                    <p className="font-semibold text-[var(--accent-strong)]">Pagamento seguro</p>
+                    <p className="mt-1 text-[var(--muted)]">
+                      Na próxima tela você paga com Pix ou cartão pelo Mercado Pago. Estoque reservado ao confirmar.
+                    </p>
+                  </div>
+                  {!currentUser ? (
+                    <p className="text-sm text-[var(--muted)]">
+                      Entre na conta para finalizar — seu carrinho permanece nesta sessão.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-[var(--muted)]">
+                      Logado como <span className="font-semibold text-[var(--ink)]">{currentUser.email}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-[var(--line)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {cart.length > 0 && checkoutStep !== "pay" ? (
+                <div className="mb-3 flex items-center justify-between text-sm">
+                  <span className="text-[var(--muted)]">Total parcial</span>
+                  <strong className="tracking-tight text-[var(--ink)]">{formatCurrency(total)}</strong>
+                </div>
               ) : null}
 
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-sm text-[var(--muted)]">Subtotal</span>
-                <span className="text-sm font-medium text-[var(--ink)]">{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-sm text-[var(--muted)]">Frete</span>
-                <span className="text-sm font-medium text-[var(--ink)]">
-                  {shippingCents === 0 ? "Grátis" : formatCurrency(shippingCents)}
-                </span>
-              </div>
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-sm font-semibold text-[var(--ink)]">Total</span>
-                <strong className="text-xl tracking-tight text-[var(--ink)]">{formatCurrency(total)}</strong>
-              </div>
-              <p className="mb-4 text-xs text-[var(--muted)]">Pix e cartão via Mercado Pago na próxima etapa.</p>
-              {currentUser ? (
-                <form action={orderFormAction}>
-                  <input type="hidden" name="cart" value={cartPayload} />
-                  <input type="hidden" name="postalCode" value={postalCode} />
-                  <input type="hidden" name="shippingQuoteId" value={selectedShippingId} />
+              {cart.length === 0 ? null : checkoutStep === "items" ? (
+                <button
+                  type="button"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95"
+                  onClick={() => setCheckoutStep("shipping")}
+                >
+                  Continuar para frete
+                  <ChevronRight size={17} />
+                </button>
+              ) : checkoutStep === "shipping" ? (
+                <div className="grid gap-2">
                   <button
-                    className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
-                    disabled={cart.length === 0 || orderPending || !selectedShippingId}
-                    type="submit"
+                    type="button"
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:opacity-45"
+                    disabled={!selectedShippingId}
+                    onClick={() => {
+                      if (!currentUser) {
+                        setAuthOpen(true);
+                        return;
+                      }
+                      setCheckoutStep("pay");
+                    }}
                   >
-                    <BadgeCheck size={17} />
-                    {orderPending
-                      ? "Preparando pagamento..."
-                      : orderState.checkoutUrl
-                        ? "Abrindo Mercado Pago..."
-                        : "Pagar com Pix ou cartão"}
+                    {currentUser ? "Continuar para pagar" : "Entrar e continuar"}
+                    <ChevronRight size={17} />
                   </button>
-                </form>
+                  <button
+                    type="button"
+                    className="h-10 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--ink)]"
+                    onClick={() => setCheckoutStep("items")}
+                  >
+                    Voltar aos itens
+                  </button>
+                </div>
+              ) : currentUser ? (
+                <div className="grid gap-2">
+                  <form action={orderFormAction}>
+                    <input type="hidden" name="cart" value={cartPayload} />
+                    <input type="hidden" name="postalCode" value={postalCode} />
+                    <input type="hidden" name="shippingQuoteId" value={selectedShippingId} />
+                    <button
+                      className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+                      disabled={cart.length === 0 || orderPending || !selectedShippingId}
+                      type="submit"
+                    >
+                      <BadgeCheck size={17} />
+                      {orderPending
+                        ? "Preparando pagamento..."
+                        : orderState.checkoutUrl
+                          ? "Abrindo Mercado Pago..."
+                          : "Pagar com Pix ou cartão"}
+                    </button>
+                  </form>
+                  <button
+                    type="button"
+                    className="h-10 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--ink)]"
+                    onClick={() => setCheckoutStep("shipping")}
+                  >
+                    Voltar ao frete
+                  </button>
+                </div>
               ) : (
                 <button
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-control)] bg-[var(--accent)] text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] active:scale-95"
                   type="button"
-                  disabled={cart.length === 0}
                   onClick={() => setAuthOpen(true)}
                 >
                   <BadgeCheck size={17} />
@@ -1352,13 +1534,9 @@ function HeroGameShowcase() {
                   Cotar coleção
                 </a>
               </div>
-              <Link
-                href="/analisar-deck"
-                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-teal-200 transition hover:text-white"
-              >
-                <Swords size={15} />
-                Analisar deck Commander
-              </Link>
+              <p className="mt-4 text-xs font-medium tracking-wide text-white/70 sm:text-sm">
+                Pix e cartão · frete rastreado · condição auditada
+              </p>
             </div>
           </div>
         </div>
