@@ -9,6 +9,7 @@ import { TrustStrip } from "@/components/trust-strip";
 import { getCardById, getRelatedCatalogCards } from "@/lib/db";
 import { formatStock } from "@/lib/format";
 import { sealedTypeLabel } from "@/lib/sealed";
+import { buildSealedDescription } from "@/lib/sealed-description";
 import type { TcgCard } from "@/lib/types";
 
 type PageProps = {
@@ -123,6 +124,17 @@ export default async function ProductPage({ params }: PageProps) {
                   ? ` · ${sealedTypeLabel(card.game, card.sealedType)}`
                   : ` · ${card.rarity}`}
               </p>
+
+              {isSealed ? (
+                <div className="mt-5 rounded-[var(--radius-control)] border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-3.5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    Descrição do produto
+                  </p>
+                  <p className="mt-1.5 text-sm leading-6 text-[var(--ink)]">
+                    {buildSealedDescription(card)}
+                  </p>
+                </div>
+              ) : null}
 
               <dl className="mt-6 grid gap-3 sm:grid-cols-2">
                 <DetailRow label="Jogo" value={card.game} />

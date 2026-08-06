@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import type { CardDetailsPayload, CardLegality } from "@/lib/card-details";
 import { formatCurrency, formatUsd } from "@/lib/format";
 import { isSealedProduct, sealedTypeLabel } from "@/lib/sealed";
+import { buildSealedDescription } from "@/lib/sealed-description";
 import type { TcgCard } from "@/lib/types";
 import { ProductPrice } from "@/components/product-price";
 
@@ -239,6 +240,7 @@ function SealedProductDetails({
   onAddToCart?: (card: TcgCard) => void;
 }) {
   const typeLabel = sealedTypeLabel(card.game, card.sealedType);
+  const description = buildSealedDescription(card);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(220px,300px)_minmax(0,1fr)] lg:items-start">
@@ -271,6 +273,13 @@ function SealedProductDetails({
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-[var(--ink)]">{card.name}</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">{card.setName}</p>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+              Descrição
+            </p>
+            <p className="mt-1.5 text-sm leading-6 text-[var(--ink)]">{description}</p>
           </div>
 
           <ProductPrice
