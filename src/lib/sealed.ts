@@ -77,6 +77,17 @@ export function sealedTypeLabel(game: Game, value: string | null | undefined) {
   return found?.label ?? value;
 }
 
+/** True for sealed catalog products (kind, type, or Selado tag). */
+export function isSealedProduct(card: {
+  productKind?: string | null;
+  sealedType?: string | null;
+  tags?: string[] | null;
+}) {
+  if (card.productKind === "sealed") return true;
+  if (card.sealedType) return true;
+  return (card.tags ?? []).some((tag) => tag.trim().toLowerCase() === "selado");
+}
+
 /** Infere o tipo selado a partir do nome do produto (heurística por jogo). */
 export function inferSealedType(game: Game, productName: string): SealedType {
   const n = productName.toLowerCase();

@@ -41,7 +41,7 @@ import {
 import { buylist } from "@/lib/mock-data";
 import { formatCurrency, formatStock } from "@/lib/format";
 import type { FilterGame, SortMode, StoreUser, TcgCard } from "@/lib/types";
-import { sealedTypeLabel } from "@/lib/sealed";
+import { sealedTypeLabel, isSealedProduct } from "@/lib/sealed";
 import type { ShippingQuote } from "@/lib/shipping";
 
 type CartLine = {
@@ -798,19 +798,11 @@ export function Storefront({
                 key={product.id}
                 className="surface-card grid grid-cols-[104px_1fr] gap-3 p-3 transition duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:shadow-[var(--shadow-lift)] active:scale-[0.995] sm:grid-cols-[128px_1fr] sm:gap-4 sm:p-3.5"
               >
-                <Link
-                  href={`/carta/${product.id}`}
-                  className="relative block aspect-square overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface-soft)]"
-                >
-                  <Image
-                    src={product.imageUrl}
-                    alt={product.name}
-                    fill
-                    unoptimized
-                    sizes="(min-width: 640px) 128px, 104px"
-                    className="object-contain p-2"
-                  />
-                </Link>
+                <SealedThumb
+                  product={product}
+                  sizes="(min-width: 640px) 128px, 104px"
+                  onAddToCart={addToCart}
+                />
                 <div className="flex min-w-0 flex-1 flex-col justify-between">
                   <div>
                     <div className="mb-1.5 flex items-start justify-between gap-2">
@@ -1606,6 +1598,52 @@ function WeeklyDropPanel({
 }
 
 
+function SealedThumb({
+  product,
+  sizes,
+  onAddToCart
+}: {
+  product: TcgCard;
+  sizes: string;
+  onAddToCart?: (card: TcgCard) => void;
+}) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="relative aspect-square w-full shrink-0 overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] outline-none transition hover:border-[var(--accent)]/40 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
+        aria-label={`${product.name}. Toque para ver detalhes do produto selado.`}
+        onClick={() => setDetailsOpen(true)}
+      >
+        <Image
+          src={product.imageUrl}
+          alt={product.name}
+          fill
+          unoptimized
+          sizes={sizes}
+          className="object-contain p-2"
+        />
+      </button>
+
+      <CardDetailsModal
+        card={product}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        onAddToCart={
+          onAddToCart
+            ? (selected) => {
+                onAddToCart(selected);
+                setDetailsOpen(false);
+              }
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
 function CardThumb({
   card,
   priority = false,
@@ -1625,6 +1663,7 @@ function CardThumb({
   const secondFaceUrl = resolveCardBackImageUrl(card);
   const hasSecondFace = cardHasSecondFace(card);
   const flipBackUrl = secondFaceUrl ?? back.imageUrl;
+  const sealed = isSealedProduct(card);
 
   function clearLongPress() {
     if (longPressTimer.current !== null) {
@@ -1648,18 +1687,25 @@ function CardThumb({
         type="button"
         className="group relative z-0 aspect-[5/7] w-full shrink-0 overflow-visible rounded-lg outline-none [perspective:1200px] hover:z-20 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
         aria-label={
-          hasSecondFace
-            ? `${card.name}. Toque para detalhes. Segure para ver a segunda face.`
-            : `${card.name}. Toque para detalhes. Segure para ver o verso.`
+          sealed
+            ? `${card.name}. Toque para detalhes do produto selado.`
+            : hasSecondFace
+              ? `${card.name}. Toque para detalhes. Segure para ver a segunda face.`
+              : `${card.name}. Toque para detalhes. Segure para ver o verso.`
         }
         onClick={() => {
           if (longPressTriggered.current) {
             longPressTriggered.current = false;
             return;
           }
+          if (sealed) {
+            setDetailsOpen(true);
+            return;
+          }
           setDetailsOpen(true);
         }}
         onPointerDown={(event) => {
+          if (sealed) return;
           if (event.pointerType === "touch" || event.pointerType === "pen") {
             startLongPress();
           }
@@ -1670,8 +1716,12 @@ function CardThumb({
         onContextMenu={(event) => event.preventDefault()}
       >
         <div
-          className={`absolute inset-0 rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition duration-500 ease-out [transform-style:preserve-3d] group-hover:[transform:rotateY(180deg)] group-focus-visible:[transform:rotateY(180deg)] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.14)] ${
-            flipped ? "[transform:rotateY(180deg)] shadow-[0_8px_20px_rgba(15,23,42,0.14)]" : ""
+          className={`absolute inset-0 rounded-lg border border-slate-900/15 bg-slate-200 shadow-[0_2px_8px_rgba(15,23,42,0.08)] transition duration-500 ease-out [transform-style:preserve-3d] ${
+            sealed
+              ? ""
+              : "group-hover:[transform:rotateY(180deg)] group-focus-visible:[transform:rotateY(180deg)] group-hover:shadow-[0_8px_20px_rgba(15,23,42,0.14)]"
+          } ${
+            !sealed && flipped ? "[transform:rotateY(180deg)] shadow-[0_8px_20px_rgba(15,23,42,0.14)]" : ""
           }`}
         >
           <div className="absolute inset-0 overflow-hidden rounded-lg [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
@@ -1681,37 +1731,44 @@ function CardThumb({
               fill
               unoptimized
               sizes={sizes}
-              className="object-cover"
+              className={sealed ? "object-contain p-1.5" : "object-cover"}
               priority={priority}
             />
-            {hasSecondFace ? (
+            {hasSecondFace && !sealed ? (
               <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
                 2 faces
               </span>
             ) : null}
+            {sealed ? (
+              <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+                Selado
+              </span>
+            ) : null}
           </div>
 
-          <div
-            className={`absolute inset-0 overflow-hidden rounded-lg border [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] ${
-              hasSecondFace ? "border-[var(--line)] bg-slate-100" : back.frame
-            }`}
-          >
-            <Image
-              src={flipBackUrl}
-              alt={hasSecondFace ? `${card.name} segunda face` : `Verso de carta ${card.game}`}
-              fill
-              unoptimized
-              sizes={sizes}
-              className="object-cover"
-            />
-            {hasSecondFace ? (
-              <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
-                Face 2
-              </span>
-            ) : (
-              <div className="absolute inset-0 rounded-lg shadow-[inset_0_0_24px_rgba(0,0,0,0.35)]" />
-            )}
-          </div>
+          {!sealed ? (
+            <div
+              className={`absolute inset-0 overflow-hidden rounded-lg border [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden] ${
+                hasSecondFace ? "border-[var(--line)] bg-slate-100" : back.frame
+              }`}
+            >
+              <Image
+                src={flipBackUrl}
+                alt={hasSecondFace ? `${card.name} segunda face` : `Verso de carta ${card.game}`}
+                fill
+                unoptimized
+                sizes={sizes}
+                className="object-cover"
+              />
+              {hasSecondFace ? (
+                <span className="absolute left-1.5 top-1.5 rounded bg-[var(--accent)]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+                  Face 2
+                </span>
+              ) : (
+                <div className="absolute inset-0 rounded-lg shadow-[inset_0_0_24px_rgba(0,0,0,0.35)]" />
+              )}
+            </div>
+          ) : null}
         </div>
       </button>
 
