@@ -29,7 +29,8 @@ export type ScannedCardResult = {
 
 const SCRYFALL_HEADERS = {
   Accept: "application/json",
-  "User-Agent": "ManaDrawScanner/1.0"
+  // Scryfall asks for an identifying UA; keep contact-friendly for rate-limit goodwill.
+  "User-Agent": "ManaDrawScanner/1.0 (https://github.com/lfmonteiro126/mana_draw)"
 };
 
 /**
@@ -42,17 +43,19 @@ export function cleanOcrText(raw: string): string {
   let cleaned = raw
     // Normaliza quebras de linha e tabs
     .replace(/[\r\n\t]+/g, " ")
-    // Remove caracteres não-alfanuméricos no início/fim de linha
-    .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")
     // Remove símbolos de mana e parênteses OCR (ex: {1}{U}, (2), [B])
     .replace(/[\{\[\(][0-9WUBRGXwubrgx\/]+[\}\]\)]/g, "")
+    // Remove ruído comum de moldura/set symbol lido como lixo
+    .replace(/[|\\<>~`^_]+/g, " ")
+    // Remove caracteres não-alfanuméricos no início/fim
+    .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")
     // Remove números soltos que sejam de custo de mana no final
     .replace(/\s+[0-9]{1,2}$/, "")
     // Substitui múltiplos espaços
     .replace(/\s{2,}/g, " ")
     .trim();
 
-  // Se o OCR capturou duas linhas (ex: "Delver of Secrets // Insectile Aberration"), mantemos a primeira face
+  // Se o OCR capturou duas faces (ex: "Delver of Secrets // Insectile Aberration"), mantém a frente
   if (cleaned.includes("//")) {
     cleaned = cleaned.split("//")[0].trim();
   }

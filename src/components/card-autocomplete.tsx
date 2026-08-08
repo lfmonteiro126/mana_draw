@@ -14,7 +14,6 @@ import { useEffect, useMemo, useState } from "react";
 import { CardScannerModal } from "@/components/scanner/card-scanner-modal";
 import { formatCurrency, formatUsd } from "@/lib/format";
 import { scryfallFinishFromStoreFinish } from "@/lib/scryfall-price";
-import type { ScannedCardResult } from "@/lib/scanner/scryfall";
 import type { CardCondition, CardSuggestion, Game, TcgCard } from "@/lib/types";
 
 const games: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
