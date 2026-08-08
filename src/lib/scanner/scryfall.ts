@@ -127,25 +127,78 @@ export async function searchScryfallByFuzzy(query: string): Promise<ScannedCardR
   const cleaned = cleanOcrText(query);
   if (cleaned.length < 2) return null;
 
-  const params = new URLSearchParams({
-    fuzzy: cleaned
-  });
+  // Reject obvious OCR garbage before hitting Scryfall (avoids random fuzzy hits).
+  if (cleaned.length < 3) return null;
 
   try {
+    const params = new URLSearchParams({ fuzzy: cleaned });
     const res = await fetch(`https://api.scryfall.com/cards/named?${params.toString()}`, {
       headers: SCRYFALL_HEADERS,
-      next: { revalidate: 60 * 60 * 24 } // Cache de 24h
+      next: { revalidate: 60 * 60 * 24 }
     });
 
-    if (!res.ok) {
-      // Se fuzzy falhou, tenta busca com wildcard
-      return searchScryfallByWildcard(cleaned);
+    if (res.ok) {
+      const data = await res.json();
+      const parsed = parseScryfallCardToResult(data);
+      // Guard against fuzzy matching totally unrelated short junk.
+      if (isReasonableNameMatch(cleaned, parsed.name)) {
+        return parsed;
+      }
     }
 
-    const data = await res.json();
-    return parseScryfallCardToResult(data);
+    const fromAutocomplete = await searchScryfallByAutocomplete(cleaned);
+    if (fromAutocomplete) return fromAutocomplete;
+
+    return searchScryfallByWildcard(cleaned);
   } catch (err) {
     console.error("searchScryfallByFuzzy error:", err);
+    return null;
+  }
+}
+
+function isReasonableNameMatch(query: string, cardName: string): boolean {
+  const q = query.toLowerCase();
+  const n = cardName.toLowerCase().split(" // ")[0];
+  if (n.includes(q) || q.includes(n)) return true;
+
+  // Token overlap: at least one meaningful shared token (len >= 3).
+  const qTokens = q.split(/\s+/).filter((t) => t.length >= 3);
+  const nTokens = new Set(n.split(/\s+/).filter((t) => t.length >= 3));
+  if (qTokens.some((t) => nTokens.has(t))) return true;
+
+  // Soft Levenshtein-ish for short single-token names.
+  if (qTokens.length === 1 && nTokens.size === 1) {
+    const only = [...nTokens][0];
+    if (Math.abs(only.length - q.length) <= 2) return true;
+  }
+
+  // Fuzzy API already matched — accept when query is reasonably long.
+  return q.length >= 8;
+}
+
+async function searchScryfallByAutocomplete(cleaned: string): Promise<ScannedCardResult | null> {
+  try {
+    const params = new URLSearchParams({ q: cleaned });
+    const res = await fetch(`https://api.scryfall.com/cards/autocomplete?${params.toString()}`, {
+      headers: SCRYFALL_HEADERS,
+      next: { revalidate: 60 * 60 }
+    });
+    if (!res.ok) return null;
+    const payload = (await res.json()) as { data?: string[] };
+    const suggestion = payload.data?.[0];
+    if (!suggestion) return null;
+
+    const named = await fetch(
+      `https://api.scryfall.com/cards/named?${new URLSearchParams({ exact: suggestion }).toString()}`,
+      {
+        headers: SCRYFALL_HEADERS,
+        next: { revalidate: 60 * 60 * 24 }
+      }
+    );
+    if (!named.ok) return null;
+    return parseScryfallCardToResult(await named.json());
+  } catch (err) {
+    console.error("searchScryfallByAutocomplete error:", err);
     return null;
   }
 }
@@ -155,8 +208,9 @@ export async function searchScryfallByFuzzy(query: string): Promise<ScannedCardR
  */
 export async function searchScryfallByWildcard(cleaned: string): Promise<ScannedCardResult | null> {
   try {
+    const escaped = cleaned.replace(/"/g, "");
     const params = new URLSearchParams({
-      q: `!"${cleaned}" or ${cleaned}`,
+      q: `name:/^${escapeRegex(escaped)}/ or name:${escaped}*`,
       order: "released",
       dir: "desc"
     });
@@ -170,11 +224,16 @@ export async function searchScryfallByWildcard(cleaned: string): Promise<Scanned
 
     const payload = await res.json();
     if (payload.data && payload.data.length > 0) {
-      return parseScryfallCardToResult(payload.data[0]);
+      const parsed = parseScryfallCardToResult(payload.data[0]);
+      if (isReasonableNameMatch(cleaned, parsed.name)) return parsed;
     }
     return null;
   } catch (err) {
     console.error("searchScryfallByWildcard error:", err);
     return null;
   }
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

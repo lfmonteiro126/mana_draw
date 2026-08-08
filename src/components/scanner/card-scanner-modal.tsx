@@ -16,9 +16,13 @@ import { ScannedCardPreview } from "./scanned-card-preview";
 import {
   cropCardTitleFromImage,
   cropCardTitleFromVideo,
+  cropGuideFromVideo,
+  getGuideRectRelativeToVideo,
   loadImageElement,
-  recognizeCardTitle,
-  terminateOcrWorker
+  mapElementRectToVideoPixels,
+  recognizeCardTitleRobust,
+  terminateOcrWorker,
+  estimateRegionContrast
 } from "@/lib/scanner/ocr";
 import type { ScannedCardResult } from "@/lib/scanner/scryfall";
 
@@ -42,6 +46,7 @@ export function CardScannerModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const titleGuideRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
@@ -90,6 +95,14 @@ export function CardScannerModal({
         audio: false,
         video: {
           facingMode: { ideal: facingMode },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      },
+      {
+        audio: false,
+        video: {
+          facingMode: { ideal: facingMode },
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
@@ -114,6 +127,9 @@ export function CardScannerModal({
 
         if (videoRef.current) {
           videoRef.current.srcObject = newStream;
+          // iOS Safari: playsInline + muted required before play()
+          videoRef.current.setAttribute("playsinline", "true");
+          videoRef.current.muted = true;
           await videoRef.current.play();
         }
 
@@ -145,6 +161,7 @@ export function CardScannerModal({
       setErrorMessage(null);
       setStatusMessage(null);
       setIsScanning(false);
+      setCameraFailed(false);
       void terminateOcrWorker();
       return;
     }
@@ -200,7 +217,10 @@ export function CardScannerModal({
         return true;
       }
 
-      setErrorMessage(data.message || `Nenhuma carta MTG encontrada para "${text}".`);
+      setErrorMessage(
+        data.message ||
+          `Nenhuma carta MTG encontrada para "${text}". Ajuste o enquadramento ou corrija o nome e busque.`
+      );
       setStatusMessage(null);
       return false;
     } catch (err) {
@@ -211,6 +231,77 @@ export function CardScannerModal({
     }
   };
 
+  /** Manual search only — never used by the camera shutter. */
+  const searchManual = async () => {
+    if (isScanning) return;
+    const q = manualQuery.trim();
+    if (q.length < 2) {
+      setErrorMessage("Digite pelo menos 2 letras do nome da carta.");
+      return;
+    }
+
+    setIsScanning(true);
+    setErrorMessage(null);
+    try {
+      await queryCard(q);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const buildTitleCanvasFromCamera = ():
+    | { ok: true; canvas: HTMLCanvasElement }
+    | { ok: false; message: string } => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) {
+      return { ok: false, message: "Não foi possível capturar o frame da câmera." };
+    }
+
+    if (titleGuideRef.current) {
+      // Pre-check contrast on the mapped guide region (raw pixels, pre-binarization).
+      const relative = getGuideRectRelativeToVideo(video, titleGuideRef.current);
+      const source = mapElementRectToVideoPixels(video, {
+        x: relative.x - relative.width * 0.08,
+        y: relative.y - relative.height * 0.04,
+        width: relative.width * 1.16,
+        height: relative.height * 1.2
+      });
+      if (source) {
+        const contrast = estimateRegionContrast(
+          video,
+          source.x,
+          source.y,
+          source.width,
+          source.height
+        );
+        if (contrast < 180) {
+          return {
+            ok: false,
+            message:
+              "Imagem sem contraste suficiente no nome. Enquadre a carta com boa luz e foque o título na moldura tracejada."
+          };
+        }
+      }
+
+      const cropped = cropGuideFromVideo(video, canvas, titleGuideRef.current, {
+        padRatio: 0.1,
+        scale: 3.5
+      });
+      if (!cropped) {
+        return { ok: false, message: "Não foi possível capturar o frame da câmera." };
+      }
+      return { ok: true, canvas: cropped };
+    }
+
+    const fallback = cropCardTitleFromVideo(video, canvas);
+    if (!fallback) {
+      return { ok: false, message: "Não foi possível capturar o frame da câmera." };
+    }
+    return { ok: true, canvas: fallback };
+  };
+
+  /** Camera shutter — always OCR the live frame (ignores leftover manual text). */
   const captureFrame = async () => {
     if (isScanning) return;
 
@@ -219,43 +310,37 @@ export function CardScannerModal({
     setStatusMessage(null);
 
     try {
-      if (manualQuery.trim().length >= 2) {
-        await queryCard(manualQuery);
-        return;
-      }
-
       const video = videoRef.current;
-      const canvas = canvasRef.current;
-      if (!video || !canvas) {
-        setErrorMessage("Câmera ainda não está pronta. Aguarde ou use upload/busca manual.");
-        return;
-      }
-
-      if (!cameraReady || !video.videoWidth) {
+      if (!video || !cameraReady || !video.videoWidth) {
         setErrorMessage("Aguarde a câmera carregar ou digite o nome da carta.");
         return;
       }
 
       setStatusMessage("Lendo o nome da carta (OCR)…");
-      const titleCanvas = cropCardTitleFromVideo(video, canvas);
-      if (!titleCanvas) {
-        setErrorMessage("Não foi possível capturar o frame da câmera.");
+      const built = buildTitleCanvasFromCamera();
+      if (!built.ok) {
+        setErrorMessage(built.message);
+        setStatusMessage(null);
         return;
       }
 
-      const ocrText = await recognizeCardTitle(titleCanvas);
-      if (!ocrText) {
+      const ocr = await recognizeCardTitleRobust(built.canvas);
+      if (!ocr) {
         setErrorMessage(
-          "Não consegui ler o nome da carta. Melhore a iluminação, alinhe o título na moldura ou digite o nome."
+          "Não consegui ler o nome com confiança. Enquadre só o título na área tracejada, melhore a luz e tente de novo — ou digite o nome."
         );
         setStatusMessage(null);
         return;
       }
 
-      setManualQuery(ocrText);
-      const found = await queryCard(ocrText);
+      // Suggest the reading in the field so the user can correct it if Scryfall misses.
+      setManualQuery(ocr.text);
+      setStatusMessage(`Li “${ocr.text}” (${Math.round(ocr.confidence)}%) — buscando…`);
+      const found = await queryCard(ocr.text);
       if (!found) {
-        setStatusMessage(null);
+        setErrorMessage(
+          `Li “${ocr.text}”, mas não achei no Scryfall. Corrija o nome abaixo e toque em Buscar, ou escaneie de novo.`
+        );
       }
     } catch (err) {
       console.error("Erro no reconhecimento:", err);
@@ -279,25 +364,22 @@ export function CardScannerModal({
       const image = await loadImageElement(file);
       const canvas = canvasRef.current ?? document.createElement("canvas");
       cropCardTitleFromImage(image, canvas);
-      const ocrText = await recognizeCardTitle(canvas);
+      let ocr = await recognizeCardTitleRobust(canvas);
 
-      if (!ocrText) {
-        // Fallback: OCR the full image as a text block.
-        const fullText = await recognizeCardTitle(image, { pageSegMode: "6" });
-        if (!fullText) {
-          setErrorMessage(
-            "Não consegui ler o nome na foto. Tente outra imagem ou digite o nome da carta."
-          );
-          setStatusMessage(null);
-          return;
-        }
-        setManualQuery(fullText);
-        await queryCard(fullText);
+      if (!ocr) {
+        ocr = await recognizeCardTitleRobust(image);
+      }
+
+      if (!ocr) {
+        setErrorMessage(
+          "Não consegui ler o nome na foto. Tente outra imagem com o título bem visível ou digite o nome."
+        );
+        setStatusMessage(null);
         return;
       }
 
-      setManualQuery(ocrText);
-      await queryCard(ocrText);
+      setManualQuery(ocr.text);
+      await queryCard(ocr.text);
     } catch (err) {
       console.error("Erro no upload/OCR:", err);
       setErrorMessage("Falha ao processar a foto. Tente novamente.");
@@ -335,7 +417,7 @@ export function CardScannerModal({
                 {title}
               </h2>
               <p className="text-[11px] text-zinc-400">
-                Aponte a câmera para a carta de Magic (MTG)
+                Enquadre o nome da carta na área tracejada
               </p>
             </div>
           </div>
@@ -396,17 +478,21 @@ export function CardScannerModal({
                   <div className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
                   <div className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
 
-                  <div className="absolute top-3 inset-x-3 h-8 rounded-lg border border-dashed border-emerald-400/60 bg-emerald-950/30 flex items-center justify-center">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-                      Alinhe o Nome da Carta Aqui
-                    </span>
+                  {/* Title guide — OCR crops this exact on-screen box (object-cover aware). */}
+                  <div
+                    ref={titleGuideRef}
+                    className="absolute top-[4%] inset-x-[7%] h-[11%] rounded-lg border border-dashed border-emerald-400/70 bg-emerald-950/20 flex items-center justify-center"
+                  >
+                    {!isScanning && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300/90">
+                        Nome da carta aqui
+                      </span>
+                    )}
                   </div>
 
                   {isScanning ? (
                     <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_15px_#10b981] animate-bounce top-1/2" />
-                  ) : (
-                    <div className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent top-1/3" />
-                  )}
+                  ) : null}
 
                   <div className="absolute bottom-3 inset-x-3 text-center">
                     <span className="rounded-full bg-zinc-950/80 px-2.5 py-1 text-[11px] font-medium text-zinc-300 backdrop-blur">
@@ -481,20 +567,31 @@ export function CardScannerModal({
 
         {!recognizedCard && (
           <div className="flex flex-col gap-3 border-t border-zinc-800/80 bg-zinc-900/90 p-4 backdrop-blur">
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                placeholder="Ou digite o nome da carta MTG (ex: Sol Ring, Black Lotus)..."
-                value={manualQuery}
-                onChange={(e) => setManualQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    void captureFrame();
-                  }
-                }}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 pl-9 text-xs text-white placeholder:text-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <Search className="absolute left-3 h-3.5 w-3.5 text-zinc-400" />
+            <div className="relative flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Ou digite/corrija o nome e toque em Buscar…"
+                  value={manualQuery}
+                  onChange={(e) => setManualQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void searchManual();
+                    }
+                  }}
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+              </div>
+              <button
+                type="button"
+                onClick={() => void searchManual()}
+                disabled={isScanning || manualQuery.trim().length < 2}
+                className="shrink-0 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+              >
+                Buscar
+              </button>
             </div>
 
             <div className="flex items-center justify-between gap-3">
@@ -513,13 +610,13 @@ export function CardScannerModal({
                 className="flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-800/80 px-3 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-700 hover:text-white transition disabled:opacity-50"
               >
                 <Upload className="h-3.5 w-3.5" />
-                Foto da Galeria
+                Foto
               </button>
 
               <button
                 type="button"
                 onClick={() => void captureFrame()}
-                disabled={isScanning}
+                disabled={isScanning || (!cameraReady && !cameraFailed)}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-900/50 hover:bg-emerald-500 active:scale-[0.98] transition disabled:opacity-50"
               >
                 {isScanning ? (
@@ -530,7 +627,7 @@ export function CardScannerModal({
                 ) : (
                   <>
                     <Camera className="h-4 w-4" />
-                    Reconhecer Carta MTG
+                    Escanear pela Câmera
                   </>
                 )}
               </button>
