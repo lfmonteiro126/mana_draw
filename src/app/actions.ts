@@ -335,9 +335,12 @@ export async function loginAction(_: ActionState, formData: FormData): Promise<A
 }
 
 export async function resendVerificationAction(
-  _prev: ActionState,
-  _formData?: FormData
+  prev: ActionState,
+  formData?: FormData
 ): Promise<ActionState> {
+  void prev;
+  void formData;
+
   const limited = rateLimit(await authClientKey("resend-verify"), 5, 15 * 60_000);
   if (!limited.ok) {
     return { ok: false, message: "Muitas tentativas. Aguarde alguns minutos." };
