@@ -55,6 +55,7 @@ export function CardScannerModal({
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [scannedBatch, setScannedBatch] = useState<ScannedCardResult[]>([]);
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraFailed, setCameraFailed] = useState(false);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -72,8 +73,10 @@ export function CardScannerModal({
   const startCamera = useCallback(async () => {
     setErrorMessage(null);
     setCameraReady(false);
+    setCameraFailed(false);
 
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setCameraFailed(true);
       setErrorMessage(
         "Este navegador não suporta câmera. Use o upload de foto ou digite o nome da carta."
       );
@@ -129,6 +132,7 @@ export function CardScannerModal({
     }
 
     console.error("Erro ao acessar câmera:", lastError);
+    setCameraFailed(true);
     setErrorMessage(
       "Não foi possível acessar a câmera do celular. Verifique as permissões do navegador ou faça upload de uma foto."
     );
@@ -406,7 +410,11 @@ export function CardScannerModal({
 
                   <div className="absolute bottom-3 inset-x-3 text-center">
                     <span className="rounded-full bg-zinc-950/80 px-2.5 py-1 text-[11px] font-medium text-zinc-300 backdrop-blur">
-                      {cameraReady ? "Magic: The Gathering (MTG)" : "Iniciando câmera…"}
+                      {cameraReady
+                        ? "Magic: The Gathering (MTG)"
+                        : cameraFailed
+                          ? "Câmera indisponível — use foto ou busca"
+                          : "Iniciando câmera…"}
                     </span>
                   </div>
                 </div>
