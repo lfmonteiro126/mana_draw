@@ -1,9 +1,10 @@
-"use client";
-
-import { Camera, Check, ChevronLeft, ChevronRight, Send, UploadCloud, X } from "lucide-react";
+import { Camera, Check, ChevronLeft, ChevronRight, Send, Sparkles, UploadCloud, X } from "lucide-react";
 import Image from "next/image";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { createBuylistAction } from "@/app/actions";
+import { CardScannerModal } from "@/components/scanner/card-scanner-modal";
+import { formatCurrency } from "@/lib/format";
+import type { ScannedCardResult } from "@/lib/scanner/scryfall";
 import type { Game } from "@/lib/types";
 
 const initialState = { ok: false, message: "" };
@@ -21,6 +22,9 @@ export function BuylistForm({
   const [step, setStep] = useState(0);
   const [customerName, setCustomerName] = useState(defaultName);
   const [email, setEmail] = useState(defaultEmail);
+  const [notes, setNotes] = useState("");
+  const [scannedCards, setScannedCards] = useState<ScannedCardResult[]>([]);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [stepError, setStepError] = useState("");
 
   const previews = useMemo(
@@ -153,14 +157,49 @@ export function BuylistForm({
         </label>
       </div>
 
-      <label className={`${step === 2 ? "mt-0 grid gap-1.5" : "hidden sm:mt-3 sm:grid sm:gap-1.5"} text-sm`}>
-        <span className="font-medium text-[var(--muted)]">Observações</span>
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--line)] pt-3">
+        <button
+          type="button"
+          onClick={() => setScannerOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border border-emerald-500/30 bg-emerald-950/10 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-950/20 active:scale-95"
+        >
+          <Camera size={15} className="text-emerald-600" />
+          Escanear Carta MTG pela Câmera
+        </button>
+
+        {scannedCards.length > 0 && (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+            <Sparkles size={13} />
+            {scannedCards.length} carta(s) escaneada(s)
+          </span>
+        )}
+      </div>
+
+      <label className={`${step === 2 ? "mt-3 grid gap-1.5" : "hidden sm:mt-3 sm:grid sm:gap-1.5"} text-sm`}>
+        <span className="font-medium text-[var(--muted)]">Observações e Lista de Cartas</span>
         <textarea
-          className="field-input min-h-32 w-full rounded-[var(--radius-control)] p-3 text-sm"
+          className="field-input min-h-32 w-full rounded-[var(--radius-control)] p-3 text-sm font-mono text-xs"
           name="notes"
-          placeholder="Liste cartas principais, condições, idiomas e qualquer observação importante."
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          placeholder="Liste cartas principais, condições, idiomas ou use o Scanner pela Câmera acima."
         />
       </label>
+
+      <CardScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        mode="buylist"
+        title="Scanner Buylist • Mana Draw"
+        onSelectForBuylist={(scanned) => {
+          setScannedCards((prev) => [...prev, scanned]);
+          const line = `• 1x ${scanned.name} (${scanned.setCode} #${scanned.collectorNumber}) - Ref: ${
+            scanned.marketPriceCents > 0 ? formatCurrency(scanned.marketPriceCents) : "Sob Consulta"
+          }`;
+          setNotes((prev) => (prev ? `${prev}\n${line}` : line));
+          setScannerOpen(false);
+        }}
+      />
 
       {previews.length > 0 && (
         <div className="mt-3 grid grid-cols-4 gap-2">

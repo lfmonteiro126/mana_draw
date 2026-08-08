@@ -1,6 +1,5 @@
-"use client";
-
 import {
+  Camera,
   Check,
   Loader2,
   Minus,
@@ -12,8 +11,10 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { CardScannerModal } from "@/components/scanner/card-scanner-modal";
 import { formatCurrency, formatUsd } from "@/lib/format";
 import { scryfallFinishFromStoreFinish } from "@/lib/scryfall-price";
+import type { ScannedCardResult } from "@/lib/scanner/scryfall";
 import type { CardCondition, CardSuggestion, Game, TcgCard } from "@/lib/types";
 
 const games: Game[] = ["Magic", "Pokemon", "Yu-Gi-Oh!"];
@@ -65,6 +66,7 @@ export function CardAutocomplete() {
   const [selectedCardName, setSelectedCardName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const selectedExternalId = selectedSuggestion?.externalId ?? "";
   const selectedSource = selectedSuggestion?.source ?? "";
 
@@ -243,14 +245,25 @@ export function CardAutocomplete() {
             <Zap size={17} className="text-[var(--accent)]" />
             Catalogador rapido
           </div>
-          <button
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--ink)]"
-            type="button"
-            onClick={resetForNextCard}
-          >
-            <RotateCcw size={14} />
-            Limpar busca
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-950/10 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-950/20"
+              type="button"
+              onClick={() => setScannerOpen(true)}
+              title="Escanear carta MTG pela câmera do celular"
+            >
+              <Camera size={14} className="text-emerald-600" />
+              Scanner Câmera
+            </button>
+            <button
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--ink)]"
+              type="button"
+              onClick={resetForNextCard}
+            >
+              <RotateCcw size={14} />
+              Limpar busca
+            </button>
+          </div>
         </div>
 
         <div className="mb-3 grid grid-cols-3 gap-2">
@@ -541,6 +554,27 @@ export function CardAutocomplete() {
       <input type="hidden" name="condition" value={condition} />
       <input type="hidden" name="language" value={language} />
       <input type="hidden" name="finish" value={finish} />
+
+      <CardScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        title="Scanner MTG • Cadastro de Estoque"
+        onSelectForStore={(scanned) => {
+          setGame("Magic");
+          setName(scanned.name);
+          setCollectionName(scanned.setName);
+          setRarity(scanned.rarity);
+          setImageUrl(scanned.imageUrl);
+          if (scanned.backImageUrl) setBackImageUrl(scanned.backImageUrl);
+          if (scanned.layout) setLayout(scanned.layout);
+          if (scanned.marketPriceCents > 0) {
+            const brl = (scanned.marketPriceCents / 100).toFixed(2).replace(".", ",");
+            setMarketPrice(brl);
+            setPrice(brl);
+          }
+          setScannerOpen(false);
+        }}
+      />
     </div>
   );
 }

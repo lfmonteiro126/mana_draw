@@ -30,6 +30,7 @@ import { createOrderAction, logoutAction } from "@/app/actions";
 import { AuthPanel } from "@/components/auth-panel";
 import { BuylistForm } from "@/components/buylist-form";
 import { CardDetailsModal } from "@/components/card-details-modal";
+import { CardScannerModal } from "@/components/scanner/card-scanner-modal";
 import { ProductPrice } from "@/components/product-price";
 import { TrustStrip } from "@/components/trust-strip";
 import { cardHasSecondFace, resolveCardBackImageUrl } from "@/lib/card-images";
@@ -40,6 +41,7 @@ import {
 } from "@/lib/cart-storage";
 import { buylist } from "@/lib/mock-data";
 import { formatCurrency, formatStock } from "@/lib/format";
+import type { ScannedCardResult } from "@/lib/scanner/scryfall";
 import type { FilterGame, SortMode, StoreUser, TcgCard } from "@/lib/types";
 import { sealedTypeLabel, isSealedProduct } from "@/lib/sealed";
 import type { ShippingQuote } from "@/lib/shipping";
@@ -101,6 +103,7 @@ export function Storefront({
   const [activeSection, setActiveSection] = useState<"catalogo" | "selados" | "venda" | "conta">(
     "catalogo"
   );
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [orderState, orderFormAction, orderPending] = useActionState(
     createOrderAction,
     orderInitialState
@@ -486,6 +489,15 @@ export function Storefront({
               </button>
             )}
             <button
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[var(--radius-control)] border border-emerald-500/40 bg-emerald-950/10 px-3 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-950/20 sm:text-sm"
+              type="button"
+              onClick={() => setScannerOpen(true)}
+              title="Escanear carta MTG pela câmera do celular"
+            >
+              <Camera size={16} className="text-emerald-600" />
+              <span className="hidden sm:inline">Scanner MTG</span>
+            </button>
+            <button
               className="relative hidden h-10 w-10 place-items-center rounded-[var(--radius-control)] bg-[var(--accent)] text-white transition hover:bg-[var(--accent-strong)] md:grid"
               type="button"
               aria-label="Abrir carrinho"
@@ -626,12 +638,20 @@ export function Storefront({
                   <span className="sr-only">Buscar cartas</span>
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
                   <input
-                    className="field-input h-11 w-full rounded-[var(--radius-control)] pl-10 pr-3 text-sm"
+                    className="field-input h-11 w-full rounded-[var(--radius-control)] pl-10 pr-10 text-sm"
                     name="q"
                     placeholder="Buscar por nome, coleção ou tag"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setScannerOpen(true)}
+                    title="Escanear carta MTG pela câmera do celular"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-[var(--muted)] hover:text-emerald-600 hover:bg-emerald-950/10 rounded-md transition"
+                  >
+                    <Camera size={18} />
+                  </button>
                 </label>
                 <label className="relative block">
                   <span className="sr-only">Ordenar</span>
@@ -1426,6 +1446,22 @@ export function Storefront({
           </div>
         </div>
       )}
+
+      <CardScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onSelectForStore={(scanned) => {
+          setScannerOpen(false);
+          syncCatalogUrl({ query: scanned.name, game: "Magic" });
+          const el = document.getElementById("catalogo");
+          if (el) el.scrollIntoView({ behavior: "smooth" });
+        }}
+        onSelectForBuylist={() => {
+          setScannerOpen(false);
+          const el = document.getElementById("venda");
+          if (el) el.scrollIntoView({ behavior: "smooth" });
+        }}
+      />
     </main>
   );
 }
