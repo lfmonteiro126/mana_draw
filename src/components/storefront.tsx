@@ -41,7 +41,6 @@ import {
 } from "@/lib/cart-storage";
 import { buylist } from "@/lib/mock-data";
 import { formatCurrency, formatStock } from "@/lib/format";
-import type { ScannedCardResult } from "@/lib/scanner/scryfall";
 import type { FilterGame, SortMode, StoreUser, TcgCard } from "@/lib/types";
 import { sealedTypeLabel, isSealedProduct } from "@/lib/sealed";
 import type { ShippingQuote } from "@/lib/shipping";
