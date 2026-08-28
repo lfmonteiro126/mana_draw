@@ -275,11 +275,11 @@ export function CardScannerModal({
           source.width,
           source.height
         );
-        if (contrast < 180) {
+        if (contrast < 260) {
           return {
             ok: false,
             message:
-              "Imagem sem contraste suficiente no nome. Enquadre a carta com boa luz e foque o título na moldura tracejada."
+              "Não dá para ler o nome nessa imagem. Enquadre a carta com boa luz e foque o título na moldura tracejada."
           };
         }
       }
@@ -326,18 +326,21 @@ export function CardScannerModal({
 
       const ocr = await recognizeCardTitleRobust(built.canvas);
       if (!ocr) {
+        setManualQuery("");
         setErrorMessage(
-          "Não consegui ler o nome com confiança. Enquadre só o título na área tracejada, melhore a luz e tente de novo — ou digite o nome."
+          "Não detectei um nome de carta. Aponte para o título na área tracejada (com a carta preenchendo a moldura) e tente de novo."
         );
         setStatusMessage(null);
         return;
       }
 
-      // Suggest the reading in the field so the user can correct it if Scryfall misses.
-      setManualQuery(ocr.text);
       setStatusMessage(`Li “${ocr.text}” (${Math.round(ocr.confidence)}%) — buscando…`);
       const found = await queryCard(ocr.text);
-      if (!found) {
+      if (found) {
+        setManualQuery(ocr.text);
+      } else {
+        // Only keep text the user might want to edit when it looked like a real name.
+        setManualQuery(ocr.text);
         setErrorMessage(
           `Li “${ocr.text}”, mas não achei no Scryfall. Corrija o nome abaixo e toque em Buscar, ou escaneie de novo.`
         );

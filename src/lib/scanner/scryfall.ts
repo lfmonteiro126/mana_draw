@@ -46,7 +46,10 @@ export function cleanOcrText(raw: string): string {
     // Remove símbolos de mana e parênteses OCR (ex: {1}{U}, (2), [B])
     .replace(/[\{\[\(][0-9WUBRGXwubrgx\/]+[\}\]\)]/g, "")
     // Remove ruído comum de moldura/set symbol lido como lixo
-    .replace(/[|\\<>~`^_]+/g, " ")
+    .replace(/[|\\<>~`^_=]+/g, " ")
+    // Colapsa hífens/travessões repetidos do OCR de fundo
+    .replace(/(?:\s*-){2,}/g, " ")
+    .replace(/\s*[,;:]+\s*/g, ", ")
     // Remove caracteres não-alfanuméricos no início/fim
     .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")
     // Remove números soltos que sejam de custo de mana no final

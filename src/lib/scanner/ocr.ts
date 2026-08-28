@@ -293,18 +293,47 @@ export function isPlausibleCardName(text: string): boolean {
   const letters = cleaned.replace(/[^a-zA-ZÀ-ÿ]/g, "");
   if (letters.length < 3) return false;
 
+  // Too much punctuation → typical OCR-of-background garbage.
+  const nonAlphaSpace = (cleaned.match(/[^a-zA-ZÀ-ÿ\s']/g) || []).length;
+  if (nonAlphaSpace / cleaned.length > 0.12) return false;
+  if ((cleaned.match(/,/g) || []).length > 1) return false;
+
   // English/PT card names always have vowels.
   const vowels = (letters.match(/[aeiouyáéíóúâêôãõàèìòù]/gi) || []).length;
   if (vowels === 0) return false;
-  if (vowels / letters.length < 0.12) return false;
+  if (vowels / letters.length < 0.18) return false;
 
   // Reject digit-heavy noise.
   const digits = (cleaned.match(/\d/g) || []).length;
-  if (digits > letters.length) return false;
+  if (digits > 2 || digits > letters.length / 3) return false;
+
+  const smallWords = new Set(["a", "an", "of", "the", "to", "in", "on", "or", "and", "at"]);
+  const tokens = cleaned
+    .split(/\s+/)
+    .map((token) => token.replace(/^[^a-zA-ZÀ-ÿ']+|[^a-zA-ZÀ-ÿ']+$/g, ""))
+    .filter(Boolean);
+
+  if (tokens.length === 0 || tokens.length > 8) return false;
+
+  const contentTokens = tokens.filter((token) => !smallWords.has(token.toLowerCase()));
+  if (contentTokens.length === 0) return false;
+
+  // Real MTG titles almost always have at least one word with 4+ letters.
+  const hasLongWord = contentTokens.some(
+    (token) => token.replace(/[^a-zA-ZÀ-ÿ]/g, "").length >= 4
+  );
+  if (!hasLongWord) return false;
+
+  // Many 1–2 letter fragments = hallucinated OCR from texture/background.
+  const tinyFragments = tokens.filter((token) => {
+    const alpha = token.replace(/[^a-zA-ZÀ-ÿ]/g, "");
+    return alpha.length > 0 && alpha.length <= 2 && !smallWords.has(token.toLowerCase());
+  });
+  if (tinyFragments.length >= 3) return false;
+  if (tokens.length >= 4 && tinyFragments.length / tokens.length >= 0.4) return false;
 
   // Each alphabetic token of length >= 3 should contain a vowel (filters "Din SPN").
-  const words = cleaned.split(/\s+/).filter(Boolean);
-  for (const word of words) {
+  for (const word of tokens) {
     const alpha = word.replace(/[^a-zA-ZÀ-ÿ]/g, "");
     if (alpha.length >= 3 && !/[aeiouyáéíóúâêôãõàèìòù]/i.test(alpha)) {
       return false;
@@ -312,6 +341,21 @@ export function isPlausibleCardName(text: string): boolean {
   }
 
   return true;
+}
+
+/** Fraction of near-black ink pixels after binarization — too low/high ⇒ no title. */
+export function estimateInkRatio(canvas: HTMLCanvasElement): number {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return 0;
+  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  if (!width || !height) return 0;
+  let ink = 0;
+  let n = 0;
+  for (let i = 0; i < data.length; i += 16) {
+    if (data[i] < 128) ink++;
+    n++;
+  }
+  return n ? ink / n : 0;
 }
 
 type RecognizeOptions = {
@@ -324,13 +368,20 @@ export async function recognizeCardTitle(
   image: string | HTMLCanvasElement | HTMLImageElement | Blob,
   options: RecognizeOptions = {}
 ): Promise<OcrTitleResult | null> {
+  if (typeof HTMLCanvasElement !== "undefined" && image instanceof HTMLCanvasElement) {
+    const ink = estimateInkRatio(image);
+    // Title text is a thin band: usually a modest ink ratio, not empty and not speckled noise.
+    if (ink < 0.04 || ink > 0.55) return null;
+  }
+
   const worker = await getOcrWorker();
   const pageSegMode = options.pageSegMode ?? "7";
-  const minConfidence = options.minConfidence ?? 35;
+  const minConfidence = options.minConfidence ?? 55;
 
   await worker.setParameters({
+    // No comma in whitelist: reduces "Try, RJ" style junk; Scryfall still fuzzy-matches.
     tessedit_char_whitelist:
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚáéíóúÂÊÔâêôÃÕãõÀàÇç0123456789' -/.,",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚáéíóúÂÊÔâêôÃÕãõÀàÇç0123456789' -.",
     tessedit_pageseg_mode: pageSegMode
   });
 
@@ -345,7 +396,7 @@ export async function recognizeCardTitle(
     .sort((a, b) => b.length - a.length);
 
   const text = lines[0] || cleanOcrText(raw);
-  if (!text || text.length < 2) return null;
+  if (!text || text.length < 3) return null;
 
   const confidence = result.data.confidence || 0;
   if (confidence < minConfidence) return null;
@@ -360,10 +411,10 @@ export async function recognizeCardTitle(
 export async function recognizeCardTitleRobust(
   image: string | HTMLCanvasElement | HTMLImageElement | Blob
 ): Promise<OcrTitleResult | null> {
-  const primary = await recognizeCardTitle(image, { pageSegMode: "7", minConfidence: 30 });
-  if (primary && primary.confidence >= 45) return primary;
+  const primary = await recognizeCardTitle(image, { pageSegMode: "7", minConfidence: 50 });
+  if (primary && primary.confidence >= 60) return primary;
 
-  const secondary = await recognizeCardTitle(image, { pageSegMode: "6", minConfidence: 30 });
+  const secondary = await recognizeCardTitle(image, { pageSegMode: "6", minConfidence: 55 });
   if (!primary) return secondary;
   if (!secondary) return primary;
   return secondary.confidence > primary.confidence ? secondary : primary;
